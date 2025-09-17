@@ -1,0 +1,11 @@
+# root .dockerignore
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.venv/
+**/*.pyc
+**/.DS_Store
+
+frontend/node_modules
+frontend/dist
+backend/.venv

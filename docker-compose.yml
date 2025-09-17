@@ -1,0 +1,34 @@
+services:
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      PYTHONPATH: /app
+    ports:
+      - "8080:8080"
+    depends_on: [redis]
+    command: >
+      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8080"
+
+  worker:
+    build: ./backend
+    env_file: .env
+    environment:
+      PYTHONPATH: /app
+    depends_on: [redis]
+    command: >
+      sh -c "celery -A worker.worker:celery_app worker --loglevel=INFO"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  frontend:
+    build: ./frontend
+    container_name: zbx-admin-frontend
+    env_file: .env
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    command: ["npm", "run", "dev", "--", "--host"]
