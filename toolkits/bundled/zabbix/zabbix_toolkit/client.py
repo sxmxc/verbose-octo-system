@@ -2,12 +2,13 @@ import httpx
 from typing import Any, Dict
 
 class ZbxClient:
-    def __init__(self, base_url: str, token: str):
+    def __init__(self, base_url: str, token: str, verify_tls: bool = True):
         if base_url.endswith("/"):
             base_url = base_url[:-1]
         self._url = f"{base_url}/api_jsonrpc.php"
         self._token = token
         self._id = 0
+        self._verify = verify_tls
 
     async def call(self, method: str, params: Dict[str, Any]) -> Any:
         self._id += 1
@@ -18,7 +19,7 @@ class ZbxClient:
             "auth": self._token,
             "id": self._id,
         }
-        async with httpx.AsyncClient(timeout=30) as s:
+        async with httpx.AsyncClient(timeout=30, verify=self._verify) as s:
             r = await s.post(self._url, json=payload)
             r.raise_for_status()
             data = r.json()

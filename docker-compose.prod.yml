@@ -4,5 +4,7 @@ services:
     build:
       context: ./frontend
       target: prod
+    container_name: sre-toolbox-frontend-prod
+    env_file: .env
     ports:
       - "8081:80"

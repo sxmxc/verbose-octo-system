@@ -57,6 +57,7 @@ docker-compose.override.yml
 *.pid
 *.log
 docker-data/
+data/
 
 # --- Misc binaries / archives ---
 *.zip

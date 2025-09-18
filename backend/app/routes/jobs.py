@@ -1,19 +1,49 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
-from ..worker_client import enqueue_job, get_job_status
+from typing import List, Optional
+
+from ..worker_client import cancel_job, enqueue_job, get_job_status, list_job_status
+
 
 router = APIRouter()
 
+
 class EnqueueJobRequest(BaseModel):
-    type: Literal["bulk_add_hosts"]
+    toolkit: str = Field(..., description="Toolkit that owns the job")
+    operation: str = Field(..., description="Toolkit-specific operation identifier")
     payload: dict = Field(default_factory=dict)
+
 
 @router.post("/", summary="Enqueue a job")
 def create_job(req: EnqueueJobRequest):
-    job_id = enqueue_job(req.type, req.payload)
-    return {"job_id": job_id}
+    job = enqueue_job(req.toolkit, req.operation, req.payload)
+    return {"job": job}
+
+
+@router.get("/", summary="List jobs")
+def list_jobs(
+    toolkit: Optional[List[str]] = Query(default=None),
+    module: Optional[List[str]] = Query(default=None),
+):
+    combined = None
+    if toolkit or module:
+        combined = []
+        if toolkit:
+            combined.extend(toolkit)
+        if module:
+            combined.extend(module)
+    jobs = list_job_status(toolkits=combined)
+    return {"jobs": jobs}
+
 
 @router.get("/{job_id}", summary="Get job status")
 def job_status(job_id: str):
     return get_job_status(job_id)
+
+
+@router.post("/{job_id}/cancel", summary="Request job cancellation", status_code=status.HTTP_202_ACCEPTED)
+def job_cancel(job_id: str):
+    job = cancel_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    return {"job": job}

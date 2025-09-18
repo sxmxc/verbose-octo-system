@@ -1,0 +1,26 @@
+{
+  "slug": "zabbix",
+  "name": "Zabbix Toolkit",
+  "description": "Manage Zabbix API endpoints and automation workflows.",
+  "base_path": "/toolkits/zabbix",
+  "backend": {
+    "module": "zabbix_toolkit.backend",
+    "router_attr": "router"
+  },
+  "worker": {
+    "module": "zabbix_toolkit.worker",
+    "register_attr": "register"
+  },
+  "dashboard": {
+    "module": "zabbix_toolkit.dashboard",
+    "callable": "build_context"
+  },
+  "dashboard_cards": [
+    {
+      "title": "Zabbix Toolkit",
+      "body": "Manage API instances, run bulk host imports, and monitor toolkit jobs.",
+      "link_text": "Open",
+      "link_href": "/toolkits/zabbix"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "slug": "regex",
+  "name": "Regex Toolkit",
+  "description": "Evaluate expressions and inspect matches.",
+  "base_path": "/toolkits/regex",
+  "backend": {
+    "module": "regex_toolkit.backend",
+    "router_attr": "router"
+  },
+  "dashboard_cards": [
+    {
+      "title": "Regex Playground",
+      "body": "Test patterns with instant feedback and capture group visibility.",
+      "link_text": "Try it",
+      "link_href": "/toolkits/regex"
+    }
+  ]
+}

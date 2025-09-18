@@ -1,9 +1,11 @@
-import os
-from celery import Celery
+from app.toolkit_loader import load_toolkit_workers, register_celery
+from app.toolkits.seeder import ensure_bundled_toolkits_installed
+from .celery_app import celery_app
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-celery_app = Celery("zbx_admin", broker=REDIS_URL, backend=REDIS_URL)
 
-celery_app.conf.task_routes = {
-    "worker.tasks.run_job": {"queue": "default"},
-}
+register_celery(celery_app)
+ensure_bundled_toolkits_installed()
+
+load_toolkit_workers(celery_app)
+
+__all__ = ["celery_app"]

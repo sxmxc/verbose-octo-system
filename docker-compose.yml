@@ -1,6 +1,7 @@
 services:
   api:
     build: ./backend
+    container_name: sre-toolbox-api
     env_file: .env
     environment:
       PYTHONPATH: /app
@@ -12,6 +13,7 @@ services:
 
   worker:
     build: ./backend
+    container_name: sre-toolbox-worker
     env_file: .env
     environment:
       PYTHONPATH: /app
@@ -21,14 +23,16 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: sre-toolbox-redis
     ports:
       - "6379:6379"
+
   frontend:
     build: ./frontend
-    container_name: zbx-admin-frontend
+    container_name: sre-toolbox-frontend
     env_file: .env
     ports:
       - "5173:5173"
     depends_on:
       - api
-    command: ["npm", "run", "dev", "--", "--host"]
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
