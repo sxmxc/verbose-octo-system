@@ -80,6 +80,27 @@ def install_toolkit_from_directory(
     dashboard_context_module = dashboard_manifest.get("module")
     dashboard_context_attr = dashboard_manifest.get("callable") or dashboard_manifest.get("attr")
 
+    frontend_manifest = manifest.get("frontend", {}) or {}
+
+    def _normalize_frontend_path(value: str | None) -> str | None:
+        if not value:
+            return None
+        return Path(value).as_posix()
+
+    frontend_entry = _normalize_frontend_path(frontend_manifest.get("entry"))
+    default_entry = Path("frontend") / "dist" / "index.js"
+    if not frontend_entry and (source_dir / default_entry).exists():
+        frontend_entry = default_entry.as_posix()
+    if frontend_entry and not (source_dir / Path(frontend_entry)).exists():
+        frontend_entry = None
+
+    frontend_source_entry = _normalize_frontend_path(frontend_manifest.get("source_entry"))
+    default_source_entry = Path("frontend") / "index.tsx"
+    if not frontend_source_entry and (source_dir / default_source_entry).exists():
+        frontend_source_entry = default_source_entry.as_posix()
+    if frontend_source_entry and not (source_dir / Path(frontend_source_entry)).exists():
+        frontend_source_entry = None
+
     # Copy bundle to storage
     storage_dir = Path(settings.toolkit_storage_dir)
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -105,6 +126,8 @@ def install_toolkit_from_directory(
         dashboard_cards=dashboard_cards,
         dashboard_context_module=dashboard_context_module,
         dashboard_context_attr=dashboard_context_attr,
+        frontend_entry=frontend_entry,
+        frontend_source_entry=frontend_source_entry,
     )
 
     existing = get_toolkit(slug)
@@ -121,6 +144,8 @@ def install_toolkit_from_directory(
         )
         update_payload.dashboard_context_module = dashboard_context_module
         update_payload.dashboard_context_attr = dashboard_context_attr
+        update_payload.frontend_entry = frontend_entry
+        update_payload.frontend_source_entry = frontend_source_entry
         if not preserve_enabled:
             update_payload.enabled = payload.enabled
 

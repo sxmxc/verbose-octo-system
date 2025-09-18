@@ -1,14 +1,118 @@
 import React from 'react'
-import { NavLink, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import * as ReactRouterDom from 'react-router-dom'
 
-import { API_BASE_URL } from './api'
+import { API_BASE_URL, apiFetch } from './api'
 import { ToolkitRecord, useToolkits } from './ToolkitContext'
 import AdminToolkitsPage from './pages/AdminToolkitsPage'
 import DashboardPage from './pages/DashboardPage'
 import JobsPage from './pages/JobsPage'
 import ToolkitIndexPage from './pages/ToolkitIndexPage'
-import RegexToolkitLayout from '../toolkits/bundled/regex/frontend/RegexToolkitLayout'
-import ZabbixToolkitLayout from '../toolkits/bundled/zabbix/frontend/ZabbixToolkitLayout'
+const { NavLink, Navigate, Route, Routes, useParams } = ReactRouterDom
+
+declare global {
+  interface Window {
+    __SRE_TOOLKIT_RUNTIME?: {
+      react: typeof React
+      reactRouterDom: typeof ReactRouterDom
+      apiFetch: typeof apiFetch
+    }
+  }
+}
+
+function ensureToolkitRuntime() {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const runtime = window.__SRE_TOOLKIT_RUNTIME || {}
+  runtime.react = React
+  runtime.reactRouterDom = ReactRouterDom
+  runtime.apiFetch = apiFetch
+  window.__SRE_TOOLKIT_RUNTIME = runtime
+}
+
+function ensureToolkitStyles() {
+  if (typeof document === 'undefined') {
+    return
+  }
+  if (document.getElementById('sre-toolkit-runtime-styles')) {
+    return
+  }
+  const style = document.createElement('style')
+  style.id = 'sre-toolkit-runtime-styles'
+  style.textContent = `@keyframes sreToolkitSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`
+  document.head.append(style)
+}
+
+ensureToolkitRuntime()
+ensureToolkitStyles()
+
+const modulePromiseCache = new Map<string, Promise<React.ComponentType>>()
+
+function toolkitCacheKey(toolkit: ToolkitRecord) {
+  return [
+    toolkit.slug,
+    toolkit.frontend_entry ?? '',
+    toolkit.frontend_source_entry ?? '',
+    toolkit.updated_at ?? '',
+  ].join('|')
+}
+
+function removeStaleToolkitEntries(slug: string, activeKey: string) {
+  for (const key of modulePromiseCache.keys()) {
+    if (key.startsWith(`${slug}|`) && key !== activeKey) {
+      modulePromiseCache.delete(key)
+    }
+  }
+}
+
+async function loadToolkitModule(toolkit: ToolkitRecord): Promise<React.ComponentType> {
+  const specifiers: Array<{ kind: 'local' | 'remote'; value: string }> = []
+
+  if (import.meta.env.DEV && toolkit.origin === 'bundled') {
+    const sourceEntry = (toolkit.frontend_source_entry || 'frontend/index.tsx').replace(/\\/g, '/').replace(/^\/+/, '')
+    specifiers.push({ kind: 'local', value: `../../toolkits/bundled/${toolkit.slug}/${sourceEntry}` })
+  }
+
+  const remoteEntry = (toolkit.frontend_entry || 'frontend/dist/index.js').replace(/\\/g, '/').replace(/^\/+/, '')
+  let base = API_BASE_URL
+  if (!base && typeof window !== 'undefined') {
+    base = window.location.origin
+  }
+  const remoteUrl = new URL(`/toolkit-assets/${toolkit.slug}/${remoteEntry}`, `${base}/`).toString()
+  specifiers.push({ kind: 'remote', value: remoteUrl })
+
+  let lastError: unknown
+  for (const specifier of specifiers) {
+    try {
+      const mod = await import(/* @vite-ignore */ specifier.value)
+      const candidate = (mod as { default?: React.ComponentType }).default ?? (mod as unknown as React.ComponentType)
+      if (candidate) {
+        return candidate
+      }
+    } catch (err) {
+      lastError = err
+      // eslint-disable-next-line no-console
+      console.warn(`Toolkit ${toolkit.slug} import failed for ${specifier.kind} specifier ${specifier.value}`, err)
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(`Failed to load toolkit module for ${toolkit.slug}`)
+}
+
+async function resolveToolkitComponent(toolkit: ToolkitRecord): Promise<React.ComponentType> {
+  const key = toolkitCacheKey(toolkit)
+  removeStaleToolkitEntries(toolkit.slug, key)
+  if (!modulePromiseCache.has(key)) {
+    modulePromiseCache.set(
+      key,
+      loadToolkitModule(toolkit).catch((err) => {
+        modulePromiseCache.delete(key)
+        throw err
+      })
+    )
+  }
+  return modulePromiseCache.get(key) as Promise<React.ComponentType>
+}
 
 const layoutStyles = {
   app: {
@@ -53,12 +157,6 @@ const layoutStyles = {
     gap: '2rem',
   },
 }
-
-const toolkitRouteComponents: Record<string, React.ReactNode> = {
-  zabbix: <ZabbixToolkitLayout />,
-  regex: <RegexToolkitLayout />,
-}
-
 
 export default function AppShell() {
   const { toolkits, loading } = useToolkits()
@@ -170,12 +268,7 @@ function DynamicToolkitRouter() {
     return <GenericToolkitPlaceholder toolkit={toolkit} message="This toolkit is currently disabled. Enable it from Administration → Toolkits." />
   }
 
-  const component = toolkitRouteComponents[slug]
-  if (component) {
-    return <>{component}</>
-  }
-
-  return <GenericToolkitPlaceholder toolkit={toolkit} />
+  return <ToolkitRenderer toolkit={toolkit} />
 }
 
 
@@ -192,6 +285,78 @@ function GenericToolkitPlaceholder({ toolkit, message }: { toolkit: ToolkitRecor
           functionality.
         </p>
       )}
+    </div>
+  )
+}
+
+
+function ToolkitRenderer({ toolkit }: { toolkit: ToolkitRecord }) {
+  const [Component, setComponent] = React.useState<React.ComponentType | null>(null)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    let cancelled = false
+    setComponent(null)
+    setError(null)
+
+    resolveToolkitComponent(toolkit)
+      .then((resolved) => {
+        if (!cancelled) {
+          setComponent(() => resolved)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error(`Failed to load toolkit UI for ${toolkit.slug}`, err)
+          setError(err instanceof Error ? err.message : String(err))
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [toolkit.slug, toolkit.frontend_entry, toolkit.frontend_source_entry, toolkit.updated_at])
+
+  if (error) {
+    return <GenericToolkitPlaceholder toolkit={toolkit} message={`Failed to load toolkit UI: ${error}`} />
+  }
+
+  if (!Component) {
+    return <ToolkitLoadingOverlay name={toolkit.name} />
+  }
+
+  return <Component />
+}
+
+function ToolkitLoadingOverlay({ name }: { name: string }) {
+  return (
+    <div
+      style={{
+        background: '#fff',
+        borderRadius: 12,
+        padding: '1.5rem',
+        boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+        display: 'grid',
+        gap: '0.75rem',
+        alignItems: 'center',
+        justifyItems: 'center',
+        minHeight: 160,
+      }}
+    >
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: '50%',
+          border: '3px solid #e2e8f0',
+          borderTopColor: '#38bdf8',
+          animation: 'sreToolkitSpin 0.75s linear infinite',
+        }}
+      />
+      <div style={{ textAlign: 'center' }}>
+        <h3 style={{ margin: 0 }}>{name}</h3>
+        <p style={{ margin: '0.35rem 0 0', color: '#64748b', fontSize: '0.9rem' }}>Loading toolkit interface…</p>
+      </div>
     </div>
   )
 }

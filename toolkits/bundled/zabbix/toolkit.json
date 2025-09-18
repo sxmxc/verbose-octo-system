@@ -4,16 +4,20 @@
   "description": "Manage Zabbix API endpoints and automation workflows.",
   "base_path": "/toolkits/zabbix",
   "backend": {
-    "module": "zabbix_toolkit.backend",
+    "module": "backend.app",
     "router_attr": "router"
   },
   "worker": {
-    "module": "zabbix_toolkit.worker",
+    "module": "worker.tasks",
     "register_attr": "register"
   },
   "dashboard": {
-    "module": "zabbix_toolkit.dashboard",
+    "module": "backend.dashboard",
     "callable": "build_context"
+  },
+  "frontend": {
+    "entry": "frontend/dist/index.js",
+    "source_entry": "frontend/index.tsx"
   },
   "dashboard_cards": [
     {

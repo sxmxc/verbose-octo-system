@@ -24,6 +24,8 @@ export type ToolkitRecord = ToolkitSummary & {
   }>
   dashboard_context_module?: string | null
   dashboard_context_attr?: string | null
+  frontend_entry?: string | null
+  frontend_source_entry?: string | null
 }
 
 type ToolkitContextShape = {

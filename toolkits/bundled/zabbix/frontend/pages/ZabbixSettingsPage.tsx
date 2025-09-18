@@ -1,7 +1,7 @@
 import React, { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
-import { apiFetch } from '../../../api'
-import { ZabbixInstance } from '../../../types'
+import { apiFetch } from '../runtime'
+import type { ZabbixInstance } from './types'
 
 
 type EditableInstance = {

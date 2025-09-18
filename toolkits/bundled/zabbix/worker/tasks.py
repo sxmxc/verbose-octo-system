@@ -5,7 +5,7 @@ from typing import Dict
 
 from worker.tasks import register_handler
 
-from .storage import get_instance
+from ..backend.storage import get_instance
 from app.services import jobs as job_store
 
 

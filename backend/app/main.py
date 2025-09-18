@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .routes.dashboard import router as dashboard_router
@@ -19,6 +22,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+toolkit_assets_dir = Path(settings.toolkit_storage_dir)
+toolkit_assets_dir.mkdir(parents=True, exist_ok=True)
+app.mount(
+    "/toolkit-assets",
+    StaticFiles(directory=toolkit_assets_dir, check_dir=False),
+    name="toolkit-assets",
 )
 
 @app.get("/health")

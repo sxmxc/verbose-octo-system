@@ -11,12 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN python -m pip install --upgrade pip setuptools wheel
 
-COPY requirements.txt ./requirements.txt
+COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
-COPY worker ./worker
+COPY backend/app ./app
+COPY backend/worker ./worker
+COPY toolkits/bundled ./toolkits/bundled
 
 EXPOSE 8080
-
-

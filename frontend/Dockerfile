@@ -1,15 +1,17 @@
-# frontend/Dockerfile
 FROM node:20-alpine
 
-WORKDIR /app
+WORKDIR /app/frontend
 
-# install dependencies
-COPY package.json package-lock.json* ./
+# install dependencies first for better caching
+COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install
 
-# copy source
-COPY . .
+# copy frontend source
+COPY frontend/ ./
+
+# copy bundled toolkit assets so Vite can serve them locally
+COPY toolkits/bundled /app/toolkits/bundled
 
 EXPOSE 5173
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

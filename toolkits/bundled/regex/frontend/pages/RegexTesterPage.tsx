@@ -1,7 +1,7 @@
 import React, { FormEvent, useState } from 'react'
 
-import { apiFetch } from '../../../api'
-import { RegexMatch, RegexTestResponse } from '../../../types'
+import { apiFetch } from '../runtime'
+import type { RegexTestResponse, RegexMatch } from './types'
 
 
 const flagOptions = ['IGNORECASE', 'MULTILINE', 'DOTALL', 'VERBOSE', 'UNICODE', 'ASCII']

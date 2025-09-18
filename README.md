@@ -1,33 +1,50 @@
 # SRE Toolbox
 
-SRE Toolbox is an extensible operations workbench. It ships with a plug-in system called **toolkits** so SRE teams can drop in new integrations—runtime observability helpers, cloud APIs, internal runbooks—without redeploying the core stack.
+SRE Toolbox is a modular operations cockpit. The core stack stays lightweight, while feature teams deliver functionality as **toolkits** that can bundle API routes, background jobs, and React panels. Operators enable or disable toolkits at runtime without rebuilding the platform.
 
 ```
-┌─────────────┐    ┌────────────┐    ┌──────────────┐
-│ React UI    │───▶│ FastAPI API│───▶│ Celery Worker│
-└─────────────┘    └────────────┘    └──────────────┘
-        ▲                ▲                   ▲
-        │                │                   │
-        │     Redis (jobs + toolkit registry)│
-        └────────────────────────────────────┘
+┌─────────────┐        HTTP        ┌──────────────┐
+│ React App   │◀──────────────────▶│ FastAPI API   │
+│ (App Shell) │                     │ + Toolkit SDK │
+└─────────────┘                     └──────────────┘
+        ▲                                   ▲
+        │                                   │
+        │                             ┌──────────────┐
+        │    Job telemetry            │ Celery Worker│
+        └────────────────────────────▶│  + Toolkits  │
+                                      └──────────────┘
+                 Redis (job queue and toolkit registry)
 ```
 
-## Why teams use it
-- **Toolkit-first architecture** – every integration is mounted at `/toolkits/<slug>`, can expose custom REST routes, enqueue background jobs, and optionally ship UI panels.
-- **Job control plane** – jobs are tracked in Redis, executed by Celery, stream log lines, and support cancellation with partial-progress reporting.
-- **Self-service registry** – administrators upload toolkit bundles (`.zip`), toggle visibility, and explore metadata directly from the UI.
-- **Batteries included** – the Zabbix Toolkit illustrates multi-instance management and bulk host automation, while the Regex Toolkit offers a developer playground.
+## Highlights
+- **Toolkit-first architecture** – every integration is shipped as a bundle that can declare API routers, Celery operations, documentation, and optional UI routes mounted at `/toolkits/<slug>`.
+- **Unified control plane** – jobs are tracked in Redis, stream execution logs to the UI, and expose cancellation hooks for long running tasks.
+- **Dynamic App Shell** – the React sidebar sources its navigation from the runtime registry, rendering either the toolkit's layout component or a placeholder when no UI is shipped.
+- **Bundled examples** – Zabbix automation and a Regex playground install automatically so teams can explore the workflow end to end.
+- **Container-native** – a single `docker compose up --build` bootstraps the API, worker, Redis, and Vite dev server.
 
-## Tech stack
-- **Backend**: FastAPI, Redis, Celery. Toolkit metadata lives in Redis; uploaded bundles are persisted under `TOOLKIT_STORAGE_DIR`.
-- **Worker**: Celery app (`worker/worker.py`) consuming `toolkit.operation` tasks.
-- **Frontend**: React + Vite SPA with React Router and a dynamic sidebar sourced from the toolkit registry.
-- **Packaging**: Docker Compose for API, worker, Redis, and UI containers.
+## Repository layout
+- `backend/` – FastAPI service, Celery app, Redis integrations, and toolkit loader.
+- `frontend/` – React + Vite SPA (`frontend/src/AppShell.tsx` hosts the dynamic navigation and toolkit router).
+- `toolkits/bundled/` – reference toolkits distributed with the platform (each contains `backend/`, `worker/`, `frontend/`, a prebuilt `frontend/dist/index.js`, and `toolkit.json`).
+- `docker-compose.yml` – local orchestration for API, worker, Redis, and the frontend dev server.
+- `.env.example` (at repo root) – template for core environment variables.
 
-## Quick start (Docker)
-1. Copy `.env.example` to `.env`. Adjust `TOOLKIT_STORAGE_DIR` if you want bundles elsewhere.
-2. `docker compose up --build`
-3. Open the dashboard → `http://localhost:5173`; API docs → `http://localhost:8080/docs`
+## Getting started
+
+### 1. Configure
+1. Copy `.env.example` to `.env`.
+2. Adjust `TOOLKIT_STORAGE_DIR` if you want bundles persisted outside the repo.
+3. Set `VITE_API_BASE_URL`/`VITE_API_PORT` if your API will live on a non-default address.
+
+### 2. Run with Docker Compose
+```bash
+docker compose up --build
+```
+- UI → `http://localhost:5173`
+- API docs → `http://localhost:8080/docs`
+
+Bundled toolkits are installed automatically on the first start and cached under `TOOLKIT_STORAGE_DIR`.
 
 ### Manual development workflow
 ```bash
@@ -37,38 +54,40 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8080
 
-# Celery worker
-celery -A worker.worker.celery_app worker --loglevel=INFO
+# Celery worker (new shell)
+cd backend
+source .venv/bin/activate
+celery -A worker.worker:celery_app worker --loglevel=INFO
 
-# Frontend UI
-cd ../frontend
+# Frontend UI (new shell)
+cd frontend
 npm install
-npm run dev
+npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-## Toolkit primer
+## Using the platform
+- **Dashboard** – overview cards plus recent job activity.
+- **Jobs** – pollable table with status filters and inline log streaming; cancellations propagate to Celery.
+- **Toolkits index** – list of registered toolkits showing enable/disable state, documentation links, and sidebar targets.
+- **Toolkit routes** – `/toolkits/:slug/*` renders the toolkit's exported React layout. When a toolkit ships no UI, the App Shell renders a friendly placeholder instead.
+- **Administration → Toolkits** – upload `.zip` bundles, toggle visibility, uninstall toolkits, and review metadata extracted from `toolkit.json`.
 
-| Component        | Purpose                                                      |
-|------------------|--------------------------------------------------------------|
-| `toolkit.json`   | Metadata: slug, name, version, backend/worker entrypoints, dashboard cards |
-| `backend/`       | FastAPI routers mounted under `/toolkits/<slug>` (any Python package structure works – just point `backend.module` at it) |
-| `worker/`        | Celery tasks keyed `<slug>.<operation>` for background work  |
-| `frontend/` *(optional)* | React panels and assets surfaced by the UI              |
+## Bundled toolkits
+- **Zabbix Toolkit** (`toolkits/bundled/zabbix`) – manage multiple Zabbix API endpoints, perform connectivity tests, and queue bulk host actions via background jobs. The development entry lives at `toolkits/bundled/zabbix/frontend/index.tsx` and the deployable micro-frontend ships at `toolkits/bundled/zabbix/frontend/dist/index.js`.
+- **Regex Toolkit** (`toolkits/bundled/regex`) – run expressions against sample input with toggleable flags and capture-group inspection. Its UI follows the same pattern (`frontend/index.tsx` for source, `frontend/dist/index.js` for the packaged asset).
 
-Bundle layout example:
-```
-incident-bots.zip
-├── toolkit.json
-├── backend/
-│   └── app.py  (exposes `router`)
-├── worker/
-│   └── tasks.py (exposes `register(celery_app)`)
-└── frontend/
-    └── panels/
-```
+Both bundles illustrate the zip structure expected by the runtime and act like any other toolkit: disable them from the UI and their routes vanish immediately.
 
-`toolkit.json` shape (minimum):
+## Building your own toolkit
+1. **Scaffold** `toolkit.json` with at least `slug`, `name`, `version`, and entries for `backend`/`worker` modules.
+2. **Backend** – expose a FastAPI `APIRouter` that the platform mounts under `/toolkits/<slug>`.
+3. **Worker** – export a function (default name `register`) that takes the shared Celery app and registers tasks named `<slug>.<operation>`.
+4. **Frontend (optional)** – add React panels under `frontend/index.tsx` for development and bundle an ESM entry at `frontend/dist/index.js`. The shell lazy-loads the dist file at runtime and injects shared dependencies through `window.__SRE_TOOLKIT_RUNTIME`.
+5. **Package** – zip the toolkit directory, upload it via `POST /toolkits/install` or the UI form, and flip the enable toggle. The installer copies everything into `TOOLKIT_STORAGE_DIR/<slug>/` and exposes static assets at `/toolkit-assets/<slug>/…`.
 
+> **Frontend bundling:** generate `frontend/dist/index.js` with your preferred build tool (Vite library mode, esbuild, webpack, etc.). Keep React, React DOM, and React Router external—micro-frontends rely on the shared globals injected via `window.__SRE_TOOLKIT_RUNTIME`. During development, bundled toolkits can fall back to `frontend/index.tsx` so Vite still provides transforms and hot reload.
+
+Example manifest:
 ```json
 {
   "slug": "incident-bots",
@@ -76,6 +95,7 @@ incident-bots.zip
   "description": "ChatOps responders",
   "backend": { "module": "backend.app", "router_attr": "router" },
   "worker": { "module": "worker.tasks", "register_attr": "register" },
+  "frontend": { "entry": "frontend/dist/index.js", "source_entry": "frontend/index.tsx" },
   "dashboard_cards": [
     {"title": "ChatOps Bot", "body": "Run responders from the dashboard.", "link_href": "/toolkits/incident-bots"}
   ],
@@ -83,78 +103,30 @@ incident-bots.zip
 }
 ```
 
-Upload bundles with `POST /toolkits/install` (multipart: optional `slug`, required `file`). If you omit the slug, the value from `toolkit.json` is used. The bundle is extracted to `TOOLKIT_STORAGE_DIR/<slug>/`, metadata is persisted, and the toolkit becomes available in the UI—no edits to the core repo required.
-
-Key manifest fields:
-
-- `slug`: unique identifier (lowercase letters, numbers, `-`, `_`).
-- `backend.module`: Python import path that exports an `APIRouter` (default attr `router`).
-- `worker.module`: Python import path that exports a callable register function (default name `register`) receiving the shared Celery app.
-- `dashboard_cards`: optional array of `{title, body, link_href?, link_text?, icon?}` used to surface cards on the global dashboard.
-- `dashboard.module`/`dashboard.callable`: optional hook that returns metrics for the dashboard highlight card.
-
-### Submitting jobs from a toolkit
-Toolkits enqueue work through either the shared `/jobs` endpoint or the toolkit helper:
-
-```
-POST /toolkits/{slug}/jobs
-  operation=<operation-name>
-  payload=<JSON string or omit>
-```
-
-When a toolkit is enabled, SRE Toolbox automatically imports its backend router and calls the toolkit's worker registration function (default `register`). As long as your worker module defines tasks keyed `<slug>.<operation>`, the shared job runner will execute them and stream log lines back to the UI.
-
-## Bundled toolkits
-
-The repository ships with two reference toolkits located under `toolkits/bundled/`. They install automatically on the first bootstrap so you can explore the product experience immediately, yet they behave exactly like any other toolkit: you can disable or uninstall them, and the runtime will respect that choice on future starts.
-
-- **Zabbix Toolkit – `/toolkits/zabbix`**: Manage multiple API endpoints, run connectivity tests via `apiinfo.version`, and bulk-import hosts through background jobs.
-- **Regex Toolkit – `/toolkits/regex`**: Evaluate patterns with selectable flags and inspect numbered or named capture groups in real time.
-
-## API surface (highlights)
-
-| Area | Endpoints |
-|------|-----------|
+## API quick reference
+| Domain | Endpoints |
+|--------|-----------|
 | Health | `GET /health` |
-| Dashboard | `GET /dashboard` – recent jobs + toolkit metrics |
-| Jobs | `GET /jobs` (filter by `toolkit=` or legacy `module=`), `GET /jobs/{id}`, `POST /jobs`, `POST /jobs/{id}/cancel` |
+| Dashboard | `GET /dashboard` |
+| Jobs | `GET /jobs`, `GET /jobs/{id}`, `POST /jobs`, `POST /jobs/{id}/cancel` |
 | Toolkits | `GET/POST /toolkits`, `GET/PUT/DELETE /toolkits/{slug}`, `POST /toolkits/{slug}/jobs`, `POST /toolkits/install`, `GET /toolkits/docs/getting-started` |
-| Zabbix Toolkit | CRUD `/toolkits/zabbix/instances`, testing, bulk host actions |
-| Regex Toolkit | `POST /toolkits/regex/test` |
-
-## Job lifecycle
-1. Toolkit enqueues a job (UI action or API call). Metadata is stored in Redis with `status=queued` and both `toolkit` and legacy `module` fields.
-2. Celery worker processes the job, logging progress to `logs[]` and updating `progress`.
-3. `/jobs` polls every five seconds; operators can cancel running jobs which transitions values through `cancelling` → `cancelled` with partial results retained.
+| Bundles | Toolkit routers are mounted automatically using metadata from `toolkit.json` |
 
 ## Configuration reference
-
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `APP_ENV`, `APP_HOST`, `APP_PORT`, `LOG_LEVEL` | FastAPI runtime controls | see `.env.example` |
 | `REDIS_URL` | Redis connection string for jobs & registry | `redis://redis:6379/0` |
 | `REDIS_PREFIX` | Redis key prefix | `sretoolbox` |
 | `TOOLKIT_STORAGE_DIR` | Filesystem directory for uploaded bundles | `./data/toolkits` |
-| `FRONTEND_BASE_URL` | UI origin for CORS auto-configuration | `http://localhost:5173` |
+| `FRONTEND_BASE_URL` | UI origin for auto-CORS | `http://localhost:5173` |
 | `VITE_API_BASE_URL`, `VITE_API_PORT` | Frontend API discovery | `http://localhost:8080`, `8080` |
-| `CORS_ORIGINS` | Optional comma-separated origins override | unset |
+| `CORS_ORIGINS` | Optional comma-separated overrides | unset |
 | `ZBX_BASE_URL`, `ZBX_TOKEN` | Legacy Zabbix defaults; UI-driven config preferred | unset |
 
-## Developing your own toolkit
-1. **Scaffold**: create `toolkit.json` (slug, name, version, backend/worker entrypoints, dashboard cards).
-2. **Backend**: write FastAPI routes (export an `APIRouter` attribute—default name `router`) that accept toolkit-specific requests; rely on shared utilities in `backend/app/core` when possible.
-3. **Worker**: expose a callable (default `register`) that receives the Celery app and registers tasks keyed `<slug>.<operation>`.
-4. **Frontend** (*optional*): add React panels; the Shell will surface them once the toolkit is enabled.
-5. **Package**: zip the bundle, upload via `/toolkits/install`, enable via the UI, and confirm routes appear in `/toolkits/<slug>` and the sidebar (dashboard cards render automatically).
-6. **Document**: extend `/toolkits/docs` if your toolkit needs extra onboarding steps.
+## Contributing
+- Keep assets ASCII-only unless the feature requires otherwise.
+- Run your preferred linting/test commands before opening a PR (`ruff`/`black` for Python, `npm run build` for the frontend).
+- Document new toolkits so operators understand how to deploy them safely.
 
-## Admin UI walkthrough
-- **Workspace** – dashboard, jobs table.
-- **Toolkits** – “All toolkits” catalog + one entry per enabled toolkit (sorted alphabetically).
-- **Administration → Toolkits** – toggle visibility, upload `.zip` bundles, uninstall custom toolkits, and review the quick-start summary.
-
-## Roadmap & contributing
-- Planned: bundle signature validation, runtime toolkit sandboxing, worker auto-discovery, and richer toolkit analytics.
-- Contributions welcome—run `ruff` and `black` on Python code, keep assets ASCII-only unless explicitly required, and document new toolkits.
-
-> **Note:** the bundled Zabbix Toolkit is demo-grade. Harden authentication, add audit logging, and implement rate limiting before running in production.
+> **Security note:** the bundled Zabbix Toolkit is developer-grade. Add authentication, audit logging, and request throttling before using it in production.

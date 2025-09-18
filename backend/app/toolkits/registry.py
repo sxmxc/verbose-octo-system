@@ -35,6 +35,8 @@ class ToolkitRecord(BaseModel):
     dashboard_cards: List[ToolkitDashboardCard] = Field(default_factory=list)
     dashboard_context_module: str | None = Field(default=None, description="Import path for dashboard context callable")
     dashboard_context_attr: str | None = Field(default=None, description="Callable name providing dashboard context")
+    frontend_entry: str | None = Field(default=None, description="Relative path to the built frontend entry inside the toolkit bundle")
+    frontend_source_entry: str | None = Field(default=None, description="Relative path to the source frontend entry used during development")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -54,6 +56,8 @@ class ToolkitCreate(BaseModel):
     dashboard_cards: List[ToolkitDashboardCard] = Field(default_factory=list)
     dashboard_context_module: Optional[str] = None
     dashboard_context_attr: Optional[str] = None
+    frontend_entry: Optional[str] = None
+    frontend_source_entry: Optional[str] = None
 
 
 class ToolkitUpdate(BaseModel):
@@ -70,6 +74,8 @@ class ToolkitUpdate(BaseModel):
     dashboard_cards: Optional[List[ToolkitDashboardCard]] = None
     dashboard_context_module: Optional[str] = None
     dashboard_context_attr: Optional[str] = None
+    frontend_entry: Optional[str] = None
+    frontend_source_entry: Optional[str] = None
 
 
 def _serialize(toolkit: ToolkitRecord) -> str:
@@ -116,6 +122,8 @@ def upsert_toolkit(payload: ToolkitCreate, origin: str = "builtin") -> ToolkitRe
         dashboard_cards=payload.dashboard_cards,
         dashboard_context_module=payload.dashboard_context_module,
         dashboard_context_attr=payload.dashboard_context_attr,
+        frontend_entry=payload.frontend_entry,
+        frontend_source_entry=payload.frontend_source_entry,
     )
     _save(toolkit)
     return toolkit
@@ -140,6 +148,8 @@ def create_toolkit(payload: ToolkitCreate, origin: str = "custom") -> ToolkitRec
         dashboard_cards=payload.dashboard_cards,
         dashboard_context_module=payload.dashboard_context_module,
         dashboard_context_attr=payload.dashboard_context_attr,
+        frontend_entry=payload.frontend_entry,
+        frontend_source_entry=payload.frontend_source_entry,
     )
     _save(toolkit)
     return toolkit

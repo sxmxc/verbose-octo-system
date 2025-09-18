@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 
-import { apiFetch } from '../../../api'
-import { Job, ZabbixInstance } from '../../../types'
+import { apiFetch } from '../runtime'
+import type { Job, ZabbixInstance } from './types'
 
 
 type JobsSummaryResponse = {

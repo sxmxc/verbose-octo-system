@@ -52,6 +52,10 @@ yarn-error.log*
 pnpm-debug.log*
 web-*log*.txt
 
+# allow committed micro-frontend bundles
+!toolkits/bundled/*/frontend/dist/
+!toolkits/bundled/*/frontend/dist/index.js
+
 # --- Docker / runtime artifacts ---
 docker-compose.override.yml
 *.pid

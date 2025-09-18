@@ -4,8 +4,12 @@
   "description": "Evaluate expressions and inspect matches.",
   "base_path": "/toolkits/regex",
   "backend": {
-    "module": "regex_toolkit.backend",
+    "module": "backend.app",
     "router_attr": "router"
+  },
+  "frontend": {
+    "entry": "frontend/dist/index.js",
+    "source_entry": "frontend/index.tsx"
   },
   "dashboard_cards": [
     {
