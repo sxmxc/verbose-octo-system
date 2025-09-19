@@ -12,6 +12,7 @@ from .registry import (
     ToolkitDashboardCard,
     ToolkitRecord,
     ToolkitUpdate,
+    clear_toolkit_removal,
     create_toolkit,
     get_toolkit,
     update_toolkit,
@@ -142,9 +143,7 @@ def install_toolkit_from_directory(
         shutil.rmtree(dest_root)
     shutil.copytree(toolkit_root, dest_root)
 
-    sentinel = storage_dir / f".bundled-removed-{slug}"
-    if sentinel.exists():
-        sentinel.unlink(missing_ok=True)
+    clear_toolkit_removal(slug)
 
     payload = ToolkitCreate(
         slug=slug,

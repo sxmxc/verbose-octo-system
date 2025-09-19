@@ -8,10 +8,6 @@ import ZabbixAdministrationPage from './pages/ZabbixSettingsPage'
 
 const toolkitStyles = {
   wrapper: {
-    background: 'var(--color-surface)',
-    borderRadius: 12,
-    boxShadow: 'var(--color-shadow)',
-    border: '1px solid var(--color-border)',
     padding: '1.5rem',
     display: 'grid',
     gap: '1.5rem',
@@ -52,7 +48,7 @@ const subNav = [
 
 export default function ZabbixToolkitLayout() {
   return (
-    <div style={toolkitStyles.wrapper}>
+    <div className="tk-card" style={toolkitStyles.wrapper}>
       <header>
         <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
           <span className="material-symbols-outlined" style={iconStyle} aria-hidden>

@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..config import settings
 from .install_utils import install_toolkit_from_directory
-from .registry import get_toolkit, set_toolkit_origin
+from .registry import get_toolkit, is_toolkit_removed, set_toolkit_origin
 
 
 def _resolve_bundled_path(slug: str) -> Path | None:
@@ -23,15 +22,11 @@ _BUNDLED_TOOLKITS = {
 }
 
 
-def _sentinel_path(slug: str) -> Path:
-    return Path(settings.toolkit_storage_dir) / f".bundled-removed-{slug}"
-
-
 def ensure_bundled_toolkits_installed() -> None:
     for slug, source_dir in _BUNDLED_TOOLKITS.items():
         if not source_dir.exists():
             continue
-        if _sentinel_path(slug).exists():
+        if is_toolkit_removed(slug):
             continue
         existing = get_toolkit(slug)
         enabled = True

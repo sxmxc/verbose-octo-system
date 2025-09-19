@@ -103,11 +103,6 @@ def toolkits_delete(slug: str):
     if bundle_path.exists():
         bundle_path.unlink()
 
-    if toolkit.origin == "bundled":
-        storage_dir.mkdir(parents=True, exist_ok=True)
-        sentinel = storage_dir / f".bundled-removed-{slug}"
-        sentinel.write_text("removed")
-
     mark_toolkit_removed(slug)
 
 
