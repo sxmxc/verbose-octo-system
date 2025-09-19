@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import AnyHttpUrl, BaseModel, Field, HttpUrl, SecretStr, ValidationError, field_validator, model_validator
@@ -92,8 +93,6 @@ def default_cors_origins() -> List[str]:
 class Settings(BaseSettings):
     app_name: str = "SRE Toolbox"
     app_env: str = "dev"
-    app_host: str = "0.0.0.0"
-    app_port: int = 8080
     log_level: str = "INFO"
 
     zbx_base_url: AnyHttpUrl | None = None
@@ -127,19 +126,38 @@ class Settings(BaseSettings):
     bootstrap_admin_password: Optional[SecretStr] = Field(default=None, repr=False)
     bootstrap_admin_email: Optional[str] = None
 
+    @staticmethod
+    def _normalize_origin(value: str) -> str:
+        value = value.strip()
+        if not value or value == "*":
+            return value
+        if "://" not in value:
+            return value
+        parts = urlsplit(value)
+        if not parts.scheme or not parts.netloc:
+            return value
+        return urlunsplit((parts.scheme, parts.netloc, "", "", ""))
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_cors(cls, v):
         if isinstance(v, str):
-            return [s.strip() for s in v.split(",") if s.strip()]
-        return v
+            items = [cls._normalize_origin(s) for s in v.split(",")]
+        elif isinstance(v, list):
+            items = [cls._normalize_origin(str(item)) for item in v]
+        else:
+            return v
+        return [item for item in dict.fromkeys(items) if item]
 
     @model_validator(mode="after")
     def ensure_cors(cls, settings: "Settings") -> "Settings":
+        normalized = [cls._normalize_origin(origin) for origin in settings.cors_origins]
+        normalized = [origin for origin in normalized if origin]
         if settings.frontend_base_url:
-            frontend_origin = str(settings.frontend_base_url)
-            if frontend_origin not in settings.cors_origins:
-                settings.cors_origins.append(frontend_origin)
+            frontend_origin = cls._normalize_origin(str(settings.frontend_base_url))
+            if frontend_origin:
+                normalized.append(frontend_origin)
+        settings.cors_origins = list(dict.fromkeys(normalized))
         settings.auth_providers = cls._build_auth_providers(settings)
         return settings
 

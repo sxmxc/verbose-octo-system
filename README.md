@@ -98,12 +98,12 @@ Core settings are read from environment variables (see `.env.example`). The tabl
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `APP_ENV`, `APP_HOST`, `APP_PORT`, `LOG_LEVEL` | FastAPI runtime controls | see `.env.example` |
+| `APP_ENV`, `LOG_LEVEL` | FastAPI runtime controls | see `.env.example` |
 | `DATABASE_URL` | SQLAlchemy async database URL | `sqlite+aiosqlite:///./data/app.db` |
 | `REDIS_URL` / `REDIS_PREFIX` | Redis connection string and key prefix | `redis://redis:6379/0`, `sretoolbox` |
 | `TOOLKIT_STORAGE_DIR` | Filesystem directory for toolkit bundles | `./data/toolkits` |
-| `FRONTEND_BASE_URL` | UI origin for automatic CORS configuration | `http://localhost:5173` |
-| `VITE_API_BASE_URL`, `VITE_API_PORT` | Frontend discovery of the API | `http://localhost:8080`, `8080` |
+| `FRONTEND_BASE_URL` | UI origin (no trailing slash) for automatic CORS configuration | `http://localhost:5173` |
+| `VITE_API_BASE_URL` | Frontend discovery of the API endpoint | `http://localhost:8080` |
 | `AUTH_JWT_SECRET`, `AUTH_JWT_ALGORITHM` | JWT signing secret/key algorithm | `change-me`, `HS256` |
 | `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_SAMESITE`, `AUTH_COOKIE_DOMAIN` | Refresh-token cookie attributes | `true`, `lax`, unset |
 | `BOOTSTRAP_ADMIN_*` | Optional seed admin account (username, password, email) | unset |

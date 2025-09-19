@@ -595,7 +595,7 @@ const sidebarHeaderStyle: React.CSSProperties = {
 }
 
 const sidebarNavArea: React.CSSProperties = {
-  display: 'grid',
+  display: 'contents',
   gap: '0.95rem',
   flex: 1,
   overflowY: 'auto' as const,
