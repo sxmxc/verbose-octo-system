@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential gcc g++ libffi-dev libssl-dev curl \
+      build-essential gcc g++ libffi-dev libssl-dev libpq-dev curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python -m pip install --upgrade pip setuptools wheel
@@ -16,6 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/app ./app
 COPY backend/worker ./worker
+COPY backend/alembic.ini ./alembic.ini
+COPY backend/alembic ./alembic
 COPY toolkits/bundled ./toolkits/bundled
 
 EXPOSE 8080

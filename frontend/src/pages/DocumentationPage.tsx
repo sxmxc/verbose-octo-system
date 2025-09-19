@@ -206,37 +206,64 @@ type MarkdownCodeProps = React.HTMLAttributes<HTMLElement> & {
   children?: React.ReactNode
 }
 
-const renderCode = ({ inline, children, ...props }: MarkdownCodeProps) => {
-  if (inline) {
+const CODE_FONT_FAMILY = '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace'
+
+const inlineCodeStyle: React.CSSProperties = {
+  display: 'inline-block',
+  background: 'var(--color-accent-soft)',
+  padding: '0.1rem 0.35rem',
+  borderRadius: 5,
+  fontSize: '0.85em',
+  fontFamily: CODE_FONT_FAMILY,
+  lineHeight: 'inherit',
+  color: 'var(--color-text-primary)',
+  whiteSpace: 'pre-wrap',
+  width: 'auto',
+  maxWidth: '100%',
+  verticalAlign: 'baseline',
+}
+
+const codeBlockContainerStyle: React.CSSProperties = {
+  margin: '0.5rem 0',
+  background: 'var(--color-code-bg)',
+  color: 'var(--color-code-text)',
+  padding: '0.65rem 0.9rem',
+  borderRadius: 10,
+  overflow: 'auto',
+  fontSize: '0.85rem',
+  display: 'block',
+}
+
+const codeBlockStyle: React.CSSProperties = {
+  margin: 0,
+  fontFamily: CODE_FONT_FAMILY,
+  whiteSpace: 'pre',
+  display: 'block',
+}
+
+const renderCode = ({ inline, children, style, ...props }: MarkdownCodeProps) => {
+  const childArray = React.Children.toArray(children)
+  const textContent = childArray.every((child) => typeof child === 'string')
+    ? (childArray as string[]).join('')
+    : null
+  const effectiveInline = inline ?? (textContent ? !textContent.includes('\n') : false)
+
+  if (effectiveInline) {
+    const combinedInlineStyle = style ? { ...inlineCodeStyle, ...style } : inlineCodeStyle
     return (
-      <code
-        {...props}
-        style={{
-          background: 'var(--color-accent-soft)',
-          padding: '0.15rem 0.35rem',
-          borderRadius: 6,
-          fontSize: '0.85em',
-          fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
-        }}
-      >
+      <code {...props} style={combinedInlineStyle}>
         {children}
       </code>
     )
   }
 
+  const combinedBlockStyle = style ? { ...codeBlockStyle, ...style } : codeBlockStyle
+
   return (
-    <pre
-      style={{
-        margin: 0,
-        background: 'var(--color-code-bg)',
-        color: 'var(--color-code-text)',
-        padding: '0.85rem 1rem',
-        borderRadius: 10,
-        overflow: 'auto',
-        fontSize: '0.85rem',
-      }}
-    >
-      <code {...props}>{children}</code>
+    <pre style={codeBlockContainerStyle}>
+      <code {...props} style={combinedBlockStyle}>
+        {children}
+      </code>
     </pre>
   )
 }

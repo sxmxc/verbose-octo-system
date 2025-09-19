@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
 import { apiFetch } from './api'
+import { useAuth } from './AuthContext'
 import { ToolkitSummary } from './types'
 
 
@@ -41,22 +42,34 @@ const ToolkitContext = createContext<ToolkitContextShape | null>(null)
 export function ToolkitProvider({ children }: { children: React.ReactNode }) {
   const [toolkits, setToolkits] = useState<ToolkitRecord[]>([])
   const [loading, setLoading] = useState<boolean>(true)
+  const { user } = useAuth()
 
   const refresh = useCallback(async () => {
-    setLoading(true)
+    if (!user) {
+      setToolkits([])
+      setLoading(false)
+      return
+    }
+    setLoading((prev) => (prev ? prev : true))
     try {
       const response = await apiFetch<ToolkitRecord[]>('/toolkits')
       setToolkits(response)
     } catch (err) {
       console.error('Failed to load toolkits', err)
+      setToolkits([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    if (user) {
+      refresh()
+    } else {
+      setToolkits([])
+      setLoading(false)
+    }
+  }, [user, refresh])
 
   const updateLocal = useCallback((slug: string, updater: (toolkit: ToolkitRecord) => ToolkitRecord) => {
     setToolkits((prev) => prev.map((toolkit) => (toolkit.slug === slug ? updater(toolkit) : toolkit)))

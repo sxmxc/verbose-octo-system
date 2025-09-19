@@ -1,11 +1,17 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from ..config import settings
+from ..security.dependencies import require_roles
+from ..security.roles import ROLE_TOOLKIT_USER
 
 router = APIRouter()
 
 
-@router.get("/getting-started", summary="Toolkit packaging guide")
+@router.get(
+    "/getting-started",
+    summary="Toolkit packaging guide",
+    dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
+)
 def toolkit_getting_started():
     """Provide inline documentation for toolkit developers."""
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 
 import { apiFetch } from '../api'
+import { useAuth } from '../AuthContext'
 import { MaterialIcon } from '../components/MaterialIcon'
 import { ToolkitRecord, useToolkits } from '../ToolkitContext'
 
@@ -32,12 +33,15 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 
 export default function AdminToolkitsPage() {
   const { toolkits, updateLocal, refresh } = useToolkits()
+  const { user, hasRole } = useAuth()
   const [error, setError] = useState<string | null>(null)
   const [busySlug, setBusySlug] = useState<string | null>(null)
   const [uploadSlug, setUploadSlug] = useState('')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [docs, setDocs] = useState<ToolkitDocs | null>(null)
+  const canToggle = hasRole('toolkit.curator')
+  const canInstall = user?.is_superuser ?? false
 
   useEffect(() => {
     ;(async () => {
@@ -51,13 +55,13 @@ export default function AdminToolkitsPage() {
   }, [])
 
   const toggleToolkit = async (toolkit: ToolkitRecord) => {
+    if (!canToggle) return
     setError(null)
     setBusySlug(toolkit.slug)
     try {
-      const payload = { enabled: !toolkit.enabled }
       const response = await apiFetch<ToolkitRecord>(`/toolkits/${toolkit.slug}`, {
         method: 'PUT',
-        body: JSON.stringify(payload),
+        body: { enabled: !toolkit.enabled },
       })
       updateLocal(toolkit.slug, () => response)
     } catch (err) {
@@ -190,21 +194,22 @@ export default function AdminToolkitsPage() {
         </div>
       </section>
 
-      <section>
-        <h4 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <MaterialIcon name="cloud_upload" style={{ color: 'var(--color-link)' }} />
-          Install toolkit bundle (.zip)
-        </h4>
-        <p style={{ margin: '0.25rem 0 1rem', color: 'var(--color-text-secondary)' }}>
-          Uploads store the bundle on the server and auto-register the toolkit if it does not already exist. Newly uploaded toolkits remain
-          disabled until you review them.
-        </p>
-        <form
-          onSubmit={async (event) => {
-            event.preventDefault()
-            setError(null)
-            if (!uploadFile) {
-              setError('Choose a .zip bundle to upload')
+      {canInstall && (
+        <section>
+          <h4 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <MaterialIcon name="cloud_upload" style={{ color: 'var(--color-link)' }} />
+            Install toolkit bundle (.zip)
+          </h4>
+          <p style={{ margin: '0.25rem 0 1rem', color: 'var(--color-text-secondary)' }}>
+            Uploads store the bundle on the server and auto-register the toolkit if it does not already exist. Newly uploaded toolkits remain
+            disabled until you review them.
+          </p>
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault()
+              setError(null)
+              if (!uploadFile) {
+                setError('Choose a .zip bundle to upload')
               return
             }
             const body = new FormData()
@@ -247,9 +252,10 @@ export default function AdminToolkitsPage() {
           >
             <MaterialIcon name={uploading ? 'hourglass_top' : 'publish'} style={{ fontSize: '1.1rem', color: 'var(--color-text-primary)' }} />
             {uploading ? 'Uploading…' : 'Upload toolkit'}
-          </button>
-        </form>
-      </section>
+            </button>
+          </form>
+        </section>
+      )}
     </div>
   )
 }

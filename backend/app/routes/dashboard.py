@@ -2,11 +2,13 @@ import logging
 from collections import Counter
 from typing import Any, Dict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from ..services.jobs import list_jobs
 from ..toolkit_loader import import_toolkit_module
 from ..toolkits.registry import list_toolkits
+from ..security.dependencies import require_roles
+from ..security.roles import ROLE_TOOLKIT_USER
 
 
 router = APIRouter()
@@ -16,7 +18,11 @@ logger = logging.getLogger(__name__)
 ToolkitContext = Dict[str, Any]
 
 
-@router.get("/", summary="SRE Toolbox overview")
+@router.get(
+    "/",
+    summary="SRE Toolbox overview",
+    dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
+)
 def dashboard_overview():
     recent_jobs = list_jobs(limit=50)
     status_counts = Counter(job.get("status", "unknown") for job in recent_jobs)

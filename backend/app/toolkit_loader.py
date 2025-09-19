@@ -102,22 +102,30 @@ def import_toolkit_module(
                 sys.meta_path.remove(finder)
 
 
+def _eligible_toolkits(
+    *,
+    exclude: Iterable[str],
+    slugs: Iterable[str] | None,
+):
+    exclude_set = {slug for slug in exclude}
+    allowed = None if slugs is None else {slug for slug in slugs}
+    for toolkit in list_toolkits():
+        if not toolkit.enabled:
+            continue
+        if toolkit.slug in exclude_set:
+            continue
+        if allowed is not None and toolkit.slug not in allowed:
+            continue
+        yield toolkit
+
+
 def load_toolkit_backends(
     app: FastAPI,
     *,
     exclude: Iterable[str] = (),
     slugs: Iterable[str] | None = None,
 ) -> None:
-    storage_dir = Path(settings.toolkit_storage_dir)
-    exclude_set = {slug for slug in exclude}
-
-    for toolkit in list_toolkits():
-        if not toolkit.enabled:
-            continue
-        if slugs is not None and toolkit.slug not in slugs:
-            continue
-        if toolkit.slug in exclude_set:
-            continue
+    for toolkit in _eligible_toolkits(exclude=exclude, slugs=slugs):
         if not toolkit.backend_module:
             continue
 
@@ -150,16 +158,7 @@ def load_toolkit_workers(
     exclude: Iterable[str] = (),
     slugs: Iterable[str] | None = None,
 ) -> None:
-    storage_dir = Path(settings.toolkit_storage_dir)
-    exclude_set = {slug for slug in exclude}
-
-    for toolkit in list_toolkits():
-        if not toolkit.enabled:
-            continue
-        if slugs is not None and toolkit.slug not in slugs:
-            continue
-        if toolkit.slug in exclude_set:
-            continue
+    for toolkit in _eligible_toolkits(exclude=exclude, slugs=slugs):
         if not toolkit.worker_module:
             continue
 

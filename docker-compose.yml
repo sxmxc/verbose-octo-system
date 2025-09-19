@@ -7,11 +7,16 @@ services:
     env_file: .env
     environment:
       PYTHONPATH: /app
+      DATABASE_URL: ${DATABASE_URL}
     ports:
       - "8080:8080"
-    depends_on: [redis]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     command: >
-      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8080"
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8080"
 
   worker:
     build:
@@ -21,9 +26,32 @@ services:
     env_file: .env
     environment:
       PYTHONPATH: /app
-    depends_on: [redis]
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     command: >
       sh -c "celery -A worker.worker:celery_app worker --loglevel=INFO"
+
+  db:
+    image: postgres:15-alpine
+    container_name: sre-toolbox-db
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sretoolbox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sretoolbox}
+      POSTGRES_DB: ${POSTGRES_DB:-sretoolbox}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sretoolbox} -d ${POSTGRES_DB:-sretoolbox}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -46,3 +74,6 @@ services:
       - /app/frontend/node_modules
       - ./toolkits:/app/toolkits
     command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 5173"]
+
+volumes:
+  postgres-data:

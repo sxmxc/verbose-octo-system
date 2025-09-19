@@ -114,11 +114,8 @@ def get_toolkit(slug: str) -> Optional[ToolkitRecord]:
     return _deserialize(raw)
 
 
-def upsert_toolkit(payload: ToolkitCreate, origin: str = "builtin") -> ToolkitRecord:
-    existing = get_toolkit(payload.slug)
-    if existing:
-        return existing
-    toolkit = ToolkitRecord(
+def _build_toolkit_record(payload: ToolkitCreate, origin: str) -> ToolkitRecord:
+    return ToolkitRecord(
         slug=payload.slug,
         name=payload.name,
         description=payload.description or "",
@@ -137,6 +134,13 @@ def upsert_toolkit(payload: ToolkitCreate, origin: str = "builtin") -> ToolkitRe
         frontend_entry=payload.frontend_entry,
         frontend_source_entry=payload.frontend_source_entry,
     )
+
+
+def upsert_toolkit(payload: ToolkitCreate, origin: str = "builtin") -> ToolkitRecord:
+    existing = get_toolkit(payload.slug)
+    if existing:
+        return existing
+    toolkit = _build_toolkit_record(payload, origin)
     _save(toolkit)
     return toolkit
 
@@ -144,25 +148,7 @@ def upsert_toolkit(payload: ToolkitCreate, origin: str = "builtin") -> ToolkitRe
 def create_toolkit(payload: ToolkitCreate, origin: str = "custom") -> ToolkitRecord:
     if get_toolkit(payload.slug):
         raise ValueError(f"Toolkit '{payload.slug}' already exists")
-    toolkit = ToolkitRecord(
-        slug=payload.slug,
-        name=payload.name,
-        description=payload.description or "",
-        base_path=payload.base_path,
-        enabled=payload.enabled,
-        category=payload.category,
-        tags=payload.tags,
-        origin=origin,
-        backend_module=payload.backend_module,
-        backend_router_attr=payload.backend_router_attr,
-        worker_module=payload.worker_module,
-        worker_register_attr=payload.worker_register_attr,
-        dashboard_cards=_normalize_dashboard_cards(payload.dashboard_cards),
-        dashboard_context_module=payload.dashboard_context_module,
-        dashboard_context_attr=payload.dashboard_context_attr,
-        frontend_entry=payload.frontend_entry,
-        frontend_source_entry=payload.frontend_source_entry,
-    )
+    toolkit = _build_toolkit_record(payload, origin)
     _save(toolkit)
     return toolkit
 

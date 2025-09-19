@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict
+from typing import Any, Callable, Dict
 
 from app.services import jobs as job_store
 from app.toolkit_loader import load_toolkit_workers, mark_toolkit_removed
@@ -8,7 +8,7 @@ from app.toolkit_loader import load_toolkit_workers, mark_toolkit_removed
 from .celery_app import celery_app
 
 
-JobHandler = Callable[[dict], dict]
+JobHandler = Callable[[Dict[str, Any]], Dict[str, Any]]
 
 # Registered job handlers keyed by toolkit.operation
 _HANDLERS: Dict[str, JobHandler] = {}
@@ -45,6 +45,18 @@ def _ensure_handler(job_type: str) -> JobHandler | None:
     return get_handler(job_type)
 
 
+def _finalise_job(job: Dict[str, Any], result: Dict[str, Any] | None) -> Dict[str, Any]:
+    """Ensure jobs end in a terminal state even when handlers omit status updates."""
+
+    job = result or job
+    status = job.get("status")
+    if status not in job_store.TERMINAL_STATUSES:
+        job["status"] = "succeeded"
+    if job.get("status") == "succeeded" and job.get("progress", 0) < 100:
+        job["progress"] = 100
+    return job
+
+
 @celery_app.task(name="worker.tasks.run_job")
 def run_job(job_id: str):
     job = job_store.get_job(job_id)
@@ -68,10 +80,11 @@ def run_job(job_id: str):
     try:
         if not handler:
             raise ValueError(f"No handler registered for job type {job_type}")
-        job = handler(job)
+        job = _finalise_job(job, handler(job))
     except Exception as exc:
         job["status"] = "failed"
         job = job_store.append_log(job, f"Error: {exc}")
         job["error"] = str(exc)
     finally:
         job_store.save_job(job)
+    return job

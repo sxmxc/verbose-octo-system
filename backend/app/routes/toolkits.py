@@ -5,7 +5,7 @@ import shutil
 import zipfile
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, UploadFile, status, File, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from ..config import settings
 from ..toolkits.install_utils import ToolkitManifestError, install_toolkit_from_directory
@@ -21,9 +21,18 @@ from ..toolkits.registry import (
 )
 from ..toolkits.seeder import ensure_bundled_toolkits_installed
 from ..toolkit_loader import activate_toolkit, mark_toolkit_removed
+from ..security.dependencies import require_roles, require_superuser
+from ..security.roles import ROLE_TOOLKIT_CURATOR, ROLE_TOOLKIT_USER
 
 
 router = APIRouter()
+
+
+def _get_toolkit_or_404(slug: str) -> ToolkitRecord:
+    toolkit = get_toolkit(slug)
+    if not toolkit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Toolkit not found")
+    return toolkit
 
 
 @router.on_event("startup")
@@ -31,12 +40,23 @@ def bootstrap_defaults() -> None:  # pragma: no cover - simple bootstrap
     ensure_bundled_toolkits_installed()
 
 
-@router.get("/", response_model=list[ToolkitRecord], summary="List registered toolkits")
+@router.get(
+    "/",
+    response_model=list[ToolkitRecord],
+    summary="List registered toolkits",
+    dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
+)
 def toolkits_list():
     return list_toolkits()
 
 
-@router.post("/", response_model=ToolkitRecord, status_code=status.HTTP_201_CREATED, summary="Register a new toolkit")
+@router.post(
+    "/",
+    response_model=ToolkitRecord,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new toolkit",
+    dependencies=[Depends(require_superuser)],
+)
 def toolkits_create(payload: ToolkitCreate):
     try:
         return create_toolkit(payload)
@@ -44,22 +64,30 @@ def toolkits_create(payload: ToolkitCreate):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-@router.put("/{slug}", response_model=ToolkitRecord, summary="Update a toolkit definition")
+@router.put(
+    "/{slug}",
+    response_model=ToolkitRecord,
+    summary="Update a toolkit definition",
+    dependencies=[Depends(require_roles([ROLE_TOOLKIT_CURATOR]))],
+)
 def toolkits_update(slug: str, payload: ToolkitUpdate):
-    previous = get_toolkit(slug)
+    previous = _get_toolkit_or_404(slug)
     toolkit = update_toolkit(slug, payload)
     if not toolkit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Toolkit not found")
-    if toolkit.enabled and (previous is None or not previous.enabled):
+    if toolkit.enabled and not previous.enabled:
         activate_toolkit(slug)
     return toolkit
 
 
-@router.delete("/{slug}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a custom toolkit")
+@router.delete(
+    "/{slug}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a custom toolkit",
+    dependencies=[Depends(require_superuser)],
+)
 def toolkits_delete(slug: str):
-    toolkit = get_toolkit(slug)
-    if not toolkit:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Toolkit not found")
+    toolkit = _get_toolkit_or_404(slug)
     try:
         deleted = delete_toolkit(slug)
     except ValueError as exc:
@@ -83,18 +111,21 @@ def toolkits_delete(slug: str):
     mark_toolkit_removed(slug)
 
 
-@router.get("/{slug}", response_model=ToolkitRecord, summary="Retrieve a toolkit definition")
+@router.get(
+    "/{slug}",
+    response_model=ToolkitRecord,
+    summary="Retrieve a toolkit definition",
+    dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
+)
 def toolkits_get(slug: str):
-    toolkit = get_toolkit(slug)
-    if not toolkit:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Toolkit not found")
-    return toolkit
+    return _get_toolkit_or_404(slug)
 
 
 @router.post(
     "/install",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload and register a toolkit bundle",
+    dependencies=[Depends(require_superuser)],
 )
 async def toolkits_install(slug: str | None = Form(None), file: UploadFile = File(...)):
     if slug and any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789-_" for ch in slug.lower()):
@@ -164,6 +195,7 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
     "/{slug}/jobs",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Enqueue a toolkit job",
+    dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
 )
 def toolkit_enqueue_job(slug: str, operation: str = Form(...), payload: str | None = Form(None)):
     from ..worker_client import enqueue_job
