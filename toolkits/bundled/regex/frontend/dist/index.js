@@ -18,9 +18,10 @@ const flagOptions = ['IGNORECASE', 'MULTILINE', 'DOTALL', 'VERBOSE', 'UNICODE', 
 
 const layoutStyles = {
   wrapper: {
-    background: '#fff',
+    background: 'var(--color-surface)',
     borderRadius: 12,
-    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+    boxShadow: 'var(--color-shadow)',
+    border: '1px solid var(--color-border)',
     padding: '1.5rem',
     display: 'grid',
     gap: '1.5rem',
@@ -28,40 +29,34 @@ const layoutStyles = {
   navLink: (active) => ({
     padding: '0.5rem 0.9rem',
     borderRadius: 8,
-    border: '1px solid #7c3aed',
-    background: active ? '#7c3aed' : 'transparent',
-    color: active ? '#f8fafc' : '#7c3aed',
+    border: '1px solid var(--color-border)',
+    background: active ? 'var(--color-accent)' : 'transparent',
+    color: active ? 'var(--color-sidebar-item-active-text)' : 'var(--color-link)',
     fontWeight: 600,
     textDecoration: 'none',
   }),
 }
 
 const sectionStyle = {
-  border: '1px solid #e2e8f0',
+  border: '1px solid var(--color-border)',
   borderRadius: 10,
   padding: '1.25rem',
-  background: '#f8fafc',
+  background: 'var(--color-surface-alt)',
   display: 'grid',
   gap: '0.75rem',
 }
 
-const flagFieldset = {
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '0.75rem',
-}
-
 const matchCardStyle = {
-  background: '#fff',
+  background: 'var(--color-surface)',
   borderRadius: 10,
-  border: '1px solid #e2e8f0',
+  border: '1px solid var(--color-border)',
   padding: '0.85rem 1rem',
 }
 
 function Field(props) {
   return React.createElement(
     'label',
-    { style: { display: 'grid', gap: '0.3rem', fontSize: '0.9rem' } },
+    { className: 'tk-label', style: { display: 'grid', gap: '0.3rem', fontSize: '0.9rem' } },
     props.label,
     props.children
   )
@@ -130,7 +125,7 @@ function RegexResult(props) {
       'section',
       { style: sectionStyle },
       React.createElement('h4', { style: { marginTop: 0 } }, 'Result'),
-      React.createElement('p', { style: { color: '#dc2626' } }, result.error)
+      React.createElement('p', { style: { color: 'var(--color-danger-border)' } }, result.error)
     )
   }
 
@@ -158,7 +153,7 @@ function RegexResult(props) {
 }
 
 function RegexTesterPage() {
-  const [pattern, setPattern] = useState('^host-(?<id>\\d+)$')
+  const [pattern, setPattern] = useState('^host-(?P<id>\\d+)$')
   const [testString, setTestString] = useState('host-01\nhost-abc\nhost-22')
   const [flags, setFlags] = useState(['MULTILINE'])
   const [result, setResult] = useState(null)
@@ -200,6 +195,7 @@ function RegexTesterPage() {
         Field,
         { label: 'Pattern' },
         React.createElement('input', {
+          className: 'tk-input',
           value: pattern,
           onChange: (event) => setPattern(event.target.value),
           required: true,
@@ -209,6 +205,7 @@ function RegexTesterPage() {
         Field,
         { label: 'Test string' },
         React.createElement('textarea', {
+          className: 'tk-input',
           value: testString,
           onChange: (event) => setTestString(event.target.value),
           rows: 6,
@@ -217,8 +214,8 @@ function RegexTesterPage() {
       ),
       React.createElement(
         'fieldset',
-        { style: flagFieldset },
-        React.createElement('legend', null, 'Flags'),
+        { className: 'tk-fieldset' },
+        React.createElement('legend', { className: 'tk-legend' }, 'Flags'),
         React.createElement(
           'div',
           { style: { display: 'flex', flexWrap: 'wrap', gap: '0.75rem' } },
@@ -238,11 +235,16 @@ function RegexTesterPage() {
       ),
       React.createElement(
         'button',
-        { type: 'submit', style: { width: 'fit-content' }, disabled: loading },
+        {
+          type: 'submit',
+          className: 'tk-button tk-button--primary',
+          style: { width: 'fit-content' },
+          disabled: loading,
+        },
         loading ? 'Evaluating…' : 'Evaluate'
       )
     ),
-    error ? React.createElement('p', { style: { color: '#dc2626' } }, error) : null,
+    error ? React.createElement('p', { style: { color: 'var(--color-danger-border)' } }, error) : null,
     result ? React.createElement(RegexResult, { result }) : null
   )
 }
@@ -257,8 +259,31 @@ export default function RegexToolkitLayout() {
       React.createElement('h3', { style: { margin: 0 } }, 'Regex Toolkit'),
       React.createElement(
         'p',
-        { style: { margin: '0.3rem 0 0', color: '#64748b' } },
+        { style: { margin: '0.3rem 0 0', color: 'var(--color-text-secondary)' } },
         'Evaluate expressions, toggle flags, and inspect capture groups.'
+      ),
+      React.createElement(
+        'aside',
+        {
+          style: {
+            marginTop: '0.75rem',
+            padding: '0.75rem 1rem',
+            borderRadius: 10,
+            border: '1px solid var(--color-warning-border)',
+            background: 'var(--color-warning-bg)',
+            color: 'var(--color-warning-text)',
+            fontSize: '0.9rem',
+            lineHeight: 1.45,
+          },
+        },
+        React.createElement('strong', null, 'Named groups:'),
+        ' patterns run on Python\'s ',
+        React.createElement('code', null, 're'),
+        ' engine. Use ',
+        React.createElement('code', null, '(?P<name>...)'),
+        ' for named captures—the JavaScript-style ',
+        React.createElement('code', null, '(?<name>...)'),
+        ' syntax is not supported.'
       )
     ),
     React.createElement(

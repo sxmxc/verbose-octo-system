@@ -114,7 +114,7 @@ const parseKeyValue = (value) => {
 function Field(props) {
   return React.createElement(
     'label',
-    { style: { display: 'grid', gap: '0.3rem', fontSize: '0.9rem' } },
+    { className: 'tk-label', style: { display: 'grid', gap: '0.3rem', fontSize: '0.9rem' } },
     props.label,
     props.children
   )
@@ -227,11 +227,18 @@ function ZabbixBulkHostsPage() {
             { style: { display: 'grid', gap: '1.25rem' } },
             React.createElement(
               'label',
-              { style: { display: 'grid', gap: '0.3rem', fontSize: '0.9rem', maxWidth: 320 } },
+              {
+                className: 'tk-label',
+                style: { display: 'grid', gap: '0.3rem', fontSize: '0.9rem', maxWidth: 320 },
+              },
               'Target instance',
               React.createElement(
                 'select',
-                { value: selectedId, onChange: (event) => setSelectedId(event.target.value) },
+                {
+                  className: 'tk-input',
+                  value: selectedId,
+                  onChange: (event) => setSelectedId(event.target.value),
+                },
                 instances.map((instance) =>
                   React.createElement(
                     'option',
@@ -255,6 +262,7 @@ function ZabbixBulkHostsPage() {
                       Field,
                       { label: 'Host' },
                       React.createElement('input', {
+                        className: 'tk-input',
                         value: row.host,
                         onChange: (event) => updateHostRow(idx, 'host', event.target.value),
                       })
@@ -263,6 +271,7 @@ function ZabbixBulkHostsPage() {
                       Field,
                       { label: 'IP' },
                       React.createElement('input', {
+                        className: 'tk-input',
                         value: row.ip,
                         onChange: (event) => updateHostRow(idx, 'ip', event.target.value),
                       })
@@ -272,6 +281,7 @@ function ZabbixBulkHostsPage() {
                     Field,
                     { label: 'Groups (comma separated)' },
                     React.createElement('input', {
+                      className: 'tk-input',
                       value: row.groups,
                       onChange: (event) => updateHostRow(idx, 'groups', event.target.value),
                     })
@@ -280,6 +290,7 @@ function ZabbixBulkHostsPage() {
                     Field,
                     { label: 'Templates (comma separated)' },
                     React.createElement('input', {
+                      className: 'tk-input',
                       value: row.templates,
                       onChange: (event) => updateHostRow(idx, 'templates', event.target.value),
                     })
@@ -288,6 +299,7 @@ function ZabbixBulkHostsPage() {
                     Field,
                     { label: 'Macros (key=value per line)' },
                     React.createElement('textarea', {
+                      className: 'tk-input',
                       value: row.macros,
                       rows: 2,
                       onChange: (event) => updateHostRow(idx, 'macros', event.target.value),
@@ -299,6 +311,7 @@ function ZabbixBulkHostsPage() {
                         {
                           type: 'button',
                           onClick: () => removeHostRow(idx),
+                          className: 'tk-button tk-button--danger',
                           style: { width: 'fit-content', background: '#fee2e2', border: '1px solid #f87171' },
                         },
                         'Remove host'
@@ -308,7 +321,12 @@ function ZabbixBulkHostsPage() {
               ),
               React.createElement(
                 'button',
-                { type: 'button', onClick: addHostRow, style: { width: 'fit-content' } },
+                {
+                  type: 'button',
+                  onClick: addHostRow,
+                  className: 'tk-button',
+                  style: { width: 'fit-content' },
+                },
                 'Add host'
               )
             ),
@@ -317,12 +335,12 @@ function ZabbixBulkHostsPage() {
               { style: { display: 'flex', gap: '0.75rem' } },
               React.createElement(
                 'button',
-                { type: 'button', onClick: performDryRun },
+                { type: 'button', onClick: performDryRun, className: 'tk-button' },
                 'Dry run'
               ),
               React.createElement(
                 'button',
-                { type: 'button', onClick: performExecute },
+                { type: 'button', onClick: performExecute, className: 'tk-button tk-button--primary' },
                 'Execute'
               )
             ),
@@ -705,6 +723,7 @@ function ZabbixAdministrationPage() {
             Field,
             { label: 'Name' },
             React.createElement('input', {
+              className: 'tk-input',
               name: 'name',
               value: createForm.name,
               onChange: handleCreateChange,
@@ -715,6 +734,7 @@ function ZabbixAdministrationPage() {
             Field,
             { label: 'Base URL' },
             React.createElement('input', {
+              className: 'tk-input',
               name: 'base_url',
               value: createForm.base_url,
               onChange: handleCreateChange,
@@ -726,6 +746,7 @@ function ZabbixAdministrationPage() {
             Field,
             { label: 'API Token' },
             React.createElement('input', {
+              className: 'tk-input',
               name: 'token',
               value: createForm.token,
               onChange: handleCreateChange,
@@ -736,6 +757,7 @@ function ZabbixAdministrationPage() {
             Field,
             { label: 'Description' },
             React.createElement('textarea', {
+              className: 'tk-input',
               name: 'description',
               value: createForm.description,
               onChange: handleCreateChange,
@@ -755,7 +777,12 @@ function ZabbixAdministrationPage() {
           ),
           React.createElement(
             'button',
-            { type: 'submit', style: { marginTop: '1rem' }, disabled: busy },
+            {
+              type: 'submit',
+              className: 'tk-button tk-button--primary',
+              style: { marginTop: '1rem' },
+              disabled: busy,
+            },
             'Create'
           )
         )
@@ -779,16 +806,17 @@ function ZabbixAdministrationPage() {
                 selectedInstance.base_url
               )
             ),
-            React.createElement(
-              'button',
-              {
-                onClick: deleteInstance,
-                disabled: busy,
-                style: { background: '#fee2e2', border: '1px solid #f87171' },
-              },
-              'Delete'
-            )
-          ),
+          React.createElement(
+            'button',
+            {
+              onClick: deleteInstance,
+              disabled: busy,
+              className: 'tk-button tk-button--danger',
+              style: { background: '#fee2e2', border: '1px solid #f87171' },
+            },
+            'Delete'
+          )
+        ),
           React.createElement('h5', { style: { margin: '1rem 0 0.5rem' } }, 'Instance configuration'),
           React.createElement(
             'form',
@@ -797,6 +825,7 @@ function ZabbixAdministrationPage() {
               Field,
               { label: 'Name' },
               React.createElement('input', {
+                className: 'tk-input',
                 name: 'name',
                 value: editForm.name,
                 onChange: handleEditChange,
@@ -807,6 +836,7 @@ function ZabbixAdministrationPage() {
               Field,
               { label: 'Base URL' },
               React.createElement('input', {
+                className: 'tk-input',
                 name: 'base_url',
                 value: editForm.base_url,
                 onChange: handleEditChange,
@@ -817,6 +847,7 @@ function ZabbixAdministrationPage() {
               Field,
               { label: 'Description' },
               React.createElement('textarea', {
+                className: 'tk-input',
                 name: 'description',
                 value: editForm.description,
                 onChange: handleEditChange,
@@ -827,6 +858,7 @@ function ZabbixAdministrationPage() {
               Field,
               { label: 'Update token (optional)' },
               React.createElement('input', {
+                className: 'tk-input',
                 name: 'token',
                 value: editForm.token,
                 onChange: handleEditChange,
@@ -846,7 +878,12 @@ function ZabbixAdministrationPage() {
             ),
             React.createElement(
               'button',
-              { type: 'submit', style: { width: 'fit-content' }, disabled: busy },
+              {
+                type: 'submit',
+                className: 'tk-button tk-button--primary',
+                style: { width: 'fit-content' },
+                disabled: busy,
+              },
               'Save changes'
             )
           ),
@@ -855,7 +892,7 @@ function ZabbixAdministrationPage() {
             { style: { marginTop: '1.5rem', display: 'flex', gap: '0.75rem' } },
             React.createElement(
               'button',
-              { type: 'button', onClick: testInstance, disabled: busy },
+              { type: 'button', onClick: testInstance, disabled: busy, className: 'tk-button' },
               'Test connection'
             )
           ),

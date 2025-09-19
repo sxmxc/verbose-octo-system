@@ -8,12 +8,14 @@ import ZabbixAdministrationPage from './pages/ZabbixSettingsPage'
 
 const toolkitStyles = {
   wrapper: {
-    background: '#fff',
+    background: 'var(--color-surface)',
     borderRadius: 12,
-    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+    boxShadow: 'var(--color-shadow)',
+    border: '1px solid var(--color-border)',
     padding: '1.5rem',
     display: 'grid',
     gap: '1.5rem',
+    color: 'var(--color-text-primary)',
   },
   nav: {
     display: 'flex',
@@ -23,19 +25,28 @@ const toolkitStyles = {
   navLink: (active: boolean) => ({
     padding: '0.5rem 0.9rem',
     borderRadius: 8,
-    border: '1px solid #0ea5e9',
-    background: active ? '#0ea5e9' : 'transparent',
-    color: active ? '#0f172a' : '#0ea5e9',
+    border: '1px solid var(--color-border)',
+    background: active ? 'var(--color-accent)' : 'transparent',
+    color: active ? 'var(--color-sidebar-item-active-text)' : 'var(--color-link)',
     fontWeight: 600,
     textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.4rem',
   }),
+}
+
+const iconStyle: React.CSSProperties = {
+  fontSize: '1.15rem',
+  lineHeight: 1,
+  color: 'var(--color-link)',
 }
 
 
 const subNav = [
-  { label: 'Overview', to: '' },
-  { label: 'Administration', to: 'administration' },
-  { label: 'Bulk Host Actions', to: 'actions/bulk-hosts' },
+  { label: 'Overview', to: '', icon: 'dashboard' },
+  { label: 'Administration', to: 'administration', icon: 'settings_applications' },
+  { label: 'Bulk Host Actions', to: 'actions/bulk-hosts', icon: 'view_module' },
 ]
 
 
@@ -43,8 +54,13 @@ export default function ZabbixToolkitLayout() {
   return (
     <div style={toolkitStyles.wrapper}>
       <header>
-        <h3 style={{ margin: 0 }}>Zabbix Toolkit</h3>
-        <p style={{ margin: '0.3rem 0 0', color: '#64748b' }}>
+        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+            hub
+          </span>
+          Zabbix Toolkit
+        </h3>
+        <p style={{ margin: '0.3rem 0 0', color: 'var(--color-text-secondary)' }}>
           Manage Zabbix API endpoints, toolkit settings, and automation actions.
         </p>
       </header>
@@ -57,6 +73,9 @@ export default function ZabbixToolkitLayout() {
             end={item.to === ''}
             style={({ isActive }) => toolkitStyles.navLink(isActive)}
           >
+            <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+              {item.icon}
+            </span>
             {item.label}
           </NavLink>
         ))}

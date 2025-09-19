@@ -1,0 +1,7 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./frontend" }
+    // Add other project folders here, e.g., { "path": "./backend" }
+  ]
+}

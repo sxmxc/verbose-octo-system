@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import importlib
+import importlib.machinery
+import importlib.util
 import sys
+from contextlib import contextmanager
+from dataclasses import dataclass
+from inspect import Parameter, signature
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from fastapi import FastAPI
 
@@ -14,6 +19,45 @@ from .toolkits.registry import get_toolkit, list_toolkits
 _APP_REF: Optional[FastAPI] = None
 _CELERY_REF = None
 _LOADED_SLUGS: set[str] = set()
+
+
+@dataclass
+class _ToolkitNamespaceFinder:
+    root: Path
+    namespaces: tuple[str, ...]
+
+    def find_spec(self, fullname: str, path, target=None):  # pragma: no cover - import hook
+        top_level = fullname.split(".", 1)[0]
+        if top_level not in self.namespaces:
+            return None
+
+        search_paths = path or [str(self.root)]
+        return importlib.machinery.PathFinder.find_spec(fullname, search_paths, target)
+
+
+def _matching_module_names(prefixes: Iterable[str]) -> list[str]:
+    names = []
+    prefix_list = list(prefixes)
+    for name in list(sys.modules.keys()):
+        if any(name == prefix or name.startswith(f"{prefix}.") for prefix in prefix_list):
+            names.append(name)
+    return names
+
+
+@contextmanager
+def _module_namespace(*prefixes: str):
+    preserved = {name: sys.modules[name] for name in _matching_module_names(prefixes)}
+    for name in preserved:
+        sys.modules.pop(name, None)
+    try:
+        yield
+    finally:
+        # Drop any modules imported for this namespace
+        for name in _matching_module_names(prefixes):
+            sys.modules.pop(name, None)
+        # Restore originals
+        for name, module in preserved.items():
+            sys.modules[name] = module
 
 
 def register_app(app: FastAPI) -> None:
@@ -30,6 +74,32 @@ def _ensure_sys_path(path: Path) -> None:
     path_str = str(path.resolve())
     if path_str not in sys.path:
         sys.path.insert(0, path_str)
+
+
+def import_toolkit_module(
+    module_name: str,
+    *,
+    slug: str,
+    namespaces: Iterable[str] = ("backend",),
+) -> Any:
+    """Import a module from a toolkit bundle without polluting global namespaces."""
+
+    storage_dir = Path(settings.toolkit_storage_dir)
+    toolkit_root = storage_dir / slug
+    if not toolkit_root.exists():
+        raise ModuleNotFoundError(f"Toolkit '{slug}' assets not found")
+
+    _ensure_sys_path(toolkit_root)
+
+    finder = _ToolkitNamespaceFinder(toolkit_root, tuple(namespaces))
+
+    with _module_namespace(*namespaces):
+        sys.meta_path.insert(0, finder)
+        try:
+            return importlib.import_module(module_name)
+        finally:
+            if finder in sys.meta_path:
+                sys.meta_path.remove(finder)
 
 
 def load_toolkit_backends(
@@ -51,14 +121,12 @@ def load_toolkit_backends(
         if not toolkit.backend_module:
             continue
 
-        toolkit_root = storage_dir / toolkit.slug
-        if not toolkit_root.exists():
-            continue
-
-        _ensure_sys_path(toolkit_root)
-
         try:
-            module = importlib.import_module(toolkit.backend_module)
+            module = import_toolkit_module(
+                toolkit.backend_module,
+                slug=toolkit.slug,
+                namespaces=("backend",),
+            )
         except Exception as exc:  # pragma: no cover - defensive logging
             print(f"[toolkit] Failed to import backend module {toolkit.backend_module!r}: {exc}")
             continue
@@ -95,14 +163,12 @@ def load_toolkit_workers(
         if not toolkit.worker_module:
             continue
 
-        toolkit_root = storage_dir / toolkit.slug
-        if not toolkit_root.exists():
-            continue
-
-        _ensure_sys_path(toolkit_root)
-
         try:
-            module = importlib.import_module(toolkit.worker_module)
+            module = import_toolkit_module(
+                toolkit.worker_module,
+                slug=toolkit.slug,
+                namespaces=("backend", "worker"),
+            )
         except Exception as exc:  # pragma: no cover - defensive logging
             print(f"[toolkit] Failed to import worker module {toolkit.worker_module!r}: {exc}")
             continue
@@ -111,7 +177,20 @@ def load_toolkit_workers(
         register = getattr(module, register_attr, None)
         if callable(register):
             try:
-                register(celery_app)
+                from backend.worker.tasks import register_handler as core_register_handler
+
+                sig = signature(register)
+                kwargs = {}
+                if any(
+                    param.kind in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY)
+                    and param.name == "register_handler"
+                    for param in sig.parameters.values()
+                ):
+                    kwargs["register_handler"] = core_register_handler
+                elif any(param.kind == Parameter.VAR_KEYWORD for param in sig.parameters.values()):
+                    kwargs["register_handler"] = core_register_handler
+
+                register(celery_app, **kwargs)
             except Exception as exc:  # pragma: no cover - defensive logging
                 print(
                     f"[toolkit] Worker register callable failed for {toolkit.worker_module!r}: {exc}"

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Dict
-
-from worker.tasks import register_handler
+from typing import Callable, Dict
 
 from ..backend.storage import get_instance
 from app.services import jobs as job_store
@@ -55,6 +53,6 @@ def _handle_bulk_add_hosts(job: Dict) -> Dict:
     return job
 
 
-def register(celery_app) -> None:  # noqa: D401 - signature matches toolkit loader expectations
+def register(celery_app, register_handler: Callable[[str, Callable[[Dict], Dict]], None]) -> None:  # noqa: D401 - signature matches toolkit loader expectations
     """Register Zabbix toolkit handlers with the worker."""
     register_handler("zabbix.bulk_add_hosts", _handle_bulk_add_hosts)

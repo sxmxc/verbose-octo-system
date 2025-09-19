@@ -15,10 +15,10 @@ type FetchOptions = RequestInit & { skipJson?: boolean }
 
 export async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const { skipJson, headers, body, ...rest } = options
-  const computedHeaders: Record<string, string> = { ...(headers || {}) }
+  const computedHeaders = new Headers(headers as HeadersInit)
 
-  if (!(body instanceof FormData)) {
-    computedHeaders['Content-Type'] = computedHeaders['Content-Type'] ?? 'application/json'
+  if (!(body instanceof FormData) && !computedHeaders.has('Content-Type')) {
+    computedHeaders.set('Content-Type', 'application/json')
   }
 
   const res = await fetch(`${API_BASE_URL}${path}`, {

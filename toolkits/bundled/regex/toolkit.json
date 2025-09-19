@@ -1,7 +1,7 @@
 {
   "slug": "regex",
   "name": "Regex Toolkit",
-  "description": "Evaluate expressions and inspect matches.",
+  "description": "Evaluate expressions, inspect matches, and remember to use Python-style named groups (e.g. (?P<name>...)).",
   "base_path": "/toolkits/regex",
   "backend": {
     "module": "backend.app",

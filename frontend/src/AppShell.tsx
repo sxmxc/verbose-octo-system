@@ -2,20 +2,26 @@ import React from 'react'
 import * as ReactRouterDom from 'react-router-dom'
 
 import { API_BASE_URL, apiFetch } from './api'
+import { MaterialIcon } from './components/MaterialIcon'
+import { useTheme } from './ThemeContext'
 import { ToolkitRecord, useToolkits } from './ToolkitContext'
+import toolkitPrimitivesStyles from './toolkitPrimitives.css?inline'
 import AdminToolkitsPage from './pages/AdminToolkitsPage'
 import DashboardPage from './pages/DashboardPage'
+import DocumentationPage from './pages/DocumentationPage'
 import JobsPage from './pages/JobsPage'
 import ToolkitIndexPage from './pages/ToolkitIndexPage'
 const { NavLink, Navigate, Route, Routes, useParams } = ReactRouterDom
 
+type ToolkitRuntime = {
+  react: typeof React
+  reactRouterDom: typeof ReactRouterDom
+  apiFetch: typeof apiFetch
+}
+
 declare global {
   interface Window {
-    __SRE_TOOLKIT_RUNTIME?: {
-      react: typeof React
-      reactRouterDom: typeof ReactRouterDom
-      apiFetch: typeof apiFetch
-    }
+    __SRE_TOOLKIT_RUNTIME?: Partial<ToolkitRuntime>
   }
 }
 
@@ -23,11 +29,11 @@ function ensureToolkitRuntime() {
   if (typeof window === 'undefined') {
     return
   }
-  const runtime = window.__SRE_TOOLKIT_RUNTIME || {}
+  const runtime: Partial<ToolkitRuntime> = window.__SRE_TOOLKIT_RUNTIME ?? {}
   runtime.react = React
   runtime.reactRouterDom = ReactRouterDom
   runtime.apiFetch = apiFetch
-  window.__SRE_TOOLKIT_RUNTIME = runtime
+  window.__SRE_TOOLKIT_RUNTIME = runtime as ToolkitRuntime
 }
 
 function ensureToolkitStyles() {
@@ -39,7 +45,12 @@ function ensureToolkitStyles() {
   }
   const style = document.createElement('style')
   style.id = 'sre-toolkit-runtime-styles'
-  style.textContent = `@keyframes sreToolkitSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`
+  style.textContent = [
+    '@keyframes sreToolkitSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }',
+    toolkitPrimitivesStyles,
+  ]
+    .filter(Boolean)
+    .join('\n')
   document.head.append(style)
 }
 
@@ -120,46 +131,92 @@ const layoutStyles = {
     gridTemplateColumns: '240px 1fr',
     minHeight: '100vh',
     fontFamily: 'Inter, system-ui, sans-serif',
-    background: '#f5f7fb',
+    background: 'var(--color-app-bg)',
+    color: 'var(--color-text-primary)',
   } as React.CSSProperties,
   sidebar: {
-    background: '#0f172a',
-    color: '#e2e8f0',
-    padding: '2.3rem 1.75rem',
+    background: 'var(--color-sidebar-bg)',
+    color: 'var(--color-sidebar-text)',
+    padding: '1rem 1rem',
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: '1.9rem',
+    gap: '1.5rem',
+    height: '98vh',
+    boxSizing: 'border-box' as const,
+    position: 'sticky' as const,
+    top: '8px',
+    overflowY: 'auto' as const,
   },
-  navLink: (active: boolean) => ({
-    padding: '0.65rem 1.1rem',
-    borderRadius: 10,
-    color: active ? '#0f172a' : '#e2e8f0',
-    background: active ? '#38bdf8' : 'rgba(148, 163, 184, 0.08)',
-    fontWeight: active ? 600 : 500,
-    textDecoration: 'none',
-    transition: 'background 0.15s ease',
-    fontSize: '0.92rem',
-  }),
-  navLinkCompact: (active: boolean) => ({
-    padding: '0.5rem 0.85rem',
-    borderRadius: 8,
-    color: active ? '#0f172a' : '#cbd5f5',
-    background: active ? '#1fb6ff' : 'rgba(148, 163, 184, 0.12)',
-    fontWeight: active ? 600 : 500,
-    textDecoration: 'none',
-    transition: 'background 0.15s ease',
-    fontSize: '0.85rem',
-  }),
+  navLinkVariants: {
+    standard: (active: boolean) => ({
+      padding: '0.5rem 0.85rem',
+      borderRadius: 8,
+      color: active ? 'var(--color-sidebar-item-active-text)' : 'var(--color-sidebar-item-text)',
+      background: active ? 'var(--color-sidebar-item-active-bg)' : 'var(--color-sidebar-item-bg)',
+      fontWeight: active ? 600 : 500,
+      textDecoration: 'none',
+      transition: 'background 0.15s ease',
+      fontSize: '0.85rem',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+    }),
+    prominent: (active: boolean) => ({
+      padding: '0.58rem 0.95rem',
+      borderRadius: 9,
+      color: active ? 'var(--color-sidebar-item-active-text)' : 'var(--color-sidebar-text)',
+      background: active ? 'var(--color-sidebar-button-active-bg)' : 'var(--color-sidebar-item-bg)',
+      fontWeight: active ? 600 : 550,
+      textDecoration: 'none',
+      transition: 'background 0.15s ease',
+      fontSize: '0.9rem',
+      boxShadow: active ? '0 0 0 1px var(--color-outline)' : 'none',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.55rem',
+    }),
+    button: (active: boolean) => ({
+      padding: '0.65rem 1rem',
+      borderRadius: 999,
+      color: active ? 'var(--color-sidebar-button-active-text)' : 'var(--color-sidebar-button-text)',
+      background: active ? 'var(--color-sidebar-button-active-bg)' : 'var(--color-sidebar-button-bg)',
+      fontWeight: 600,
+      textDecoration: 'none',
+      transition: 'background 0.15s ease, transform 0.15s ease',
+      fontSize: '0.85rem',
+      textAlign: 'center' as const,
+      boxShadow: active ? '0 10px 25px -12px var(--color-outline)' : 'none',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.45rem',
+    }),
+  } as Record<'standard' | 'prominent' | 'button', (active: boolean) => React.CSSProperties>,
   content: {
     padding: '2rem 3rem',
     display: 'flex',
     flexDirection: 'column' as const,
     gap: '2rem',
+    color: 'var(--color-text-primary)',
   },
+}
+
+const themeToggleStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 999,
+  border: '1px solid transparent',
+  background: 'var(--color-sidebar-button-bg)',
+  color: 'var(--color-sidebar-button-text)',
+  padding: '0.55rem 0.9rem',
+  cursor: 'pointer',
+  transition: 'background 0.15s ease, transform 0.15s ease',
 }
 
 export default function AppShell() {
   const { toolkits, loading } = useToolkits()
+  const { toggleTheme, isDark } = useTheme()
   const enabledToolkits = toolkits
     .filter((toolkit) => toolkit.enabled)
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -167,53 +224,72 @@ export default function AppShell() {
   return (
     <div style={layoutStyles.app}>
       <aside style={layoutStyles.sidebar}>
-        <div>
-          <h1 style={{ fontSize: '1.4rem', margin: 0, fontWeight: 600 }}>SRE Toolbox</h1>
-          <p style={{ margin: '0.25rem 0 0', opacity: 0.7, fontSize: '0.9rem' }}>
-            Modular operations cockpit
-          </p>
-        </div>
+          <div style={sidebarMainArea}>
+            <div>
+              <h1 style={{ fontSize: '1.4rem', margin: 0, fontWeight: 600 }}>SRE Toolbox</h1>
+              <p style={{ margin: '0.25rem 0 0', opacity: 0.7, fontSize: '0.9rem', color: 'var(--color-sidebar-muted)' }}>
+                Modular operations cockpit
+              </p>
+            </div>
 
-        <nav style={{ display: 'grid', gap: '1.5rem' }}>
-          <div>
-            <p style={navHeadingStyle}>Workspace</p>
-            <SidebarLink to="/" label="Dashboard" end />
-            <SidebarLink to="/jobs" label="Jobs" />
+          <nav style={{ display: 'grid', gap: '1.2rem', flex: 1 }}>
+            <div style={{ display: 'inline-flex', gap: '.25rem', flexDirection: 'column' }}>
+              <p style={navHeadingStyle}>Workspace</p>
+              <SidebarLink to="/" label="Dashboard" icon="space_dashboard" end />
+              <SidebarLink to="/jobs" label="Jobs" icon="work_history" />
+            </div>
+
+            <div>
+              <p style={navHeadingStyle}>Toolkits</p>
+              <div style={{ display: 'grid', gap: '0.35rem' }}>
+                {toolkits.length > 0 && (
+                  <SidebarLink to="/toolkits" label="All toolkits" icon="apps" variant="prominent" />
+                )}
+              </div>
+              <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.35rem', paddingLeft: '0.35rem' }}>
+                {enabledToolkits.map((toolkit) => (
+                  <SidebarLink
+                    key={toolkit.slug}
+                    to={toolkit.base_path}
+                    label={toolkit.name}
+                    icon="extension"
+                  />
+                ))}
+                {enabledToolkits.length === 0 && !loading && (
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>No toolkits enabled.</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p style={navHeadingStyle}>Administration</p>
+              <SidebarLink to="/admin/toolkits" label="Toolkits" icon="tune" />
+            </div>
+          </nav>
           </div>
 
-          <div>
-            <p style={navHeadingStyle}>Toolkits</p>
-            <SidebarLink to="/toolkits" label="All toolkits" />
-            <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.35rem', paddingLeft: '0.25rem' }}>
-              {enabledToolkits.map((toolkit) => (
-                <SidebarLink
-                  key={toolkit.slug}
-                  to={toolkit.base_path}
-                  label={toolkit.name}
-                  compact
-                />
-              ))}
-              {enabledToolkits.length === 0 && !loading && (
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>No toolkits enabled.</p>
-              )}
+          <div style={sidebarFooterArea}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              style={themeToggleStyle}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              value={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <MaterialIcon name={isDark ? 'dark_mode' : 'light_mode'} style={{ color: 'inherit', fontSize: '1.6rem' }} />
+            </button>
+            <SidebarLink to="/documentation" label="Documentation" icon="menu_book" variant="button" />
+            <div style={{ fontSize: '0.8rem', opacity: 0.75, color: 'var(--color-sidebar-muted)' }}>
+              API base: {API_BASE_URL || 'N/A'}
             </div>
           </div>
-
-          <div>
-            <p style={navHeadingStyle}>Administration</p>
-            <SidebarLink to="/admin/toolkits" label="Toolkits" />
-          </div>
-        </nav>
-
-        <div style={{ marginTop: 'auto', fontSize: '0.8rem', opacity: 0.75 }}>
-          API base: {API_BASE_URL || 'N/A'}
-        </div>
       </aside>
 
       <div style={layoutStyles.content}>
         <header>
-          <h2 style={{ margin: 0 }}>Operations Overview</h2>
-          <p style={{ margin: '0.25rem 0 0', color: '#64748b' }}>
+          <h2 style={{ margin: 0, color: 'var(--color-text-primary)' }}>Operations Overview</h2>
+          <p style={{ margin: '0.25rem 0 0', color: 'var(--color-text-secondary)' }}>
             Monitor jobs, manage toolkits, and validate automations.
           </p>
         </header>
@@ -222,6 +298,7 @@ export default function AppShell() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/jobs" element={<JobsPage />} />
+            <Route path="/documentation/*" element={<DocumentationPage />} />
             <Route path="/toolkits" element={<ToolkitIndexPage />} />
             <Route path="/toolkits/:slug/*" element={<DynamicToolkitRouter />} />
             <Route path="/admin/toolkits" element={<AdminToolkitsPage />} />
@@ -238,18 +315,23 @@ export default function AppShell() {
 function SidebarLink({
   to,
   label,
+  icon,
   end,
-  compact,
+  variant = 'standard',
 }: {
   to: string
   label: string
+  icon?: string
   end?: boolean
-  compact?: boolean
+  variant?: 'standard' | 'prominent' | 'button'
 }) {
-  const styleFn = compact ? layoutStyles.navLinkCompact : layoutStyles.navLink
+  const styleFn = layoutStyles.navLinkVariants[variant]
   return (
     <NavLink to={to} end={end} style={({ isActive }) => styleFn(isActive)}>
-      {label}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+        {icon && <MaterialIcon name={icon} style={{ color: 'inherit' }} />}
+        <span>{label}</span>
+      </span>
     </NavLink>
   )
 }
@@ -274,13 +356,21 @@ function DynamicToolkitRouter() {
 
 function GenericToolkitPlaceholder({ toolkit, message }: { toolkit: ToolkitRecord; message?: string }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 12, padding: '1.5rem', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)' }}>
+    <div
+      style={{
+        background: 'var(--color-surface)',
+        borderRadius: 12,
+        padding: '1.5rem',
+        boxShadow: 'var(--color-shadow)',
+        border: '1px solid var(--color-border)',
+      }}
+    >
       <h3 style={{ marginTop: 0 }}>{toolkit.name}</h3>
-      <p style={{ color: '#64748b' }}>{toolkit.description || 'Toolkit metadata registered. Awaiting implementation.'}</p>
+      <p style={{ color: 'var(--color-text-secondary)' }}>{toolkit.description || 'Toolkit metadata registered. Awaiting implementation.'}</p>
       {message ? (
-        <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#64748b' }}>{message}</p>
+        <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>{message}</p>
       ) : (
-        <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#94a3b8' }}>
+        <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
           No frontend experience has been wired for this toolkit yet. Upload its bundle or keep it disabled while you stage upcoming
           functionality.
         </p>
@@ -332,10 +422,11 @@ function ToolkitLoadingOverlay({ name }: { name: string }) {
   return (
     <div
       style={{
-        background: '#fff',
+        background: 'var(--color-surface)',
         borderRadius: 12,
         padding: '1.5rem',
-        boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+        boxShadow: 'var(--color-shadow)',
+        border: '1px solid var(--color-border)',
         display: 'grid',
         gap: '0.75rem',
         alignItems: 'center',
@@ -348,14 +439,14 @@ function ToolkitLoadingOverlay({ name }: { name: string }) {
           width: 28,
           height: 28,
           borderRadius: '50%',
-          border: '3px solid #e2e8f0',
-          borderTopColor: '#38bdf8',
+          border: '3px solid var(--color-border)',
+          borderTopColor: 'var(--color-accent)',
           animation: 'sreToolkitSpin 0.75s linear infinite',
         }}
       />
       <div style={{ textAlign: 'center' }}>
         <h3 style={{ margin: 0 }}>{name}</h3>
-        <p style={{ margin: '0.35rem 0 0', color: '#64748b', fontSize: '0.9rem' }}>Loading toolkit interface…</p>
+        <p style={{ margin: '0.35rem 0 0', color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Loading toolkit interface…</p>
       </div>
     </div>
   )
@@ -367,6 +458,20 @@ const navHeadingStyle: React.CSSProperties = {
   textTransform: 'uppercase',
   fontSize: '0.72rem',
   letterSpacing: '0.08em',
-  color: '#94a3b8',
+  color: 'var(--color-sidebar-muted)',
   fontWeight: 600,
+}
+
+const sidebarMainArea: React.CSSProperties = {
+  display: 'inline-flex',
+  flexDirection: 'column',
+  gap: '1.2rem',
+  //flex: 1,
+}
+
+const sidebarFooterArea: React.CSSProperties = {
+  display: 'grid',
+  gap: '0.6rem',
+  marginTop: 'auto',
+  paddingTop: '0.5rem',
 }

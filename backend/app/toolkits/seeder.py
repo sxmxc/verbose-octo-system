@@ -7,9 +7,19 @@ from .install_utils import install_toolkit_from_directory
 from .registry import get_toolkit, set_toolkit_origin
 
 
+def _resolve_bundled_path(slug: str) -> Path | None:
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        candidate = parent / "toolkits" / "bundled" / slug
+        if candidate.exists():
+            return candidate
+    return None
+
+
 _BUNDLED_TOOLKITS = {
-    "zabbix": Path(__file__).resolve().parents[3] / "toolkits" / "bundled" / "zabbix",
-    "regex": Path(__file__).resolve().parents[3] / "toolkits" / "bundled" / "regex",
+    slug: path
+    for slug in ("zabbix", "regex")
+    if (path := _resolve_bundled_path(slug)) is not None
 }
 
 

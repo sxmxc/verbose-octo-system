@@ -78,6 +78,18 @@ class ToolkitUpdate(BaseModel):
     frontend_source_entry: Optional[str] = None
 
 
+def _normalize_dashboard_cards(cards: List[ToolkitDashboardCard] | List[dict] | None) -> List[ToolkitDashboardCard]:
+    if not cards:
+        return []
+    normalized: List[ToolkitDashboardCard] = []
+    for card in cards:
+        if isinstance(card, ToolkitDashboardCard):
+            normalized.append(card)
+        else:
+            normalized.append(ToolkitDashboardCard(**card))
+    return normalized
+
+
 def _serialize(toolkit: ToolkitRecord) -> str:
     return toolkit.model_dump_json()
 
@@ -119,7 +131,7 @@ def upsert_toolkit(payload: ToolkitCreate, origin: str = "builtin") -> ToolkitRe
         backend_router_attr=payload.backend_router_attr,
         worker_module=payload.worker_module,
         worker_register_attr=payload.worker_register_attr,
-        dashboard_cards=payload.dashboard_cards,
+        dashboard_cards=_normalize_dashboard_cards(payload.dashboard_cards),
         dashboard_context_module=payload.dashboard_context_module,
         dashboard_context_attr=payload.dashboard_context_attr,
         frontend_entry=payload.frontend_entry,
@@ -145,7 +157,7 @@ def create_toolkit(payload: ToolkitCreate, origin: str = "custom") -> ToolkitRec
         backend_router_attr=payload.backend_router_attr,
         worker_module=payload.worker_module,
         worker_register_attr=payload.worker_register_attr,
-        dashboard_cards=payload.dashboard_cards,
+        dashboard_cards=_normalize_dashboard_cards(payload.dashboard_cards),
         dashboard_context_module=payload.dashboard_context_module,
         dashboard_context_attr=payload.dashboard_context_attr,
         frontend_entry=payload.frontend_entry,
@@ -160,6 +172,8 @@ def update_toolkit(slug: str, payload: ToolkitUpdate) -> Optional[ToolkitRecord]
     if not toolkit:
         return None
     update_data = payload.model_dump(exclude_unset=True)
+    if "dashboard_cards" in update_data:
+        update_data["dashboard_cards"] = _normalize_dashboard_cards(payload.dashboard_cards)
     if not update_data:
         return toolkit
     toolkit = toolkit.model_copy(update=update_data)

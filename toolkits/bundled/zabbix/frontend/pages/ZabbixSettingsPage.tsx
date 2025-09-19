@@ -23,10 +23,16 @@ const initialForm: EditableInstance = {
 
 
 const sectionStyle: React.CSSProperties = {
-  border: '1px solid #e2e8f0',
+  border: '1px solid var(--color-border)',
   borderRadius: 10,
   padding: '1.25rem',
-  background: '#f8fafc',
+  background: 'var(--color-surface-alt)',
+}
+
+const iconStyle: React.CSSProperties = {
+  fontSize: '1.1rem',
+  lineHeight: 1,
+  color: 'var(--color-link)',
 }
 
 
@@ -191,11 +197,21 @@ export default function ZabbixAdministrationPage() {
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       <section style={sectionStyle}>
-        <h4 style={{ marginTop: 0 }}>Instance registry</h4>
-        {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+        <h4 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--color-text-primary)' }}>
+          <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+            inventory_2
+          </span>
+          Instance registry
+        </h4>
+        {error && <p style={{ color: 'var(--color-danger-border)' }}>{error}</p>}
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 240px' }}>
-            <h5 style={{ margin: '0 0 0.5rem' }}>Registered</h5>
+            <h5 style={{ margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-primary)' }}>
+              <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+                list_alt
+              </span>
+              Registered
+            </h5>
             {instances.length === 0 && <p>No instances yet.</p>}
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.5rem' }}>
               {instances.map((instance) => (
@@ -208,12 +224,12 @@ export default function ZabbixAdministrationPage() {
                       padding: '0.75rem 1rem',
                       borderRadius: 8,
                       border: '1px solid',
-                      borderColor: selectedId === instance.id ? '#0ea5e9' : '#e2e8f0',
-                      background: selectedId === instance.id ? '#f0f9ff' : '#fff',
+                      borderColor: selectedId === instance.id ? 'var(--color-link)' : 'var(--color-border)',
+                      background: selectedId === instance.id ? 'var(--color-accent-soft)' : 'var(--color-surface)',
                     }}
                   >
                     <strong>{instance.name}</strong>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{instance.base_url}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{instance.base_url}</div>
                   </button>
                 </li>
               ))}
@@ -221,12 +237,24 @@ export default function ZabbixAdministrationPage() {
           </div>
 
           <form style={{ flex: '1 1 320px' }} onSubmit={createInstance}>
-            <h5 style={{ margin: '0 0 0.5rem' }}>Add instance</h5>
+            <h5 style={{ margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-primary)' }}>
+              <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-accent)' }} aria-hidden>
+                add_business
+              </span>
+              Add instance
+            </h5>
             <Field label="Name">
-              <input name="name" value={createForm.name} onChange={handleCreateChange} required />
+              <input
+                className="tk-input"
+                name="name"
+                value={createForm.name}
+                onChange={handleCreateChange}
+                required
+              />
             </Field>
             <Field label="Base URL">
               <input
+                className="tk-input"
                 name="base_url"
                 value={createForm.base_url}
                 onChange={handleCreateChange}
@@ -235,10 +263,22 @@ export default function ZabbixAdministrationPage() {
               />
             </Field>
             <Field label="API Token">
-              <input name="token" value={createForm.token} onChange={handleCreateChange} required />
+              <input
+                className="tk-input"
+                name="token"
+                value={createForm.token}
+                onChange={handleCreateChange}
+                required
+              />
             </Field>
             <Field label="Description">
-              <textarea name="description" value={createForm.description} onChange={handleCreateChange} rows={2} />
+              <textarea
+                className="tk-input"
+                name="description"
+                value={createForm.description}
+                onChange={handleCreateChange}
+                rows={2}
+              />
             </Field>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
               <input
@@ -249,12 +289,15 @@ export default function ZabbixAdministrationPage() {
               />
               Verify TLS certificates
             </label>
-            <button type="submit" style={{ marginTop: '1rem' }} disabled={busy}>
+            <button type="submit" className="tk-button tk-button--primary" style={{ marginTop: '1rem' }} disabled={busy}>
+              <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-accent)' }} aria-hidden>
+                add_circle
+              </span>
               Create
             </button>
           </form>
         </div>
-        {feedback && <p style={{ marginTop: '1rem', color: '#0284c7' }}>{feedback}</p>}
+        {feedback && <p style={{ marginTop: '1rem', color: 'var(--color-text-secondary)' }}>{feedback}</p>}
       </section>
 
       {selectedInstance && (
@@ -262,27 +305,59 @@ export default function ZabbixAdministrationPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h4 style={{ margin: 0 }}>{selectedInstance.name}</h4>
-              <p style={{ margin: '0.3rem 0 0', color: '#64748b' }}>{selectedInstance.base_url}</p>
+              <p style={{ margin: '0.3rem 0 0', color: 'var(--color-text-secondary)' }}>{selectedInstance.base_url}</p>
             </div>
-            <button onClick={deleteInstance} disabled={busy} style={{ background: '#fee2e2', border: '1px solid #f87171' }}>
+            <button onClick={deleteInstance} disabled={busy} className="tk-button tk-button--danger">
+              <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-danger-border)' }} aria-hidden>
+                delete_forever
+              </span>
               Delete
             </button>
           </div>
 
-          <h5 style={{ margin: '1rem 0 0.5rem' }}>Instance configuration</h5>
+          <h5 style={{ margin: '1rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+              tune
+            </span>
+            Instance configuration
+          </h5>
 
           <form style={{ display: 'grid', gap: '0.75rem', maxWidth: 420 }} onSubmit={updateInstance}>
             <Field label="Name">
-              <input name="name" value={editForm.name} onChange={handleEditChange} required />
+              <input
+                className="tk-input"
+                name="name"
+                value={editForm.name}
+                onChange={handleEditChange}
+                required
+              />
             </Field>
             <Field label="Base URL">
-              <input name="base_url" value={editForm.base_url} onChange={handleEditChange} required />
+              <input
+                className="tk-input"
+                name="base_url"
+                value={editForm.base_url}
+                onChange={handleEditChange}
+                required
+              />
             </Field>
             <Field label="Description">
-              <textarea name="description" value={editForm.description} onChange={handleEditChange} rows={2} />
+              <textarea
+                className="tk-input"
+                name="description"
+                value={editForm.description}
+                onChange={handleEditChange}
+                rows={2}
+              />
             </Field>
             <Field label="Update token (optional)">
-              <input name="token" value={editForm.token} onChange={handleEditChange} placeholder="Leave blank to keep" />
+              <input
+                className="tk-input"
+                name="token"
+                value={editForm.token}
+                onChange={handleEditChange}
+                placeholder="Leave blank to keep"
+              />
             </Field>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <input
@@ -293,13 +368,19 @@ export default function ZabbixAdministrationPage() {
               />
               Verify TLS certificates
             </label>
-            <button type="submit" style={{ width: 'fit-content' }} disabled={busy}>
+            <button type="submit" className="tk-button tk-button--primary" disabled={busy}>
+              <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+                save
+              </span>
               Save changes
             </button>
           </form>
 
           <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem' }}>
-            <button type="button" onClick={testInstance} disabled={busy}>
+            <button type="button" onClick={testInstance} disabled={busy} className="tk-button">
+              <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-accent)' }} aria-hidden>
+                network_check
+              </span>
               Test connection
             </button>
           </div>
@@ -319,7 +400,7 @@ export default function ZabbixAdministrationPage() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
+    <label className="tk-label" style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
       {label}
       {children}
     </label>
@@ -328,11 +409,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 
 const resultStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--color-surface)',
   padding: '0.75rem 1rem',
   borderRadius: 8,
   fontSize: '0.85rem',
   fontFamily: 'Source Code Pro, monospace',
   marginTop: '0.4rem',
   overflowX: 'auto',
+  border: '1px solid var(--color-border)',
 }

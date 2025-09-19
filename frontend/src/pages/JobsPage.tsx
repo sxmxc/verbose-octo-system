@@ -5,20 +5,23 @@ import { Job, JobLog } from '../types'
 
 
 const cardStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--color-surface)',
   borderRadius: 12,
-  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+  boxShadow: 'var(--color-shadow)',
+  border: '1px solid var(--color-border)',
   padding: '1.5rem',
+  color: 'var(--color-text-primary)',
 }
 
 const preStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--color-surface)',
   padding: '0.75rem 1rem',
   borderRadius: 8,
   fontSize: '0.85rem',
   fontFamily: 'Source Code Pro, monospace',
   marginTop: '0.4rem',
   overflowX: 'auto',
+  border: '1px solid var(--color-border)',
 }
 
 const TERMINAL_STATUSES = new Set(['succeeded', 'failed', 'cancelled', 'not_found'])
@@ -83,12 +86,12 @@ export default function JobsPage() {
         </button>
       </div>
       {loading && <p>Loading...</p>}
-      {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger-border)' }}>{error}</p>}
 
       <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ textAlign: 'left', background: '#f8fafc' }}>
+            <tr style={{ textAlign: 'left', background: 'var(--color-surface-alt)' }}>
               <th style={{ padding: '0.6rem' }}>Toolkit</th>
               <th>Status</th>
               <th>Progress</th>
@@ -99,10 +102,10 @@ export default function JobsPage() {
           <tbody>
             {jobs.map((job) => (
               <React.Fragment key={job.id}>
-                <tr style={{ borderTop: '1px solid #e2e8f0' }}>
+                <tr style={{ borderTop: '1px solid var(--color-border)' }}>
                   <td style={{ padding: '0.6rem' }}>
                     <strong>{job.toolkit || job.module || 'unknown'}</strong>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{job.operation}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{job.operation}</div>
                   </td>
                   <td style={{ textTransform: 'capitalize' }}>{job.status}</td>
                   <td>{job.progress}%</td>
@@ -115,9 +118,10 @@ export default function JobsPage() {
                       onClick={() => cancelJob(job)}
                       disabled={!canCancel(job) || canceling[job.id]}
                       style={{
-                        background: '#fee2e2',
-                        border: '1px solid #fca5a5',
+                        background: 'var(--color-danger-bg)',
+                        border: '1px solid var(--color-danger-border)',
                         opacity: !canCancel(job) && !canceling[job.id] ? 0.5 : 1,
+                        color: 'var(--color-text-primary)',
                       }}
                     >
                       {canceling[job.id] ? 'Cancelling…' : 'Cancel'}
@@ -126,7 +130,7 @@ export default function JobsPage() {
                 </tr>
                 {expandedJobId === job.id && (
                   <tr>
-                    <td colSpan={5} style={{ background: '#f1f5f9', padding: '1rem 1.5rem' }}>
+                    <td colSpan={5} style={{ background: 'var(--color-surface-alt)', padding: '1rem 1.5rem' }}>
                       <section style={{ display: 'grid', gap: '0.75rem' }}>
                         <JobLogViewer logs={job.logs ?? []} />
                         <div>
@@ -135,7 +139,7 @@ export default function JobsPage() {
                         </div>
                         {job.error && (
                           <div>
-                            <strong style={{ color: '#dc2626' }}>Error</strong>
+                            <strong style={{ color: 'var(--color-danger-border)' }}>Error</strong>
                             <pre style={preStyle}>{job.error}</pre>
                           </div>
                         )}
@@ -161,10 +165,11 @@ function JobLogViewer({ logs }: { logs: JobLog[] }) {
         style={{
           fontFamily: 'Source Code Pro, monospace',
           fontSize: '0.85rem',
-          background: '#fff',
+          background: 'var(--color-surface)',
           borderRadius: 8,
           padding: '0.75rem',
           marginTop: '0.5rem',
+          border: '1px solid var(--color-border)',
         }}
       >
         {logs.length === 0 ? (
@@ -172,7 +177,7 @@ function JobLogViewer({ logs }: { logs: JobLog[] }) {
         ) : (
           logs.map((log) => (
             <div key={log.ts}>
-              <span style={{ color: '#0f172a' }}>{new Date(log.ts).toLocaleTimeString()}:</span> {log.message}
+              <span style={{ color: 'var(--color-text-primary)' }}>{new Date(log.ts).toLocaleTimeString()}:</span> {log.message}
             </div>
           ))
         )}

@@ -1,12 +1,12 @@
-import importlib
 import logging
 from collections import Counter
 from typing import Any, Dict
 
 from fastapi import APIRouter
 
-from ..toolkits.registry import list_toolkits
 from ..services.jobs import list_jobs
+from ..toolkit_loader import import_toolkit_module
+from ..toolkits.registry import list_toolkits
 
 
 router = APIRouter()
@@ -29,7 +29,11 @@ def dashboard_overview():
         context: ToolkitContext = {}
         if toolkit.dashboard_context_module:
             try:
-                module = importlib.import_module(toolkit.dashboard_context_module)
+                module = import_toolkit_module(
+                    toolkit.dashboard_context_module,
+                    slug=toolkit.slug,
+                    namespaces=("backend",),
+                )
                 attr_name = toolkit.dashboard_context_attr or "build_context"
                 provider = getattr(module, attr_name, None)
                 if callable(provider):

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 
 import { apiFetch } from '../api'
+import { MaterialIcon } from '../components/MaterialIcon'
 import { ToolkitRecord, useToolkits } from '../ToolkitContext'
 
 type ToolkitDocs = {
@@ -12,9 +13,10 @@ type ToolkitDocs = {
 }
 
 const cardStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--color-surface)',
   borderRadius: 12,
-  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+  boxShadow: 'var(--color-shadow)',
+  border: '1px solid var(--color-border)',
   padding: '1.5rem',
   display: 'grid',
   gap: '1.25rem',
@@ -40,7 +42,7 @@ export default function AdminToolkitsPage() {
   useEffect(() => {
     ;(async () => {
       try {
-        const response = await apiFetch('/toolkits/docs/getting-started')
+        const response = await apiFetch<ToolkitDocs>('/toolkits/docs/getting-started')
         setDocs(response)
       } catch (err) {
         console.warn('Failed to load toolkit docs', err)
@@ -68,67 +70,90 @@ export default function AdminToolkitsPage() {
   return (
     <div style={cardStyle}>
       <header>
-        <h3 style={{ margin: 0 }}>Toolkit administration</h3>
-        <p style={{ margin: '0.3rem 0 0', color: '#64748b' }}>
+        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-primary)' }}>
+          <MaterialIcon name="engineering" style={{ color: 'var(--color-link)' }} />
+          Toolkit administration
+        </h3>
+        <p style={{ margin: '0.3rem 0 0', color: 'var(--color-text-secondary)' }}>
           Upload, enable, disable, or remove toolkits for the SRE Toolbox runtime.
         </p>
       </header>
 
       {docs && (
-        <section style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '1rem', background: '#f0f9ff' }}>
-          <h4 style={{ margin: '0 0 0.5rem' }}>Getting started</h4>
+        <section style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: '1rem', background: 'var(--color-surface-alt)' }}>
+          <h4 style={{ margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <MaterialIcon name="lightbulb" style={{ color: 'var(--color-warning-text)' }} />
+            Getting started
+          </h4>
           {docs.overview && (
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a' }}>{docs.overview}</p>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>{docs.overview}</p>
           )}
           {docs.bundle_format?.contents && (
-            <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.25rem', color: '#0f172a', fontSize: '0.9rem' }}>
+            <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.25rem', color: 'var(--color-text-primary)', fontSize: '0.9rem' }}>
               {docs.bundle_format.contents.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
           )}
           {docs.upload?.post_install && (
-            <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: '#334155' }}>{docs.upload.post_install}</p>
+            <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{docs.upload.post_install}</p>
           )}
           {docs.job_queue?.handlers && (
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#334155' }}>{docs.job_queue.handlers}</p>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{docs.job_queue.handlers}</p>
           )}
           {docs.dashboard && (
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#334155' }}>{docs.dashboard}</p>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{docs.dashboard}</p>
           )}
-          <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: '#334155' }}>
+          <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
             Upload bundles via <code>/toolkits/install</code> or the form below. After staging, enable the toolkit; SRE Toolbox will auto-load its
             backend routes, worker tasks, and dashboard contributions.
           </p>
         </section>
       )}
 
-      {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger-border)' }}>{error}</p>}
 
       <section>
-        <h4 style={{ marginTop: 0 }}>Installed toolkits</h4>
+        <h4 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <MaterialIcon name="extension" style={{ color: 'var(--color-link)' }} />
+          Installed toolkits
+        </h4>
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-          {toolkits.length === 0 && <p style={{ color: '#94a3b8' }}>No toolkits registered yet.</p>}
+          {toolkits.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>No toolkits registered yet.</p>}
           {toolkits.map((toolkit) => (
             <div key={toolkit.slug} style={toolkitCardStyle}>
               <div style={{ display: 'grid', gap: '0.35rem' }}>
                 <strong>{toolkit.name}</strong>
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{toolkit.description}</div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{toolkit.description}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                   Slug: {toolkit.slug} · Path: {toolkit.base_path}
                   {toolkit.origin !== 'builtin' ? ' · Custom upload' : ' · Built-in'}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={toolkit.enabled}
-                    onChange={() => toggleToolkit(toolkit)}
-                    disabled={busySlug === toolkit.slug}
+                <button
+                  type="button"
+                  onClick={() => toggleToolkit(toolkit)}
+                  disabled={busySlug === toolkit.slug}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 38,
+                    height: 38,
+                    border: '0px',
+                    background: 'transparent',
+                    color: toolkit.enabled ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                    cursor: busySlug === toolkit.slug ? 'wait' : 'pointer',
+                  }}
+                  aria-pressed={toolkit.enabled}
+                  title={toolkit.enabled ? 'Disable toolkit' : 'Enable toolkit'}
+                >
+                  <MaterialIcon
+                    name={toolkit.enabled ? 'toggle_on' : 'toggle_off'}
+                    style={{ fontSize: '1.8rem', color: 'inherit' }}
                   />
-                  <span>{toolkit.enabled ? 'Enabled' : 'Disabled'}</span>
-                </label>
+                </button>
                 {toolkit.origin !== 'builtin' && (
                   <button
                     type="button"
@@ -144,9 +169,19 @@ export default function AdminToolkitsPage() {
                         setBusySlug(null)
                       }
                     }}
-                    style={{ background: '#fee2e2', border: '1px solid #f87171' }}
+                    style={{
+                      background: 'transparent',
+                      border: '0px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 38,
+                      height: 38,
+                      color: 'var(--color-danger-border)',
+                    }}
+                    title="Uninstall toolkit"
                   >
-                    Uninstall
+                    <MaterialIcon name="delete" style={{ fontSize: '1.5rem', color: 'inherit' }} />
                   </button>
                 )}
               </div>
@@ -156,8 +191,11 @@ export default function AdminToolkitsPage() {
       </section>
 
       <section>
-        <h4 style={{ marginTop: 0 }}>Install toolkit bundle (.zip)</h4>
-        <p style={{ margin: '0.25rem 0 1rem', color: '#64748b' }}>
+        <h4 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <MaterialIcon name="cloud_upload" style={{ color: 'var(--color-link)' }} />
+          Install toolkit bundle (.zip)
+        </h4>
+        <p style={{ margin: '0.25rem 0 1rem', color: 'var(--color-text-secondary)' }}>
           Uploads store the bundle on the server and auto-register the toolkit if it does not already exist. Newly uploaded toolkits remain
           disabled until you review them.
         </p>
@@ -202,7 +240,12 @@ export default function AdminToolkitsPage() {
               onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
             />
           </Field>
-          <button type="submit" style={{ width: 'fit-content' }} disabled={uploading}>
+          <button
+            type="submit"
+            style={{ width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            disabled={uploading}
+          >
+            <MaterialIcon name={uploading ? 'hourglass_top' : 'publish'} style={{ fontSize: '1.1rem', color: 'var(--color-text-primary)' }} />
             {uploading ? 'Uploading…' : 'Upload toolkit'}
           </button>
         </form>
@@ -213,10 +256,10 @@ export default function AdminToolkitsPage() {
 
 
 const toolkitCardStyle: React.CSSProperties = {
-  border: '1px solid #e2e8f0',
+  border: '1px solid var(--color-border)',
   borderRadius: 10,
   padding: '0.95rem 1.1rem',
-  background: '#f8fafc',
+  background: 'var(--color-surface-alt)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',

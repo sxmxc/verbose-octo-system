@@ -21,6 +21,12 @@ const initialRow: HostRowForm = {
   macros: '',
 }
 
+const iconStyle: React.CSSProperties = {
+  fontSize: '1.1rem',
+  lineHeight: 1,
+  color: 'var(--color-link)',
+}
+
 
 export default function ZabbixBulkHostsPage() {
   const [instances, setInstances] = useState<ZabbixInstance[]>([])
@@ -115,10 +121,15 @@ export default function ZabbixBulkHostsPage() {
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1.5rem' }}>
+    <div style={{ display: 'grid', gap: '1.5rem', color: 'var(--color-text-primary)' }}>
       <section style={sectionStyle}>
-        <h4 style={{ marginTop: 0 }}>Bulk host creation</h4>
-        <p style={{ margin: '0.25rem 0 1rem', color: '#64748b' }}>
+        <h4 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+            group_add
+          </span>
+          Bulk host creation
+        </h4>
+        <p style={{ margin: '0.25rem 0 1rem', color: 'var(--color-text-secondary)' }}>
           Compose host rows, preview via dry run, or enqueue a job for asynchronous execution.
         </p>
 
@@ -127,9 +138,13 @@ export default function ZabbixBulkHostsPage() {
 
         {instances.length > 0 && (
           <div style={{ display: 'grid', gap: '1.25rem' }}>
-            <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem', maxWidth: 320 }}>
+            <label className="tk-label" style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem', maxWidth: 320 }}>
               Target instance
-              <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
+              <select
+                className="tk-input"
+                value={selectedId}
+                onChange={(event) => setSelectedId(event.target.value)}
+              >
                 {instances.map((instance) => (
                   <option value={instance.id} key={instance.id}>
                     {instance.name}
@@ -143,54 +158,109 @@ export default function ZabbixBulkHostsPage() {
                 <div key={idx} style={rowCardStyle}>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <Field label="Host">
-                      <input value={row.host} onChange={(e) => updateHostRow(idx, 'host', e.target.value)} />
+                      <input
+                        className="tk-input"
+                        value={row.host}
+                        onChange={(e) => updateHostRow(idx, 'host', e.target.value)}
+                      />
                     </Field>
                     <Field label="IP">
-                      <input value={row.ip} onChange={(e) => updateHostRow(idx, 'ip', e.target.value)} />
+                      <input
+                        className="tk-input"
+                        value={row.ip}
+                        onChange={(e) => updateHostRow(idx, 'ip', e.target.value)}
+                      />
                     </Field>
                   </div>
                   <Field label="Groups (comma separated)">
-                    <input value={row.groups} onChange={(e) => updateHostRow(idx, 'groups', e.target.value)} />
+                    <input
+                      className="tk-input"
+                      value={row.groups}
+                      onChange={(e) => updateHostRow(idx, 'groups', e.target.value)}
+                    />
                   </Field>
                   <Field label="Templates (comma separated)">
-                    <input value={row.templates} onChange={(e) => updateHostRow(idx, 'templates', e.target.value)} />
+                    <input
+                      className="tk-input"
+                      value={row.templates}
+                      onChange={(e) => updateHostRow(idx, 'templates', e.target.value)}
+                    />
                   </Field>
                   <Field label="Macros (key=value per line)">
-                    <textarea value={row.macros} onChange={(e) => updateHostRow(idx, 'macros', e.target.value)} rows={2} />
+                    <textarea
+                      className="tk-input"
+                      value={row.macros}
+                      onChange={(e) => updateHostRow(idx, 'macros', e.target.value)}
+                      rows={2}
+                    />
                   </Field>
                   {hostRows.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeHostRow(idx)}
-                      style={{ width: 'fit-content', background: '#fee2e2', border: '1px solid #f87171' }}
-                    >
+                  <button
+                    type="button"
+                    onClick={() => removeHostRow(idx)}
+                    className="tk-button tk-button--danger"
+                    style={{ width: 'fit-content' }}
+                  >
+                    <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-danger-border)' }} aria-hidden>
+                      remove_circle
+                    </span>
                       Remove host
                     </button>
                   )}
                 </div>
               ))}
-              <button type="button" onClick={addHostRow} style={{ width: 'fit-content' }}>
+              <button
+                type="button"
+                onClick={addHostRow}
+                className="tk-button"
+                style={{ width: 'fit-content' }}
+              >
+                <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-accent)' }} aria-hidden>
+                  add_circle
+                </span>
                 Add host
               </button>
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button type="button" onClick={performDryRun}>
+              <button type="button" onClick={performDryRun} className="tk-button">
+                <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+                  preview
+                </span>
                 Dry run
               </button>
-              <button type="button" onClick={performExecute}>
+              <button
+                type="button"
+                onClick={performExecute}
+                className="tk-button tk-button--primary"
+              >
+                <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-accent)' }} aria-hidden>
+                  play_circle
+                </span>
                 Execute
               </button>
             </div>
 
-            {feedback && <p style={{ color: '#0284c7' }}>{feedback}</p>}
+            {feedback && (
+              <p style={{ color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+                  info
+                </span>
+                {feedback}
+              </p>
+            )}
           </div>
         )}
       </section>
 
       {resultText && (
         <section style={sectionStyle}>
-          <h4 style={{ marginTop: 0 }}>Result</h4>
+          <h4 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
+              description
+            </span>
+            Result
+          </h4>
           <pre style={resultStyle}>{resultText}</pre>
         </section>
       )}
@@ -201,7 +271,7 @@ export default function ZabbixBulkHostsPage() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
+    <label className="tk-label" style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
       {label}
       {children}
     </label>
@@ -210,23 +280,23 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 
 const sectionStyle: React.CSSProperties = {
-  border: '1px solid #e2e8f0',
+  border: '1px solid var(--color-border)',
   borderRadius: 10,
   padding: '1.25rem',
-  background: '#f8fafc',
+  background: 'var(--color-surface-alt)',
 }
 
 const rowCardStyle: React.CSSProperties = {
   display: 'grid',
   gap: '0.5rem',
-  background: '#fff',
+  background: 'var(--color-surface)',
   padding: '0.85rem',
   borderRadius: 10,
-  border: '1px solid #e2e8f0',
+  border: '1px solid var(--color-border)',
 }
 
 const resultStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--color-surface)',
   padding: '0.75rem 1rem',
   borderRadius: 8,
   fontSize: '0.85rem',

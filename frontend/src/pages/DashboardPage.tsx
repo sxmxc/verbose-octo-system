@@ -33,10 +33,12 @@ type DashboardData = {
 
 
 const cardStyle: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--color-surface)',
   borderRadius: 12,
-  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+  boxShadow: 'var(--color-shadow)',
+  border: '1px solid var(--color-border)',
   padding: '1.5rem',
+  color: 'var(--color-text-primary)',
 }
 
 const summaryPillStyle = (accent: string): React.CSSProperties => ({
@@ -48,7 +50,7 @@ const summaryPillStyle = (accent: string): React.CSSProperties => ({
   display: 'flex',
   flexDirection: 'column',
   gap: '0.25rem',
-  boxShadow: '0 10px 20px rgba(15, 23, 42, 0.12)',
+  boxShadow: '0 10px 20px rgba(4, 7, 18, 0.25)',
 })
 
 
@@ -78,12 +80,15 @@ export default function DashboardPage() {
     <div style={cardStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ margin: 0 }}>Dashboard</h3>
-        <button onClick={load} style={{ padding: '0.4rem 0.9rem' }}>
+        <button
+          onClick={load}
+          style={{ padding: '0.4rem 0.9rem', background: 'var(--color-sidebar-button-bg)', border: '1px solid transparent', borderRadius: 8 }}
+        >
           Refresh
         </button>
       </div>
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+      {loading && <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>}
+      {error && <p style={{ color: 'var(--color-danger-border)' }}>{error}</p>}
 
       {data && (
         <div style={{ display: 'grid', gap: '1.5rem', marginTop: '1.5rem' }}>
@@ -102,17 +107,17 @@ export default function DashboardPage() {
                   <div
                     key={`${card.toolkit}-${idx}`}
                     style={{
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid var(--color-border)',
                       borderRadius: 12,
                       padding: '0.9rem 1rem',
-                      background: '#f8fafc',
+                      background: 'var(--color-surface-alt)',
                       display: 'grid',
                       gap: '0.55rem',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                           {card.toolkit}
                         </div>
                         <strong style={{ display: 'block', marginTop: '0.15rem', fontSize: '1rem' }}>{card.title}</strong>
@@ -121,12 +126,12 @@ export default function DashboardPage() {
                         <a
                           href={card.link_href}
                           style={{
-                            color: '#0284c7',
+                            color: 'var(--color-link)',
                             fontSize: '0.85rem',
                             textDecoration: 'none',
                             padding: '0.3rem 0.55rem',
                             borderRadius: 6,
-                            background: '#e0f2fe',
+                            background: 'var(--color-accent-soft)',
                             fontWeight: 600,
                           }}
                         >
@@ -136,31 +141,31 @@ export default function DashboardPage() {
                     </div>
 
                     {card.metrics && card.metrics.length > 0 && (
-                      <div
-                        style={{
-                          display: 'grid',
-                          gap: '0.6rem',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                          background: '#fff',
-                          borderRadius: 8,
-                          padding: '0.5rem 0.6rem',
-                          border: '1px solid #e2e8f0',
-                        }}
-                      >
-                        {card.metrics.map((metric, metricIdx) => (
-                          <div
-                            key={`${metric.label}-${metricIdx}`}
-                            style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}
-                          >
-                            <span style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              {metric.label}
-                            </span>
-                            <strong style={{ fontSize: '1.15rem', color: '#0f172a' }}>{metric.value}</strong>
-                            {metric.description && (
-                              <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{metric.description}</span>
-                            )}
-                          </div>
-                        ))}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gap: '0.6rem',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                        background: 'var(--color-surface)',
+                        borderRadius: 8,
+                        padding: '0.5rem 0.6rem',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    >
+                      {card.metrics.map((metric, metricIdx) => (
+                        <div
+                          key={`${metric.label}-${metricIdx}`}
+                          style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}
+                        >
+                          <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {metric.label}
+                          </span>
+                          <strong style={{ fontSize: '1.15rem', color: 'var(--color-text-primary)' }}>{metric.value}</strong>
+                          {metric.description && (
+                            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>{metric.description}</span>
+                          )}
+                        </div>
+                      ))}
                       </div>
                     )}
                   </div>
@@ -175,9 +180,9 @@ export default function DashboardPage() {
               <p style={{ margin: 0 }}>No jobs in the last window.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--color-text-primary)' }}>
                   <thead>
-                    <tr style={{ textAlign: 'left', background: '#f8fafc' }}>
+                    <tr style={{ textAlign: 'left', background: 'var(--color-surface-alt)' }}>
                       <th style={{ padding: '0.5rem' }}>Toolkit</th>
                       <th>Status</th>
                       <th>Progress</th>
@@ -188,13 +193,13 @@ export default function DashboardPage() {
                     {data.jobs.recent.map((job) => {
                       const toolkitLabel = job.toolkit || job.module || 'unknown'
                       return (
-                        <tr key={job.id} style={{ borderTop: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '0.5rem' }}>
-                          <strong>{toolkitLabel}</strong>
-                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{job.operation}</div>
-                        </td>
-                        <td style={{ textTransform: 'capitalize' }}>{job.status}</td>
-                        <td>{job.progress ?? 0}%</td>
+                        <tr key={job.id} style={{ borderTop: '1px solid var(--color-border)' }}>
+                          <td style={{ padding: '0.5rem' }}>
+                            <strong>{toolkitLabel}</strong>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{job.operation}</div>
+                          </td>
+                          <td style={{ textTransform: 'capitalize' }}>{job.status}</td>
+                          <td>{job.progress ?? 0}%</td>
                         <td>{job.updated_at ? new Date(job.updated_at).toLocaleString() : '—'}</td>
                       </tr>
                       )
@@ -208,12 +213,12 @@ export default function DashboardPage() {
           <section>
             <h4 style={{ margin: '0 0 0.75rem' }}>Job Totals</h4>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={summaryPillStyle('#1d4ed8')}>
+              <div style={summaryPillStyle('var(--color-link)')}>
                 <span>Total</span>
                 <strong>{data.jobs.totals.count}</strong>
               </div>
               {Object.entries(data.jobs.totals.by_status).map(([status, count]) => (
-                <div key={status} style={summaryPillStyle('#0891b2')}>
+                <div key={status} style={summaryPillStyle('var(--color-accent)')}>
                   <span style={{ textTransform: 'capitalize' }}>{status}</span>
                   <strong>{count}</strong>
                 </div>

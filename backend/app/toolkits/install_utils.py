@@ -22,6 +22,32 @@ class ToolkitManifestError(ValueError):
     pass
 
 
+def _is_noise_directory(path: Path) -> bool:
+    name = path.name
+    return name.startswith("__MACOSX") or name.startswith(".")
+
+
+def _resolve_toolkit_root(source_dir: Path) -> Path:
+    manifest_path = source_dir / "toolkit.json"
+    if manifest_path.exists():
+        return source_dir
+
+    candidates = []
+    for child in source_dir.iterdir() if source_dir.exists() else []:
+        if not child.is_dir():
+            continue
+        if _is_noise_directory(child):
+            continue
+        candidate_manifest = child / "toolkit.json"
+        if candidate_manifest.exists():
+            candidates.append(child)
+
+    if len(candidates) == 1:
+        return candidates[0]
+
+    raise ToolkitManifestError("toolkit.json manifest not found")
+
+
 def load_manifest(path: Path) -> dict:
     if not path.exists():
         raise ToolkitManifestError("toolkit.json manifest not found")
@@ -39,7 +65,8 @@ def install_toolkit_from_directory(
     enable_by_default: bool = True,
     preserve_enabled: bool = True,
 ) -> ToolkitRecord:
-    manifest_path = source_dir / "toolkit.json"
+    toolkit_root = _resolve_toolkit_root(source_dir)
+    manifest_path = toolkit_root / "toolkit.json"
     manifest = load_manifest(manifest_path)
 
     manifest_slug = manifest.get("slug")
@@ -87,19 +114,25 @@ def install_toolkit_from_directory(
             return None
         return Path(value).as_posix()
 
-    frontend_entry = _normalize_frontend_path(frontend_manifest.get("entry"))
+    raw_frontend_entry = frontend_manifest.get("entry")
+    frontend_entry = _normalize_frontend_path(raw_frontend_entry)
     default_entry = Path("frontend") / "dist" / "index.js"
-    if not frontend_entry and (source_dir / default_entry).exists():
+    if not frontend_entry and (toolkit_root / default_entry).exists():
         frontend_entry = default_entry.as_posix()
-    if frontend_entry and not (source_dir / Path(frontend_entry)).exists():
-        frontend_entry = None
+    if frontend_entry and not (toolkit_root / Path(frontend_entry)).exists():
+        raise ToolkitManifestError(
+            f"Frontend entry '{frontend_entry}' declared in toolkit.json was not found in the bundle"
+        )
 
-    frontend_source_entry = _normalize_frontend_path(frontend_manifest.get("source_entry"))
+    raw_source_entry = frontend_manifest.get("source_entry")
+    frontend_source_entry = _normalize_frontend_path(raw_source_entry)
     default_source_entry = Path("frontend") / "index.tsx"
-    if not frontend_source_entry and (source_dir / default_source_entry).exists():
+    if not frontend_source_entry and (toolkit_root / default_source_entry).exists():
         frontend_source_entry = default_source_entry.as_posix()
-    if frontend_source_entry and not (source_dir / Path(frontend_source_entry)).exists():
-        frontend_source_entry = None
+    if frontend_source_entry and not (toolkit_root / Path(frontend_source_entry)).exists():
+        raise ToolkitManifestError(
+            f"Frontend source entry '{frontend_source_entry}' declared in toolkit.json was not found in the bundle"
+        )
 
     # Copy bundle to storage
     storage_dir = Path(settings.toolkit_storage_dir)
@@ -107,7 +140,7 @@ def install_toolkit_from_directory(
     dest_root = storage_dir / slug
     if dest_root.exists():
         shutil.rmtree(dest_root)
-    shutil.copytree(source_dir, dest_root)
+    shutil.copytree(toolkit_root, dest_root)
 
     sentinel = storage_dir / f".bundled-removed-{slug}"
     if sentinel.exists():

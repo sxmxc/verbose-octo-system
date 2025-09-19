@@ -1,0 +1,153 @@
+.tk-card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: 12px;
+  box-shadow: var(--color-card-shadow, var(--color-shadow));
+  padding: 1.5rem;
+}
+
+button,
+.tk-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-button-border);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-button-bg);
+  color: var(--color-button-text);
+  transition: background 0.15s ease, transform 0.15s ease, border 0.15s ease;
+}
+
+button:hover,
+.tk-button:hover {
+  background: var(--color-button-hover-bg);
+  border-color: var(--color-button-hover-border, var(--color-button-border));
+}
+
+button:disabled,
+.tk-button:disabled {
+  background: var(--color-button-disabled-bg);
+  color: var(--color-button-disabled-text);
+  cursor: not-allowed;
+}
+
+button:disabled:hover,
+.tk-button:disabled:hover {
+  background: var(--color-button-disabled-bg);
+  border-color: var(--color-button-border);
+}
+
+.tk-button--primary {
+  background: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
+  border-color: transparent;
+}
+
+.tk-button--primary:hover {
+  background: var(--color-button-primary-hover);
+}
+
+.tk-button--danger {
+  background: var(--color-button-danger-bg);
+  color: var(--color-button-danger-text);
+  border-color: transparent;
+}
+
+.tk-button--danger:hover {
+  background: var(--color-button-danger-hover);
+}
+
+input,
+textarea,
+select,
+.tk-input {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-input-border);
+  background: var(--color-input-bg);
+  color: var(--color-input-text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-input-placeholder);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--color-outline);
+  outline-offset: 1px;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled,
+.tk-input:disabled {
+  background: var(--color-input-disabled-bg);
+  border-color: var(--color-input-disabled-border);
+  color: var(--color-input-disabled-text);
+  cursor: not-allowed;
+}
+
+label,
+.tk-label {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+fieldset,
+.tk-fieldset {
+  border: 1px solid var(--color-card-border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+legend,
+.tk-legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+textarea {
+  resize: vertical;
+}
+
+.tk-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-tag-bg);
+  color: var(--color-tag-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+table thead {
+  background: var(--color-surface-alt);
+}
+
+table tbody tr {
+  border-top: 1px solid var(--color-card-border);
+}
+
+table th,
+table td {
+  padding: 0.5rem 0.75rem;
+}
