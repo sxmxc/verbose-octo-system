@@ -176,7 +176,7 @@ def load_toolkit_workers(
         register = getattr(module, register_attr, None)
         if callable(register):
             try:
-                from backend.worker.tasks import register_handler as core_register_handler
+                from worker.tasks import register_handler as core_register_handler
 
                 sig = signature(register)
                 kwargs = {}
