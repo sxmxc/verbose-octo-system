@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
-import { apiFetch } from '../runtime'
-import type { Job, ZabbixInstance } from './types'
+import { apiFetch, getReactRuntime } from '../runtime'
+import type { Job } from './types'
+import { useZabbixInstances } from './hooks'
 
 
 type HostRowForm = {
@@ -21,7 +22,10 @@ const initialRow: HostRowForm = {
   macros: '',
 }
 
-const iconStyle: React.CSSProperties = {
+const React = getReactRuntime()
+const { useMemo, useState } = React
+
+const iconStyle: CSSProperties = {
   fontSize: '1.1rem',
   lineHeight: 1,
   color: 'var(--color-link)',
@@ -29,35 +33,24 @@ const iconStyle: React.CSSProperties = {
 
 
 export default function ZabbixBulkHostsPage() {
-  const [instances, setInstances] = useState<ZabbixInstance[]>([])
-  const [selectedId, setSelectedId] = useState<string>('')
+  const { instances, selectedId, setSelectedId, selectedInstance, loading, error } = useZabbixInstances()
   const [hostRows, setHostRows] = useState<HostRowForm[]>([initialRow])
   const [resultText, setResultText] = useState('')
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
+  const [busy, setBusy] = useState(false)
 
-  const loadInstances = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await apiFetch<ZabbixInstance[]>('/toolkits/zabbix/instances')
-      setInstances(data)
-      if (data.length > 0) {
-        setSelectedId((prev) => prev || data[0].id)
-      }
-    } catch (err) {
-      setFeedback(err instanceof Error ? err.message : String(err))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const hasInstances = instances.length > 0
 
-  useEffect(() => {
-    loadInstances()
-  }, [loadInstances])
-
-  const selectedInstance = useMemo(
-    () => instances.find((instance) => instance.id === selectedId) ?? null,
-    [instances, selectedId],
+  const buildRowsPayload = useMemo(
+    () => () =>
+      hostRows.map((row) => ({
+        host: row.host,
+        ip: row.ip,
+        groups: splitCsv(row.groups),
+        templates: splitCsv(row.templates),
+        macros: parseKeyValue(row.macros),
+      })),
+    [hostRows],
   )
 
   const updateHostRow = (index: number, field: keyof HostRowForm, value: string) => {
@@ -69,21 +62,14 @@ export default function ZabbixBulkHostsPage() {
 
   const removeHostRow = (index: number) => setHostRows((prev) => prev.filter((_, idx) => idx !== index))
 
-  const buildRowsPayload = () =>
-    hostRows.map((row) => ({
-      host: row.host,
-      ip: row.ip,
-      groups: splitCsv(row.groups),
-      templates: splitCsv(row.templates),
-      macros: parseKeyValue(row.macros),
-    }))
-
   const performDryRun = async () => {
     if (!selectedInstance) {
       setFeedback('Select an instance first.')
       return
     }
     setFeedback(null)
+    setResultText('')
+    setBusy(true)
     try {
       const payload = { rows: buildRowsPayload(), dry_run: true }
       const response = await apiFetch<{ ok: boolean; summary?: unknown }>(
@@ -96,6 +82,8 @@ export default function ZabbixBulkHostsPage() {
       setResultText(JSON.stringify(response, null, 2))
     } catch (err) {
       setResultText(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -105,6 +93,8 @@ export default function ZabbixBulkHostsPage() {
       return
     }
     setFeedback(null)
+    setResultText('')
+    setBusy(true)
     try {
       const payload = { rows: buildRowsPayload(), dry_run: false }
       const response = await apiFetch<{ job: Job }>(
@@ -117,6 +107,8 @@ export default function ZabbixBulkHostsPage() {
       setResultText(`Job queued with id ${response.job.id}`)
     } catch (err) {
       setResultText(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -133,10 +125,14 @@ export default function ZabbixBulkHostsPage() {
           Compose host rows, preview via dry run, or enqueue a job for asynchronous execution.
         </p>
 
-        {loading && <p>Loading instances…</p>}
-        {instances.length === 0 && !loading && <p>Add an instance in Settings before running actions.</p>}
+        {loading && <p style={{ color: 'var(--color-text-secondary)' }}>Loading instances…</p>}
+        {!loading && !hasInstances && <p style={{ color: 'var(--color-text-secondary)' }}>Define at least one instance under Administration.</p>}
 
-        {instances.length > 0 && (
+        {error && (
+          <p style={{ color: 'var(--color-danger-border)' }}>{error}</p>
+        )}
+
+        {hasInstances && (
           <div style={{ display: 'grid', gap: '1.25rem' }}>
             <label className="tk-label" style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem', maxWidth: 320 }}>
               Target instance
@@ -155,7 +151,7 @@ export default function ZabbixBulkHostsPage() {
 
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               {hostRows.map((row, idx) => (
-                <div key={idx} style={rowCardStyle}>
+                <div key={`${idx}-${row.host || 'row'}`} style={rowCardStyle}>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <Field label="Host">
                       <input
@@ -195,15 +191,15 @@ export default function ZabbixBulkHostsPage() {
                     />
                   </Field>
                   {hostRows.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeHostRow(idx)}
-                    className="tk-button tk-button--danger"
-                    style={{ width: 'fit-content' }}
-                  >
-                    <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-danger-border)' }} aria-hidden>
-                      remove_circle
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeHostRow(idx)}
+                      className="tk-button tk-button--danger"
+                      style={{ width: 'fit-content' }}
+                    >
+                      <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-danger-border)' }} aria-hidden>
+                        remove_circle
+                      </span>
                       Remove host
                     </button>
                   )}
@@ -223,17 +219,13 @@ export default function ZabbixBulkHostsPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button type="button" onClick={performDryRun} className="tk-button">
+              <button type="button" onClick={performDryRun} className="tk-button" disabled={busy}>
                 <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
                   preview
                 </span>
                 Dry run
               </button>
-              <button
-                type="button"
-                onClick={performExecute}
-                className="tk-button tk-button--primary"
-              >
+              <button type="button" onClick={performExecute} className="tk-button tk-button--primary" disabled={busy}>
                 <span className="material-symbols-outlined" style={{ ...iconStyle, color: 'var(--color-accent)' }} aria-hidden>
                   play_circle
                 </span>
@@ -269,7 +261,7 @@ export default function ZabbixBulkHostsPage() {
 }
 
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="tk-label" style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
       {label}
@@ -321,9 +313,10 @@ function parseKeyValue(value: string): Record<string, string> {
     .filter(Boolean)
     .forEach((line) => {
       const [key, ...rest] = line.split('=')
-      if (key && rest.length > 0) {
-        result[key.trim()] = rest.join('=').trim()
+      if (!key) {
+        return
       }
+      result[key.trim()] = rest.join('=').trim()
     })
   return result
 }

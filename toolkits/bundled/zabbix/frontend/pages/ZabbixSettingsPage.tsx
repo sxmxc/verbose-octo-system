@@ -1,6 +1,6 @@
-import React, { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import type { ChangeEvent, FormEvent, ReactNode, CSSProperties } from 'react'
 
-import { apiFetch } from '../runtime'
+import { apiFetch, getReactRuntime } from '../runtime'
 import type { ZabbixInstance } from './types'
 
 
@@ -22,14 +22,17 @@ const initialForm: EditableInstance = {
 }
 
 
-const sectionStyle: React.CSSProperties = {
+const React = getReactRuntime()
+const { useCallback, useEffect, useMemo, useState } = React
+
+const sectionStyle: CSSProperties = {
   border: '1px solid var(--color-border)',
   borderRadius: 10,
   padding: '1.25rem',
   background: 'var(--color-surface-alt)',
 }
 
-const iconStyle: React.CSSProperties = {
+const iconStyle: CSSProperties = {
   fontSize: '1.1rem',
   lineHeight: 1,
   color: 'var(--color-link)',
@@ -398,7 +401,7 @@ export default function ZabbixAdministrationPage() {
 }
 
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="tk-label" style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
       {label}
@@ -408,7 +411,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 
-const resultStyle: React.CSSProperties = {
+const resultStyle: CSSProperties = {
   background: 'var(--color-surface)',
   padding: '0.75rem 1rem',
   borderRadius: 8,

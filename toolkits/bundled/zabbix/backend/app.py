@@ -9,10 +9,23 @@ from app.worker_client import enqueue_job
 from .client import ZbxClient
 from .models import (
     BulkAddRequest,
+    BulkExportCatalogEntry,
+    BulkExportPreviewResponse,
+    BulkExportRequest,
+    DbScript,
+    DbScriptExecuteRequest,
     ZabbixInstanceCreate,
     ZabbixInstancePublic,
     ZabbixInstanceUpdate,
     to_public,
+)
+from .catalog import (
+    build_bulk_export_preview,
+    build_db_script_preview,
+    get_bulk_export_catalog,
+    get_db_script,
+    get_db_scripts,
+    validate_db_script_inputs,
 )
 from .storage import create_instance, delete_instance, get_instance, list_instances, update_instance
 
@@ -105,3 +118,72 @@ def bulk_add_hosts_execute(instance_id: str, req: BulkAddRequest):
         },
     )
     return {"job": job}
+
+
+@router.get("/actions/bulk-export/catalog", response_model=List[BulkExportCatalogEntry])
+def bulk_export_catalog():
+    return get_bulk_export_catalog()
+
+
+@router.post("/instances/{instance_id}/actions/bulk-export/preview", response_model=BulkExportPreviewResponse)
+def bulk_export_preview(instance_id: str, req: BulkExportRequest):
+    instance = get_instance(instance_id)
+    if not instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found")
+    summary = build_bulk_export_preview(req)
+    return BulkExportPreviewResponse(summary=summary)
+
+
+@router.post("/instances/{instance_id}/actions/bulk-export/execute")
+def bulk_export_execute(instance_id: str, req: BulkExportRequest):
+    instance = get_instance(instance_id)
+    if not instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found")
+
+    job = enqueue_job(
+        toolkit="zabbix",
+        operation="bulk_export",
+        payload={
+            "instance_id": instance_id,
+            "target": req.target,
+            "format": req.format,
+            "filters": req.filters,
+        },
+    )
+    return {"job": job}
+
+
+@router.get("/db-scripts", response_model=List[DbScript])
+def db_scripts_index():
+    return get_db_scripts()
+
+
+@router.post("/instances/{instance_id}/actions/db-scripts/{script_key}/execute")
+def db_scripts_execute(instance_id: str, script_key: str, req: DbScriptExecuteRequest):
+    instance = get_instance(instance_id)
+    if not instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found")
+
+    script = get_db_script(script_key)
+    if not script:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Script not found")
+
+    try:
+        validate_db_script_inputs(script, req.inputs)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    if req.dry_run:
+        preview = build_db_script_preview(script, req.inputs)
+        return {"ok": True, "preview": preview, "message": "Dry run only. No database changes have been applied."}
+
+    job = enqueue_job(
+        toolkit="zabbix",
+        operation="db_script",
+        payload={
+            "instance_id": instance_id,
+            "script_key": script.key,
+            "inputs": req.inputs,
+        },
+    )
+    return {"ok": True, "job": job, "message": f"Queued database script '{script.name}'."}

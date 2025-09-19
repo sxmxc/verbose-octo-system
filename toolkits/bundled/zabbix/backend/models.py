@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import AnyHttpUrl, BaseModel, Field
 
@@ -54,6 +54,75 @@ class HostRow(BaseModel):
 class BulkAddRequest(BaseModel):
     rows: List[HostRow]
     dry_run: bool = True
+
+
+class BulkExportCatalogEntry(BaseModel):
+    target: Literal['hosts', 'templates', 'hostgroups']
+    label: str
+    description: str
+    supported_formats: List[Literal['json', 'csv']]
+    default_format: Literal['json', 'csv']
+    filter_hint: Optional[str] = None
+    default_filters: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = None
+
+
+class BulkExportRequest(BaseModel):
+    target: Literal['hosts', 'templates', 'hostgroups']
+    format: Literal['json', 'csv'] = 'json'
+    filters: Dict[str, Any] = Field(default_factory=dict)
+
+
+class BulkExportSummary(BaseModel):
+    target: Literal['hosts', 'templates', 'hostgroups']
+    format: Literal['json', 'csv']
+    estimated_records: int
+    sample_fields: List[str]
+    sample_rows: List[Dict[str, Any]]
+    filters_applied: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = None
+
+
+class BulkExportPreviewResponse(BaseModel):
+    ok: bool = True
+    summary: BulkExportSummary
+
+
+class DbScriptInputOption(BaseModel):
+    value: str
+    label: str
+
+
+class DbScriptInput(BaseModel):
+    name: str
+    label: str
+    type: Literal['text', 'textarea', 'select'] = 'text'
+    required: bool = False
+    placeholder: Optional[str] = None
+    help_text: Optional[str] = None
+    options: Optional[List[DbScriptInputOption]] = None
+    default: Optional[str] = None
+
+
+class DbScript(BaseModel):
+    key: str
+    name: str
+    description: str
+    category: Literal['maintenance', 'cleanup', 'diagnostic']
+    danger_level: Literal['info', 'warning', 'danger']
+    inputs: List[DbScriptInput]
+    documentation: Optional[str] = None
+
+
+class DbScriptExecuteRequest(BaseModel):
+    inputs: Dict[str, str] = Field(default_factory=dict)
+    dry_run: bool = True
+
+
+class DbScriptExecutionPreview(BaseModel):
+    ok: bool = True
+    summary: str
+    statements: List[str] = Field(default_factory=list)
 
 
 def to_public(instance: ZabbixInstance) -> ZabbixInstancePublic:

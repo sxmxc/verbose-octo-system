@@ -2,18 +2,15 @@ import type { CSSProperties } from 'react'
 
 import { getReactRuntime, getReactRouterRuntime } from './runtime'
 
-import ZabbixBulkHostsPage from './pages/ZabbixBulkHostsPage'
-import ZabbixOverviewPage from './pages/ZabbixOverviewPage'
-import ZabbixAdministrationPage from './pages/ZabbixSettingsPage'
-import ZabbixBulkExportPage from './pages/ZabbixBulkExportPage'
-import ZabbixDbScriptsPage from './pages/ZabbixDbScriptsPage'
+import ConnectivityOverviewPage from './pages/ConnectivityOverviewPage'
+import TargetsPage from './pages/TargetsPage'
+import AdhocCheckPage from './pages/AdhocCheckPage'
 
 const React = getReactRuntime()
 const ReactRouterDom = getReactRouterRuntime()
 const { NavLink, Navigate, Route, Routes } = ReactRouterDom
 
-
-const toolkitStyles = {
+const layoutStyles = {
   wrapper: {
     padding: '1.5rem',
     display: 'grid',
@@ -45,38 +42,34 @@ const iconStyle: CSSProperties = {
   color: 'var(--color-link)',
 }
 
-
-const subNav = [
-  { label: 'Overview', to: '', icon: 'dashboard' },
-  { label: 'Administration', to: 'administration', icon: 'settings_applications' },
-  { label: 'Bulk Host Actions', to: 'actions/bulk-hosts', icon: 'group_add' },
-  { label: 'Bulk Exports', to: 'actions/bulk-export', icon: 'dataset' },
-  { label: 'Database Scripts', to: 'actions/db-scripts', icon: 'playlist_add_check' },
+const navItems = [
+  { label: 'Overview', to: '', icon: 'dashboard', exact: true },
+  { label: 'Targets', to: 'targets', icon: 'hub', exact: false },
+  { label: 'Ad-hoc Check', to: 'adhoc', icon: 'quick_reference', exact: false },
 ]
 
-
-export default function ZabbixToolkitLayout() {
+export default function ConnectivityToolkitLayout() {
   return (
-    <div className="tk-card" style={toolkitStyles.wrapper}>
+    <div className="tk-card" style={layoutStyles.wrapper}>
       <header>
         <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
           <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
-            hub
+            cell_tower
           </span>
-          Zabbix Toolkit
+          Bulk Connectivity Checker
         </h3>
         <p style={{ margin: '0.3rem 0 0', color: 'var(--color-text-secondary)' }}>
-          Manage Zabbix API endpoints, toolkit settings, and automation actions.
+          Probe large host lists, monitor reachability, and dispatch remediation jobs.
         </p>
       </header>
 
-      <nav style={toolkitStyles.nav}>
-        {subNav.map((item) => (
+      <nav style={layoutStyles.nav}>
+        {navItems.map((item) => (
           <NavLink
             key={item.label}
             to={item.to}
-            end={item.to === ''}
-            style={({ isActive }) => toolkitStyles.navLink(isActive)}
+            end={item.exact}
+            style={({ isActive }) => layoutStyles.navLink(isActive)}
           >
             <span className="material-symbols-outlined" style={iconStyle} aria-hidden>
               {item.icon}
@@ -88,11 +81,9 @@ export default function ZabbixToolkitLayout() {
 
       <section>
         <Routes>
-          <Route index element={<ZabbixOverviewPage />} />
-          <Route path="administration" element={<ZabbixAdministrationPage />} />
-          <Route path="actions/bulk-hosts" element={<ZabbixBulkHostsPage />} />
-          <Route path="actions/bulk-export" element={<ZabbixBulkExportPage />} />
-          <Route path="actions/db-scripts" element={<ZabbixDbScriptsPage />} />
+          <Route index element={<ConnectivityOverviewPage />} />
+          <Route path="targets" element={<TargetsPage />} />
+          <Route path="adhoc" element={<AdhocCheckPage />} />
           <Route path="*" element={<Navigate to="." replace />} />
         </Routes>
       </section>

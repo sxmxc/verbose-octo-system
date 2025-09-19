@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 
-import { apiFetch } from '../runtime'
+import { apiFetch, getReactRuntime } from '../runtime'
 import type { Job, ZabbixInstance } from './types'
 
 
@@ -8,7 +8,10 @@ type JobsSummaryResponse = {
   jobs: Job[]
 }
 
-const iconStyle: React.CSSProperties = {
+const React = getReactRuntime()
+const { useEffect, useState } = React
+
+const iconStyle: CSSProperties = {
   fontSize: '1.1rem',
   lineHeight: 1,
   color: 'var(--color-link)',
