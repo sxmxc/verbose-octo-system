@@ -4,7 +4,14 @@ from typing import Any, Dict
 
 import json
 import base64
-from urllib.parse import urlparse, urlunparse, urlencode, parse_qsl
+from urllib.parse import (
+    urlparse,
+    urlunparse,
+    urlencode,
+    parse_qsl,
+    urlsplit,
+    urlunsplit,
+)
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -81,6 +88,79 @@ async def _complete_provider_login(
     return user, bundle, payload
 
 
+def _default_redirect_target(request: Request) -> tuple[str, set[str]]:
+    """Determine the default redirect target and allowed origins."""
+
+    allowed_origins: set[str] = set()
+    default_target: str | None = None
+
+    if settings.frontend_base_url:
+        candidate = str(settings.frontend_base_url).strip()
+        if candidate:
+            parsed = urlsplit(candidate)
+            if parsed.scheme and parsed.netloc:
+                origin = urlunsplit((parsed.scheme, parsed.netloc, "", "", ""))
+                allowed_origins.add(origin)
+                path = parsed.path or "/"
+                default_target = urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
+            elif candidate.startswith("/"):
+                base_parts = urlsplit(str(request.base_url))
+                origin = urlunsplit((base_parts.scheme, base_parts.netloc, "", "", ""))
+                allowed_origins.add(origin)
+                default_target = urlunsplit((base_parts.scheme, base_parts.netloc, candidate, "", ""))
+
+    request_parts = urlsplit(str(request.base_url))
+    request_origin = urlunsplit((request_parts.scheme, request_parts.netloc, "", "", ""))
+    allowed_origins.add(request_origin)
+
+    if not default_target:
+        path = request_parts.path or "/"
+        default_target = urlunsplit((request_parts.scheme, request_parts.netloc, path, "", ""))
+
+    return default_target, allowed_origins
+
+
+def _resolve_redirect_target(request: Request, candidate: str | None) -> str:
+    """Return a safe redirect target limited to trusted origins."""
+
+    default_target, allowed_origins = _default_redirect_target(request)
+    default_parts = urlsplit(default_target)
+
+    if candidate:
+        trimmed = candidate.strip()
+        if trimmed:
+            parsed = urlsplit(trimmed)
+            # Reject non-http(s) schemes outright.
+            if parsed.scheme and parsed.scheme not in {"http", "https"}:
+                return default_target
+
+            if parsed.netloc:
+                origin = urlunsplit((parsed.scheme, parsed.netloc, "", "", ""))
+                if origin in allowed_origins:
+                    path = parsed.path or "/"
+                    return urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, parsed.fragment))
+                return default_target
+
+            if parsed.scheme and not parsed.netloc:
+                # Schemes without network locations (e.g. mailto) are not allowed.
+                return default_target
+
+            path = parsed.path or "/"
+            if not path.startswith("/"):
+                path = f"/{path}"
+            return urlunsplit(
+                (
+                    default_parts.scheme,
+                    default_parts.netloc,
+                    path,
+                    parsed.query,
+                    parsed.fragment,
+                )
+            )
+
+    return default_target
+
+
 @router.get("/providers", summary="List authentication providers")
 async def list_providers() -> Dict[str, Any]:
     return {"providers": list_provider_metadata()}
@@ -113,14 +193,7 @@ async def _handle_provider_callback(
             state_data = verify_state(state_token, max_age=settings.auth_sso_state_ttl_seconds)
         except ValueError:
             state_data = None
-    target = None
-    if state_data:
-        target = state_data.get("next")
-    if not target:
-        if settings.frontend_base_url:
-            target = str(settings.frontend_base_url)
-        else:
-            target = str(request.base_url).rstrip('/')
+    target = _resolve_redirect_target(request, state_data.get("next") if state_data else None)
 
     try:
         encoded_payload = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8").rstrip("=")
