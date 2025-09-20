@@ -4,8 +4,8 @@ from typing import Any, Callable, Dict, Iterable, List, Sequence
 
 from app.services import jobs as job_store
 
-from ..backend.probes import execute_probe
-from ..backend.storage import get_template, record_probe_result
+from backend.probes import execute_probe
+from backend.storage import get_template, record_probe_result
 
 JobPayload = Dict[str, Any]
 JobRecord = Dict[str, Any]
