@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pydantic import BaseModel, Field
+
 from ..db.session import get_session
+from ..config import settings
 from ..security.dependencies import require_superuser
 from ..services.provider_configs import ProviderConfigService
 from ..services.users import UserService
+from ..secrets import VaultSecretRef, write_vault_secret
 
 router = APIRouter(prefix="/admin/settings", tags=["admin-settings"])
 
@@ -23,6 +27,14 @@ def _serialize(record) -> Dict[str, Any]:
     config_payload.setdefault("type", record.type)
     config_payload.setdefault("enabled", record.enabled)
     return config_payload
+
+
+class VaultSecretCreateRequest(BaseModel):
+    mount: Optional[str] = Field(default=None, description="Vault mount point (defaults to VAULT_KV_MOUNT)")
+    path: str
+    key: str
+    engine: Literal["kv-v2", "kv-v1"] = "kv-v2"
+    value: str
 
 
 @router.get("/providers")
@@ -64,6 +76,51 @@ async def upsert_provider_config(
     )
     await session.commit()
     return _serialize(record)
+
+
+@router.post("/providers/vault-secret", status_code=status.HTTP_201_CREATED)
+async def create_vault_secret(
+    payload: VaultSecretCreateRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user=Depends(require_superuser),
+) -> Dict[str, Any]:
+    ref = VaultSecretRef(
+        mount=payload.mount,
+        path=payload.path,
+        key=payload.key,
+        engine=payload.engine,
+    )
+    try:
+        write_vault_secret(settings, ref, payload.value)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    user_service = UserService(session)
+    await user_service.audit(
+        user=None,
+        actor=current_user,
+        event="security.provider.vault_secret.upsert",
+        payload={
+            "mount": ref.mount or settings.vault_kv_mount,
+            "path": ref.path,
+            "key": ref.key,
+            "engine": ref.engine,
+        },
+        source_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        target_type="vault_secret",
+        target_id=f"{ref.mount or settings.vault_kv_mount}:{ref.path}:{ref.key}",
+    )
+    await session.commit()
+    return {
+        "ref": {
+            "mount": ref.mount,
+            "path": ref.path,
+            "key": ref.key,
+            "engine": ref.engine,
+        }
+    }
 
 
 @router.delete(

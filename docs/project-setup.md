@@ -27,6 +27,10 @@ Follow this guide when cloning the repo or preparing a new development environme
 
 > **Security note**: The Vite dev server only whitelists `frontend/` and bundled toolkit sources under `toolkits/bundled/`. Keep
 > toolkit code you want hot reloaded inside that directory so you don't need to broaden the filesystem allowlist.
+>
+> For authentication flows the dev server proxies `/auth` to the backend API. Point it at your API origin by exporting
+> `VITE_DEV_API_PROXY=http://localhost:8080` (or set `VITE_API_BASE_URL`). This keeps refresh cookies scoped to the API host
+> while allowing the SPA to perform SSO hand-offs locally.
 
 ## Docker Compose (all services)
 1. Copy `.env.example` to `.env` and adjust values.
@@ -43,14 +47,28 @@ Follow this guide when cloning the repo or preparing a new development environme
 - Uploaded bundle filenames are normalised—directory segments are stripped and collisions gain a random suffix before the artefact is persisted.
 
 ## Secrets Manager (HashiCorp Vault)
-- Compose now starts a `vault` container alongside the API, worker, Redis, and Postgres. The instance uses file storage under `./vault-data` and exposes the UI and API on `http://localhost:8200`.
+- Compose now starts a `vault` container alongside the API, worker, Redis, and Postgres. The instance uses file storage under `./vault-data` and exposes the UI and API on `http://localhost:<VAULT_HOST_PORT>` (defaults to `8200`). If the port conflicts locally, set **both** `VAULT_LISTEN_PORT` and `VAULT_HOST_PORT` (and adjust `VAULT_ADDR` / `VAULT_API_ADDR`) so the container and host stay in sync.
+- Vault configuration now lives in `config/vault/local.hcl`. Tweak listener/storage settings there if you need to bind to a different port or enable TLS.
 - One-time initialization:
   ```bash
   docker compose up -d vault
-  docker compose exec vault vault operator init -key-shares=1 -key-threshold=1
-  docker compose exec vault vault operator unseal <unseal-key>
+  # Ensure the data directory is writable (only needed the first time you create the volume).
+  docker compose exec --user root vault sh -c 'chown -R vault:vault /vault/data'
+  # Inside the container the API is served over HTTP; point the CLI at that address.
+  docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
+    vault operator init -key-shares=1 -key-threshold=1
+  docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
+    vault operator unseal <unseal-key>
   ```
   Store the generated recovery key and root token securely; the commands above output them once.
+  Save the unseal key (and optionally the root token) into `config/vault/unseal.key`. The Vault container reads it
+  via `/vault/config/unseal.key` (set through `VAULT_UNSEAL_KEY_FILE`) and will auto-unseal on subsequent restarts.
+  Keep the file out of version control and restrict permissions.
+  > **Why manual?** Vault protects the master key with Shamir secret sharing. Automating `init` / `unseal`
+  > would require baking the unseal keys or a KMS integration into the image, which defeats the purpose
+  > for anything other than local development. If you need a zero-touch dev workflow, run Vault in `-dev`
+  > mode (`VAULT_DEV_ROOT_TOKEN_ID`, `VAULT_DEV_LISTEN_ADDRESS`) or integrate an auto-unseal backend
+  > such as AWS KMS / GCP Cloud KMS.
 - Enable a KV v2 secrets engine and seed credentials (adjust the mount and paths to match your org):
   ```bash
   docker compose exec vault vault login <root-or-approle-token>

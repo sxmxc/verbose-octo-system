@@ -7,7 +7,8 @@ import remarkGfm from 'remark-gfm'
 import { MaterialIcon } from '../components/MaterialIcon'
 
 const documentationModules = import.meta.glob<string>('../../documentation/**/*.md', {
-  as: 'raw',
+  query: '?raw',
+  import: 'default',
   eager: true,
 })
 

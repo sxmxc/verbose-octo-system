@@ -38,11 +38,75 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+type AuthExtractionResult = {
+  encoded: string
+  cleaned: string
+}
+
+function extractAuthFromHash(hash: string): AuthExtractionResult | null {
+  if (!hash) return null
+  const trimmed = hash.startsWith('#') ? hash.slice(1) : hash
+  if (!trimmed) return null
+
+  const hasQuery = trimmed.includes('?')
+  if (!hasQuery) {
+    const params = new URLSearchParams(trimmed)
+    const encoded = params.get('auth')
+    if (!encoded) {
+      return null
+    }
+    params.delete('auth')
+    return { encoded, cleaned: params.toString() }
+  }
+
+  const queryIndex = trimmed.indexOf('?')
+  const rawPath = trimmed.slice(0, queryIndex)
+  let pathPart = rawPath
+  if (rawPath) {
+    try {
+      pathPart = decodeURIComponent(rawPath)
+    } catch (err) {
+      console.warn('Failed to decode auth hash path', err)
+      pathPart = rawPath
+    }
+  }
+  const queryPart = trimmed.slice(queryIndex + 1)
+  const queryParams = new URLSearchParams(queryPart)
+  const encoded = queryParams.get('auth')
+  if (!encoded) {
+    return null
+  }
+  queryParams.delete('auth')
+  const remainingQuery = queryParams.toString()
+  const cleaned = pathPart
+    ? remainingQuery
+      ? `${pathPart}?${remainingQuery}`
+      : pathPart
+    : remainingQuery
+  return { encoded, cleaned }
+}
+
+function extractAuthFromSearch(search: string): AuthExtractionResult | null {
+  if (!search) return null
+  const trimmed = search.startsWith('?') ? search.slice(1) : search
+  if (!trimmed) return null
+
+  const params = new URLSearchParams(trimmed)
+  const encoded = params.get('auth')
+  if (!encoded) {
+    return null
+  }
+  params.delete('auth')
+  return { encoded, cleaned: params.toString() }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [providers, setProviders] = useState<AuthProviderMetadata[]>([])
   const [loading, setLoading] = useState(true)
   const loadingRef = useRef(false)
+  const authConsumedRef = useRef(false)
+  const [handshakeComplete, setHandshakeComplete] = useState(false)
 
   const loadProviders = useCallback(async () => {
     try {
@@ -78,35 +142,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 
   const beginSso = useCallback(async (providerName: string) => {
-    // Attempt to open window before async work to avoid popup blockers
-    const popup = typeof window !== 'undefined' ? window.open('', 'sre-toolbox-auth', 'width=520,height=640') : null
-    try {
-      const params = new URLSearchParams()
+    const params = new URLSearchParams()
+    if (typeof window !== 'undefined') {
+      params.set('next', window.location.origin)
+    }
+    const response = await apiFetch<{ type: string; url?: string }>(
+      `/auth/providers/${providerName}/begin?${params.toString()}`,
+      { method: 'POST', retry: false }
+    )
+    if (response.type === 'redirect' && response.url) {
       if (typeof window !== 'undefined') {
-        params.set('next', window.location.origin)
-        params.set('mode', 'popup')
+        window.location.href = response.url
       }
-      const response = await apiFetch<{ type: string; url?: string }>(
-        `/auth/providers/${providerName}/begin?${params.toString()}`,
-        { retry: false }
-      )
-      if (response.type === 'redirect' && response.url) {
-        if (popup) {
-          popup.location.href = response.url
-        } else {
-          window.open(response.url, '_blank', 'noopener')
-        }
-      } else if (response.type === 'form') {
-        if (popup) {
-          popup.close()
-        }
-        throw new Error('Provider requires credential form login. Use username/password instead.')
-      }
-    } catch (err) {
-      if (popup && !popup.closed) {
-        popup.close()
-      }
-      throw err
+    } else if (response.type === 'form') {
+      throw new Error('Provider requires credential form login. Use username/password instead.')
     }
   }, [])
 
@@ -131,7 +180,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (loadingRef.current) {
+    if (typeof window !== 'undefined' && !authConsumedRef.current) {
+      const url = new URL(window.location.href)
+      let cleanupSource: 'hash' | 'search' | null = null
+      let cleanupValue = ''
+      let encoded: string | null = null
+
+      const hashExtraction = extractAuthFromHash(url.hash)
+      if (hashExtraction) {
+        encoded = hashExtraction.encoded
+        cleanupSource = 'hash'
+        cleanupValue = hashExtraction.cleaned
+      } else {
+        const searchExtraction = extractAuthFromSearch(url.search)
+        if (searchExtraction) {
+          encoded = searchExtraction.encoded
+          cleanupSource = 'search'
+          cleanupValue = searchExtraction.cleaned
+        }
+      }
+
+      if (encoded) {
+        const padded = encoded + '==='.slice((encoded.length + 3) % 4)
+        try {
+          const normalized = padded.replace(/-/g, '+').replace(/_/g, '/')
+          const decoded = JSON.parse(atob(normalized)) as { access_token?: string; user?: AuthUser }
+          const payload = decoded
+          if (payload?.access_token) {
+            setAccessToken(payload.access_token)
+          }
+          if (payload?.user) {
+            setUser(payload.user)
+          } else {
+            // Ensure we refresh user data if not provided.
+            refreshUser().catch((err) => console.warn('Failed to refresh user after SSO handoff', err))
+          }
+        } catch (err) {
+          console.warn('Failed to parse auth handoff payload', err)
+        }
+        if (cleanupSource === 'hash') {
+          url.hash = cleanupValue
+        } else if (cleanupSource === 'search') {
+          url.search = cleanupValue
+        }
+        if (cleanupSource) {
+          window.history.replaceState({}, '', url.toString())
+        }
+      }
+      authConsumedRef.current = true
+    }
+    setHandshakeComplete(true)
+  }, [refreshUser])
+
+  useEffect(() => {
+    if (!handshakeComplete || loadingRef.current) {
       return
     }
     loadingRef.current = true
@@ -164,7 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true
       loadingRef.current = false
     }
-  }, [loadProviders, refreshUser])
+  }, [handshakeComplete, loadProviders, refreshUser])
 
   useEffect(() => {
     if (typeof window === 'undefined') {

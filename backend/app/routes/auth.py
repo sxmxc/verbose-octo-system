@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
+import json
+import base64
+from urllib.parse import urlparse, urlunparse, urlencode, parse_qsl
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -91,11 +95,10 @@ async def begin_provider_flow(provider_name: str, request: Request) -> Dict[str,
     return result
 
 
-@router.get("/providers/{provider_name}/callback", summary="Complete SSO callback")
-async def provider_callback(
+async def _handle_provider_callback(
     provider_name: str,
     request: Request,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession,
 ) -> Response:
     provider = get_provider(provider_name)
     if not provider:
@@ -103,52 +106,57 @@ async def provider_callback(
     state_data: Dict[str, Any] | None = None
     user, bundle, payload = await _complete_provider_login(provider, request, session)
     response: Response
-    # Attempt to recover state context for SPA popup handling.
+    # Attempt to recover state context for redirect/popup handling.
     state_token = request.query_params.get("state")
     if state_token:
         try:
             state_data = verify_state(state_token, max_age=settings.auth_sso_state_ttl_seconds)
         except ValueError:
             state_data = None
-    if state_data and state_data.get("mode") == "popup":
-        from urllib.parse import urlparse
-        import json as _json
+    target = None
+    if state_data:
+        target = state_data.get("next")
+    if not target:
+        if settings.frontend_base_url:
+            target = str(settings.frontend_base_url)
+        else:
+            target = str(request.base_url).rstrip('/')
 
-        next_hint = state_data.get("next") or str(settings.frontend_base_url or request.base_url)
-        parsed = urlparse(next_hint)
-        target_origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme else next_hint
-        message = {
-            "type": "sre-toolbox:auth",
-            "payload": payload,
-        }
-        script = f"""
-        <!DOCTYPE html>
-        <html lang=\"en\">
-        <head>
-          <meta charset=\"utf-8\" />
-          <title>Authentication Complete</title>
-        </head>
-        <body>
-          <script>
-            (function () {{
-              var message = { _json.dumps(message) };
-              var targetOrigin = { _json.dumps(target_origin) };
-              if (window.opener && !window.opener.closed) {{
-                window.opener.postMessage(message, targetOrigin);
-                window.close();
-              }} else {{
-                window.location.assign(targetOrigin || '/');
-              }}
-            }})();
-          </script>
-        </body>
-        </html>
-        """
-        response = HTMLResponse(content=script)
-    else:
-        response = JSONResponse(payload)
+    try:
+        encoded_payload = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("utf-8").rstrip("=")
+    except Exception:  # pragma: no cover - defensive encoding fallback
+        encoded_payload = ""
+
+    parsed = urlparse(target)
+    fragment_params = dict(parse_qsl(parsed.fragment))
+    if encoded_payload:
+        fragment_params["auth"] = encoded_payload
+    rebuilt_fragment = urlencode(fragment_params)
+    rebuilt_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path or "/", parsed.params, parsed.query, rebuilt_fragment))
+    response = RedirectResponse(url=rebuilt_url, status_code=status.HTTP_303_SEE_OTHER)
     _set_refresh_cookie(response, bundle)
     return response
+
+
+@router.get("/providers/{provider_name}/callback", summary="Complete SSO callback")
+async def provider_callback(
+    provider_name: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    return await _handle_provider_callback(provider_name, request, session)
+
+
+@router.get(
+    "/sso/{provider_name}/callback",
+    summary="Complete SSO callback (SSO redirect endpoint)",
+)
+async def provider_sso_callback(
+    provider_name: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    return await _handle_provider_callback(provider_name, request, session)
 
 
 @router.post("/login/{provider_name}", summary="Authenticate using provider")

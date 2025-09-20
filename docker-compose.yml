@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: sre-toolbox-api
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     env_file: .env
     environment:
       PYTHONPATH: /app
@@ -38,6 +39,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: sre-toolbox-worker
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     env_file: .env
     environment:
       PYTHONPATH: /app
@@ -52,6 +54,7 @@ services:
       VAULT_AUTH_METHOD: ${VAULT_AUTH_METHOD:-token}
       VAULT_APPROLE_ROLE_ID: ${VAULT_APPROLE_ROLE_ID:-}
       VAULT_APPROLE_SECRET_ID: ${VAULT_APPROLE_SECRET_ID:-}
+      CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP: ${CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -71,28 +74,16 @@ services:
     restart: unless-stopped
     cap_add:
       - IPC_LOCK
+    entrypoint: ["/vault/init-unseal.sh"]
+    env_file: .env
     environment:
-      VAULT_LOCAL_CONFIG: |
-        {
-          "ui": true,
-          "storage": {
-            "file": {
-              "path": "/vault/data"
-            }
-          },
-          "listener": {
-            "tcp": {
-              "address": "0.0.0.0:8200",
-              "tls_disable": 1
-            }
-          },
-          "default_lease_ttl": "168h",
-          "max_lease_ttl": "720h"
-        }
+      VAULT_SERVER_CONFIG_PATH: /vault/config/local.hcl
     ports:
-      - "8200:8200"
+      - "${VAULT_HOST_PORT:-8200}:${VAULT_LISTEN_PORT:-8200}"
     volumes:
       - vault-data:/vault/data
+      - ./config/vault:/vault/config:ro
+      - ./docker/vault/entrypoint.sh:/vault/init-unseal.sh:ro
 
   db:
     image: postgres:15-alpine

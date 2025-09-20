@@ -49,6 +49,8 @@ def _instantiate_provider(config_obj: AuthProviderSettings | dict) -> AuthProvid
     else:
         payload = dict(config_obj)
         provider_type = payload.get("type")
+        if provider_type:
+            payload = settings.__class__._resolve_provider_secrets(settings, payload, provider_type)
     if not provider_type:
         return None
     factory = _PROVIDER_FACTORIES.get(provider_type)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
 import hvac
 from hvac.exceptions import InvalidPath, VaultError
@@ -94,3 +94,46 @@ def read_vault_secret(settings: "Settings", ref: VaultSecretRef) -> str:
             f"Vault secret '{mount}/{ref.path}' does not contain key '{ref.key}'."
         )
     return str(value)
+
+
+def write_vault_secret(settings: "Settings", ref: VaultSecretRef, value: str) -> None:
+    client = get_vault_client(settings)
+    mount = ref.mount or settings.vault_kv_mount
+    if not mount:
+        raise RuntimeError("Vault mount is not configured. Set VAULT_KV_MOUNT or specify mount in client configuration.")
+    data: Dict[str, str]
+    try:
+        if ref.engine == "kv-v2":
+            payload = client.secrets.kv.v2.read_secret_version(
+                mount_point=mount,
+                path=ref.path,
+            )
+            data = dict(payload.get("data", {}).get("data", {}))
+        else:
+            payload = client.secrets.kv.v1.read_secret(
+                mount_point=mount,
+                path=ref.path,
+            )
+            data = dict(payload.get("data", {}))
+    except InvalidPath:
+        data = {}
+    except VaultError as exc:
+        raise RuntimeError(f"Vault error while reading '{mount}/{ref.path}': {exc}") from exc
+
+    data[ref.key] = value
+
+    try:
+        if ref.engine == "kv-v2":
+            client.secrets.kv.v2.create_or_update_secret(
+                mount_point=mount,
+                path=ref.path,
+                secret=data,
+            )
+        else:
+            client.secrets.kv.v1.create_or_update_secret(
+                mount_point=mount,
+                path=ref.path,
+                secret=data,
+            )
+    except VaultError as exc:
+        raise RuntimeError(f"Vault error while writing '{mount}/{ref.path}': {exc}") from exc

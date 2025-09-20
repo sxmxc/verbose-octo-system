@@ -4,14 +4,14 @@ This guide explains how to configure OpenID Connect (OIDC), LDAP, and Active Dir
 
 ## Configuration Sources
 
-The backend loads provider definitions in priority order:
+The backend resolves providers in this order:
 
-1. Objects provided directly to `settings.auth_providers` (rare).
+1. Objects provided directly to `settings.auth_providers` (mostly for tests).
 2. JSON from the `AUTH_PROVIDERS_JSON` environment variable.
-3. A JSON file referenced by `AUTH_PROVIDERS_FILE` (recommended for production).
-4. Runtime updates made through **Administration → Auth settings** in the UI.
+3. A JSON file referenced by `AUTH_PROVIDERS_FILE`.
+4. Records saved through **Administration → Auth settings** in the UI (stored in the `auth_provider_configs` table).
 
-The first non-empty source wins. To keep things declarative, copy `config/auth-providers.example.json` to `config/auth-providers.json`, adjust the entries, and set `AUTH_PROVIDERS_FILE=./config/auth-providers.json` in `.env`. Docker Compose mounts the `./config` directory into the API and worker containers.
+For day-to-day operations we recommend using the UI—the configuration is editable without redeploying and lives in the database. The admin screen now offers provider-aware forms (OIDC, LDAP, Active Directory) so you only supply the relevant fields; Vault references for secrets are handled inline and you can create new KV entries on the fly without leaving the console. The JSON / env hooks exist purely for bootstrap automation or GitOps workflows. If you do not set `AUTH_PROVIDERS_JSON` or `AUTH_PROVIDERS_FILE`, the UI becomes the source of truth.
 
 ## Vault-backed Secrets
 
@@ -41,12 +41,13 @@ Enable Vault lookups by configuring the environment variables documented in `.en
 
 ## OIDC Quick Start
 
-1. **Create an OIDC application** with your identity provider (Okta, Azure AD, Google Workspace, Ping, etc.). Include `https://<toolbox-host>/auth/sso/<provider-name>/callback` and, for local development, `http://localhost:5173/auth/sso/<provider-name>/callback` as redirect URIs.
+1. **Create an OIDC application** with your identity provider (Okta, Azure AD, Google Workspace, Ping, etc.). Include `https://<toolbox-host>/auth/sso/<provider-name>/callback` and, for local development, `http://localhost:8080/auth/sso/<provider-name>/callback` (the API origin) as redirect URIs. When the SPA and API are hosted behind the same public hostname, proxy the `/auth` path to the API so the callback remains on the backend service.
 2. **Store the client secret** in Vault:
    ```bash
    vault kv put sre/auth/okta client_secret="<client-secret>"
    ```
    You can include other metadata (client ID, tenant) in the same payload for convenience.
+   > Tip: In the admin UI, choose **Create new Vault secret** to write the value straight into Vault without leaving the console.
 3. **Add the provider** to `config/auth-providers.json`:
    ```json
    {
@@ -60,7 +61,7 @@ Enable Vault lookups by configuring the environment variables documented in `.en
        "path": "auth/okta",
        "key": "client_secret"
      },
-     "redirect_base_url": "http://localhost:5173",
+     "redirect_base_url": "http://localhost:8080",
      "scopes": ["openid", "profile", "email"],
      "group_claim": "groups",
      "role_mappings": {
@@ -70,6 +71,8 @@ Enable Vault lookups by configuring the environment variables documented in `.en
    }
    ```
 4. **Restart the API** (or toggle any provider in the admin UI). A login button labelled "Okta" appears on the welcome screen once the provider is enabled.
+
+The UI exposes a **Load metadata** button in the OIDC form—paste the discovery URL (or use the Keycloak helper) and the issuer/endpoints are fetched automatically. It also shows the exact callback (always on the API origin) and post-logout URLs so you can copy them into the IdP configuration. When developing locally, set `redirect_base_url` to `http://localhost:8080` (or the API host) so the backend can finish the OAuth exchange and mint refresh cookies for the SPA. The Vite dev server proxies `/auth` to that API origin via the `VITE_DEV_API_PROXY` environment variable.
 
 ### Additional OIDC tips
 
