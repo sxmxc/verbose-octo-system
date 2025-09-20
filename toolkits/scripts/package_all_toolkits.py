@@ -57,7 +57,11 @@ def package_all(toolkits_dir: pathlib.Path, destination: pathlib.Path, overwrite
 
 
 def ensure_frontend_bundle(toolkit_dir: pathlib.Path, manifest: dict) -> None:
-    frontend = manifest.get("frontend") or {}
+    frontend = manifest.get("frontend")
+    if not frontend:
+        return
+
+    frontend = frontend or {}
     entry_rel = frontend.get("entry") or "frontend/dist/index.js"
     entry_path = toolkit_dir / entry_rel
 
