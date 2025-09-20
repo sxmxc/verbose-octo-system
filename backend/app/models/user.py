@@ -106,7 +106,12 @@ class AuditLog(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     event: Mapped[str] = mapped_column(String(128))
+    severity: Mapped[str] = mapped_column(String(32), default="info", server_default="info")
     payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    target_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     user: Mapped[User | None] = relationship("User", viewonly=True)

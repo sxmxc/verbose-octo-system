@@ -10,6 +10,7 @@ import toolkitPrimitivesStyles from './toolkitPrimitives.css?inline'
 import { useAuth } from './AuthContext'
 import AdminToolkitsPage from './pages/AdminToolkitsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import AdminSecurityPage from './pages/AdminSecurityPage'
 import AuthSettingsPage from './pages/AuthSettingsPage'
 import DashboardPage from './pages/DashboardPage'
 import DocumentationPage from './pages/DocumentationPage'
@@ -250,6 +251,7 @@ export default function AppShell() {
   const canAdminToolkits = hasRole('toolkit.curator')
   const canManageUsers = hasRole('toolkit.curator')
   const canManageAuth = user?.is_superuser ?? false
+  const canViewSecurity = hasRole('system.admin')
 
   return (
     <div style={layoutStyles.app}>
@@ -284,7 +286,7 @@ export default function AppShell() {
             </div>
           </SidebarSection>
 
-          {(canAdminToolkits || canManageUsers || canManageAuth) && (
+          {(canAdminToolkits || canManageUsers || canManageAuth || canViewSecurity) && (
             <SidebarSection
               title="Administration"
               icon="admin_panel_settings"
@@ -293,6 +295,7 @@ export default function AppShell() {
               {canAdminToolkits && <SidebarLink to="/admin/toolkits" label="Toolkits" icon="tune" />}
               {canManageUsers && <SidebarLink to="/admin/users" label="Users" icon="group" />}
               {canManageAuth && <SidebarLink to="/admin/settings/auth" label="Auth settings" icon="security" />}
+              {canViewSecurity && <SidebarLink to="/admin/security/audit" label="Security" icon="shield_lock" />}
             </SidebarSection>
           )}
         </nav>
@@ -356,6 +359,14 @@ export default function AppShell() {
                 <RequireSuperuser>
                   <AuthSettingsPage />
                 </RequireSuperuser>
+              }
+            />
+            <Route
+              path="/admin/security/audit"
+              element={
+                <RequireRole role="system.admin">
+                  <AdminSecurityPage />
+                </RequireRole>
               }
             />
             <Route path="/modules/*" element={<Navigate to="/toolkits" replace />} />

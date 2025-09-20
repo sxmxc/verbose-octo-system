@@ -8,8 +8,10 @@ from sqlalchemy import inspect, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.user import AuditLog, Role, SsoIdentity, User
+from ..models.user import Role, SsoIdentity, User
+from ..security.audit_events import get_audit_event
 from ..security.roles import ROLE_DEFINITIONS
+from .audit import AuditService
 
 
 class UserService:
@@ -118,13 +120,38 @@ class UserService:
     async def mark_login(self, user: User) -> None:
         user.last_login_at = datetime.now(timezone.utc)
 
-    async def audit(self, *, user: User | None, event: str, payload: dict | None = None) -> None:
-        record = AuditLog(
-            user_id=user.id if user else None,
+    async def audit(
+        self,
+        *,
+        user: User | None,
+        event: str,
+        payload: dict | None = None,
+        actor: User | None = None,
+        severity: str | None = None,
+        source_ip: str | None = None,
+        user_agent: str | None = None,
+        target_type: str | None = None,
+        target_id: str | None = None,
+    ) -> None:
+        audit_service = AuditService(self.session)
+        effective_actor = actor or user
+        effective_target_type = target_type
+        effective_target_id = target_id
+        if user and not effective_target_type and not effective_target_id:
+            effective_target_type = "user"
+            effective_target_id = user.id
+        definition = get_audit_event(event)
+        effective_severity = severity or (definition.severity if definition else "info")
+        await audit_service.log(
+            actor=effective_actor,
             event=event,
-            payload=json.dumps(payload or {}, ensure_ascii=False) if payload else None,
+            severity=effective_severity,
+            payload=payload,
+            source_ip=source_ip,
+            user_agent=user_agent,
+            target_type=effective_target_type,
+            target_id=effective_target_id,
         )
-        self.session.add(record)
 
     async def list_users(self) -> list[User]:
         stmt = select(User).options(selectinload(User.roles))

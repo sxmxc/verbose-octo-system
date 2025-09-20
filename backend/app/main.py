@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import settings
 from .bootstrap import bootstrap_admin_user, ensure_core_roles
 from .db.session import SessionLocal, init_db
+from .routes.admin_security import router as admin_security_router
 from .routes.admin_settings import router as admin_settings_router
 from .routes.admin_users import router as admin_users_router
 from .routes.auth import router as auth_router
@@ -50,6 +51,7 @@ app.include_router(toolkit_docs_router, prefix="/toolkits/docs", tags=["toolkits
 app.include_router(auth_router)
 app.include_router(admin_users_router)
 app.include_router(admin_settings_router)
+app.include_router(admin_security_router)
 
 
 @app.on_event("startup")

@@ -8,10 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..services.auth import AuthService
+from ..services.users import UserService
 from ..security.dependencies import get_current_user
 from ..security.registry import get_provider, list_provider_metadata
 from ..security.state import verify_state
-from ..security.tokens import TokenBundle
+from ..security.tokens import TokenBundle, TokenError, decode_token
 from ..db.session import get_session
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -55,11 +56,18 @@ async def _complete_provider_login(
     auth_service = AuthService(session)
     try:
         auth_result = await provider.complete(request, session)
-        user = await auth_service.resolve_user(provider, auth_result)
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        user = await auth_service.resolve_user(
+            provider,
+            auth_result,
+            source_ip=client_ip,
+            user_agent=user_agent,
+        )
         bundle = await auth_service.issue_tokens(
             user,
             provider,
-            client_info=request.headers.get("user-agent"),
+            client_info=user_agent,
         )
         await session.commit()
     except Exception:
@@ -170,7 +178,13 @@ async def refresh_token(
     if not refresh_token_value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Refresh token missing")
     auth_service = AuthService(session)
-    bundle = await auth_service.refresh_tokens(refresh_token_value)
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    bundle = await auth_service.refresh_tokens(
+        refresh_token_value,
+        source_ip=client_ip,
+        user_agent=user_agent,
+    )
     await session.commit()
     response = JSONResponse(
         {
@@ -189,9 +203,29 @@ async def logout(
     session: AsyncSession = Depends(get_session),
 ) -> Response:
     refresh_token_value = request.cookies.get("refresh_token")
+    user_service = UserService(session)
+    actor_user = None
     if refresh_token_value:
+        try:
+            payload = decode_token(refresh_token_value, verify_exp=False)
+            user_id = payload.get("sub")
+            if user_id:
+                actor_user = await user_service.get_by_id(user_id)
+        except TokenError:
+            actor_user = None
         auth_service = AuthService(session)
         await auth_service.revoke_refresh_token(refresh_token_value)
+        await session.commit()
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    if actor_user:
+        await user_service.audit(
+            user=actor_user,
+            actor=actor_user,
+            event="auth.logout",
+            source_ip=client_ip,
+            user_agent=user_agent,
+        )
         await session.commit()
     response = JSONResponse({"detail": "Logged out"})
     response.delete_cookie("refresh_token", path="/auth/refresh", domain=settings.auth_cookie_domain)
