@@ -22,7 +22,7 @@
 - [ ] Document secret provisioning workflow for operators (Vault policies, rotations, bootstrap tokens).
 
 ## Infrastructure & Tooling
-- [ ] Tighten `frontend/vite.config.ts` dev-server `fs.allow` list to the bare minimum.
+- [x] Tighten `frontend/vite.config.ts` dev-server `fs.allow` list to the bare minimum.
 - [ ] Remove default Postgres credentials from `docker-compose.yml` (force overrides or prompt at deploy time).
 - [ ] Add automated tests covering slug fuzzing and toolkit activation edge cases.
 - [x] Add automated test to reject malicious zip uploads during toolkit installation.
