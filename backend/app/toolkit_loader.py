@@ -174,30 +174,33 @@ def load_toolkit_workers(
 
         register_attr = toolkit.worker_register_attr or "register"
         register = getattr(module, register_attr, None)
-        if callable(register):
-            try:
-                from worker.tasks import register_handler as core_register_handler
-
-                sig = signature(register)
-                kwargs = {}
-                if any(
-                    param.kind in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY)
-                    and param.name == "register_handler"
-                    for param in sig.parameters.values()
-                ):
-                    kwargs["register_handler"] = core_register_handler
-                elif any(param.kind == Parameter.VAR_KEYWORD for param in sig.parameters.values()):
-                    kwargs["register_handler"] = core_register_handler
-
-                register(celery_app, **kwargs)
-            except Exception as exc:  # pragma: no cover - defensive logging
-                print(
-                    f"[toolkit] Worker register callable failed for {toolkit.worker_module!r}: {exc}"
-                )
-        else:
+        if not callable(register):
             print(
                 f"[toolkit] Worker module {toolkit.worker_module!r} missing register callable {register_attr!r}"
             )
+            continue
+
+        try:
+            from worker.tasks import register_handler as core_register_handler
+
+            sig = signature(register)
+            kwargs = {}
+            if any(
+                param.kind in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY)
+                and param.name == "register_handler"
+                for param in sig.parameters.values()
+            ):
+                kwargs["register_handler"] = core_register_handler
+            elif any(param.kind == Parameter.VAR_KEYWORD for param in sig.parameters.values()):
+                kwargs["register_handler"] = core_register_handler
+
+            register(celery_app, **kwargs)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            print(
+                f"[toolkit] Worker register callable failed for {toolkit.worker_module!r}: {exc}"
+            )
+            continue
+
         _LOADED_SLUGS.add(toolkit.slug)
 
 
