@@ -6,7 +6,7 @@ from urllib.parse import urlsplit, urlunsplit
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import AnyHttpUrl, BaseModel, Field, HttpUrl, SecretStr, ValidationError, field_validator, model_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AuthProviderBase(BaseModel):
@@ -91,6 +91,11 @@ def default_cors_origins() -> List[str]:
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
     app_name: str = "SRE Toolbox"
     app_env: str = "dev"
     log_level: str = "INFO"
@@ -208,11 +213,5 @@ class Settings(BaseSettings):
             except ValidationError as exc:  # pragma: no cover - configuration phase
                 raise ValueError(f"Invalid configuration for provider {item.get('name')}: {exc}") from exc
         return providers
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-
 
 settings = Settings()

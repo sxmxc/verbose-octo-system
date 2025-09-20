@@ -15,6 +15,10 @@ Use this guide as the starting point for building SRE Toolbox toolkits. It conne
 - `ToolkitRenderer` caches module imports per `toolkit.slug` and entry fields. Update `toolkit.updated_at` in `toolkit.json` when you want the shell to invalidate stale bundles.
 - Failed imports log warnings (`Toolkit <slug> import failed ...`) and fall back to `GenericToolkitPlaceholder`. Design your toolkit UI to degrade gracefully and surface actionable error states.
 
+## Slug Requirements
+- Declare a slug in `toolkit.json`; values must be lowercase and can only include letters, numbers, hyphen (`-`), or underscore (`_`).
+- The slug becomes the directory name under `TOOLKIT_STORAGE_DIR` and the namespace for dynamic imports. Invalid characters cause packaging and installation to fail before any files are written.
+
 ## Deliverables Checklist
 - [ ] `toolkit.json` with backend, worker, and optional frontend metadata.
 - [ ] FastAPI router exposing your public API surface.

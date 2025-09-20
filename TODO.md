@@ -5,12 +5,13 @@
   - [x] Reject absolute/parent-path entries and symlinks during FastAPI upload handling.
   - [x] Stream uploads to disk and enforce per-file/total size limits to block zip bombs.
   - [x] Copy artefacts with traversal-safe APIs (e.g. `copytree(..., dirs_exist_ok=True)` after validation).
-- [ ] Validate toolkit slugs everywhere (manifest parsing, API input, CLI packagers) against a strict allowlist before using them in file paths or imports.
-- [ ] Normalize uploaded filenames before persisting (strip directories, randomise collisions).
-- [ ] Remove the resolved `bundle_path` from API responses to avoid leaking server layout.
+- [x] Validate toolkit slugs everywhere (manifest parsing, API input, CLI packagers) against a strict allowlist before using them in file paths or imports.
+- [x] Normalize uploaded filenames before persisting (strip directories, randomise collisions).
+- [x] Remove the resolved `bundle_path` from API responses to avoid leaking server layout.
 - [ ] Investigate running toolkit build/test steps in an isolated workspace or container before activation.
 
 ## Authentication & Secrets
+- [ ] Implement audit and logging system
 - [ ] Enforce non-default JWT secrets (or require configured asymmetric key pairs) during startup.
 - [ ] Add `token_use` / `typ` assertions when refreshing tokens to prevent access-token replay.
 - [ ] Implement login throttling / lockout for the local provider; emit audit logs on failed attempts.

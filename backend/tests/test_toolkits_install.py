@@ -8,7 +8,7 @@ from fastapi import HTTPException, UploadFile, status
 from app.routes import toolkits
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_rejects_path_traversal(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,104 @@ async def test_toolkits_install_rejects_path_traversal(tmp_path, monkeypatch):
     assert not toolkit_root.exists()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
+async def test_toolkits_install_strips_directory_segments(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+
+    record = MagicMock()
+    record.slug = "clean"
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
+
+    bundle = io.BytesIO()
+    with zipfile.ZipFile(bundle, "w") as zf:
+        zf.writestr("toolkit.json", "{}")
+    bundle.seek(0)
+
+    original_stream = toolkits._stream_upload_to_path
+    captured = {}
+
+    async def capture_stream(source, destination):
+        captured["destination"] = destination
+        return await original_stream(source, destination)
+
+    monkeypatch.setattr(toolkits, "_stream_upload_to_path", capture_stream)
+
+    upload = UploadFile(filename="../../nested\\evil.zip", file=io.BytesIO(bundle.getvalue()))
+
+    result = await toolkits.toolkits_install(slug="clean", file=upload)
+
+    assert captured["destination"].name == "evil.zip"
+    assert captured["destination"].parent == storage_dir
+    assert "bundle_path" not in result
+    assert (storage_dir / "clean.zip").exists()
+
+
+@pytest.mark.anyio("asyncio")
+async def test_toolkits_install_randomises_collisions(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+
+    existing = storage_dir / "duplicate.zip"
+    existing.write_bytes(b"existing")
+
+    record = MagicMock()
+    record.slug = "frombundle"
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
+
+    bundle = io.BytesIO()
+    with zipfile.ZipFile(bundle, "w") as zf:
+        zf.writestr("toolkit.json", "{}")
+    bundle.seek(0)
+
+    original_stream = toolkits._stream_upload_to_path
+    captured = {}
+
+    async def capture_stream(source, destination):
+        captured["destination"] = destination
+        return await original_stream(source, destination)
+
+    monkeypatch.setattr(toolkits, "_stream_upload_to_path", capture_stream)
+    monkeypatch.setattr(toolkits, "_random_collision_suffix", lambda: "deadbeef")
+
+    upload = UploadFile(filename="duplicate.zip", file=io.BytesIO(bundle.getvalue()))
+
+    result = await toolkits.toolkits_install(slug=None, file=upload)
+
+    assert captured["destination"].name == "duplicate-deadbeef.zip"
+    assert captured["destination"].parent == storage_dir
+    assert existing.exists()
+    assert "bundle_path" not in result
+    assert (storage_dir / "frombundle.zip").exists()
+
+
+@pytest.mark.anyio("asyncio")
+async def test_toolkits_install_rejects_invalid_slug(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+
+    install_mock = MagicMock(side_effect=AssertionError("install_toolkit_from_directory should not run"))
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", install_mock)
+
+    bundle = io.BytesIO()
+    with zipfile.ZipFile(bundle, "w") as zf:
+        zf.writestr("toolkit.json", "{}")
+    bundle.seek(0)
+
+    upload = UploadFile(filename="valid.zip", file=io.BytesIO(bundle.getvalue()))
+
+    with pytest.raises(HTTPException) as exc_info:
+        await toolkits.toolkits_install(slug="NOT OK", file=upload)
+
+    assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
+    assert "Toolkit slug must" in exc_info.value.detail
+    install_mock.assert_not_called()
+
+
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_rejects_upload_exceeding_max_bytes(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -65,7 +162,7 @@ async def test_toolkits_install_rejects_upload_exceeding_max_bytes(tmp_path, mon
     assert not (storage_dir / "__uploads__" / "huge").exists()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_rejects_entry_over_file_limit(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -98,7 +195,7 @@ async def test_toolkits_install_rejects_entry_over_file_limit(tmp_path, monkeypa
     assert not toolkit_root.exists()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_rejects_total_uncompressed_limit(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)

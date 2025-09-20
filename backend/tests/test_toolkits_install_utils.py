@@ -84,4 +84,52 @@ def test_install_toolkit_rejects_destination_escape(tmp_path: Path, monkeypatch:
     with pytest.raises(ToolkitManifestError) as exc_info:
         install_toolkit_from_directory(bundle)
 
-    assert "storage directory" in str(exc_info.value)
+    assert "Toolkit slug must" in str(exc_info.value)
+
+
+def test_install_toolkit_normalises_manifest_slug(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    storage_dir = tmp_path / "storage"
+    monkeypatch.setattr(install_utils.settings, "toolkit_storage_dir", storage_dir)
+
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    _write_manifest(bundle / "toolkit.json", slug="Demo-Toolkit")
+    (bundle / "README.md").write_text("docs")
+
+    monkeypatch.setattr(install_utils, "get_toolkit", lambda slug: None)
+    monkeypatch.setattr(install_utils, "clear_toolkit_removal", lambda slug: None)
+    monkeypatch.setattr(install_utils, "activate_toolkit", lambda slug: None)
+    monkeypatch.setattr(install_utils, "mark_toolkit_removed", lambda slug: None)
+
+    captured_payload = {}
+
+    def _create_toolkit(payload, origin="custom"):
+        captured_payload["slug"] = payload.slug
+        return install_utils.ToolkitRecord(
+            slug=payload.slug,
+            name=payload.name,
+            description=payload.description or "",
+            base_path=payload.base_path,
+            enabled=payload.enabled,
+            category=payload.category,
+            tags=list(payload.tags or []),
+            origin=origin,
+            backend_module=payload.backend_module,
+            backend_router_attr=payload.backend_router_attr,
+            worker_module=payload.worker_module,
+            worker_register_attr=payload.worker_register_attr,
+            dashboard_cards=[],
+            dashboard_context_module=payload.dashboard_context_module,
+            dashboard_context_attr=payload.dashboard_context_attr,
+            frontend_entry=payload.frontend_entry,
+            frontend_source_entry=payload.frontend_source_entry,
+        )
+
+    monkeypatch.setattr(install_utils, "create_toolkit", _create_toolkit)
+    monkeypatch.setattr(install_utils, "update_toolkit", lambda slug, payload: None)
+
+    record = install_toolkit_from_directory(bundle)
+
+    assert captured_payload["slug"] == "demo-toolkit"
+    assert record.slug == "demo-toolkit"
+    assert (storage_dir / "demo-toolkit").exists()

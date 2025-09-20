@@ -3,13 +3,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Iterable, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..core.redis import get_redis, redis_key
 from ..db.session_sync import get_sync_session
 from ..models.toolkit import Toolkit, ToolkitRemoval
+from .slugs import normalise_slug
 
 
 REGISTRY_KEY = redis_key("toolkits", "registry")
@@ -44,6 +45,11 @@ class ToolkitRecord(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    @field_validator("slug", mode="before")
+    @classmethod
+    def _ensure_valid_slug(cls, value: str) -> str:
+        return normalise_slug(value)
+
 
 class ToolkitCreate(BaseModel):
     slug: str
@@ -62,6 +68,11 @@ class ToolkitCreate(BaseModel):
     dashboard_context_attr: Optional[str] = None
     frontend_entry: Optional[str] = None
     frontend_source_entry: Optional[str] = None
+
+    @field_validator("slug", mode="before")
+    @classmethod
+    def _ensure_valid_slug(cls, value: str) -> str:
+        return normalise_slug(value)
 
 
 class ToolkitUpdate(BaseModel):

@@ -13,9 +13,23 @@ from zipfile import ZIP_DEFLATED, ZipFile
 IGNORED_DIRS = {".git", "__pycache__", "node_modules", ".pytest_cache"}
 IGNORED_FILES = {".DS_Store"}
 
+ALLOWED_SLUG_CHARS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789-_")
+INVALID_SLUG_MESSAGE = "Toolkit slug must contain only lowercase letters, numbers, hyphen, or underscore"
+
 
 class PackagingError(RuntimeError):
     """Raised when the toolkit cannot be packaged due to validation issues."""
+
+
+def normalise_slug(raw: str | None) -> str:
+    if raw is None:
+        raise PackagingError("toolkit.json must include a slug")
+    slug = raw.strip().lower()
+    if not slug:
+        raise PackagingError("toolkit.json must include a slug")
+    if any(ch not in ALLOWED_SLUG_CHARS for ch in slug):
+        raise PackagingError(INVALID_SLUG_MESSAGE)
+    return slug
 
 
 def load_manifest(root: Path) -> dict:
@@ -73,11 +87,9 @@ def iter_files(root: Path) -> list[tuple[Path, Path]]:
     return records
 
 
-def package_toolkit(root: Path, output: Path, overwrite: bool) -> None:
-    manifest = load_manifest(root)
-    slug = (manifest.get("slug") or "toolkit").strip().lower()
-    if not slug:
-        raise PackagingError("toolkit.json must include a slug")
+def package_toolkit(root: Path, output: Path, overwrite: bool, *, manifest: dict | None = None) -> None:
+    manifest = manifest or load_manifest(root)
+    slug = normalise_slug(manifest.get("slug"))
 
     validate_frontend(root, manifest)
 
@@ -117,16 +129,16 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         manifest = load_manifest(toolkit_path)
+        slug = normalise_slug(manifest.get("slug"))
     except PackagingError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    slug = (manifest.get("slug") or "toolkit").strip().lower() or "toolkit"
     default_output = toolkit_path.parent / f"{slug}_toolkit.zip"
     output_path = (args.output or default_output).resolve()
 
     try:
-        package_toolkit(toolkit_path, output_path, args.force)
+        package_toolkit(toolkit_path, output_path, args.force, manifest=manifest)
     except PackagingError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

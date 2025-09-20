@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import json
 import ntpath
+import secrets
 import shutil
 import stat
 import zipfile
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 
 from ..config import settings
 from ..toolkits.install_utils import ToolkitManifestError, install_toolkit_from_directory
@@ -21,6 +24,7 @@ from ..toolkits.registry import (
     list_toolkits,
     update_toolkit,
 )
+from ..toolkits.slugs import InvalidToolkitSlugError, normalise_slug, validate_slug
 from ..toolkits.seeder import ensure_bundled_toolkits_installed
 from ..toolkit_loader import activate_toolkit, mark_toolkit_removed
 from ..security.dependencies import require_roles, require_superuser
@@ -34,7 +38,44 @@ def _format_limit_mb(value: int) -> int:
     return max(1, (value + (1024 * 1024 - 1)) // (1024 * 1024))
 
 
-router = APIRouter()
+def _normalise_bundle_filename(raw_filename: str | None) -> str:
+    if not raw_filename:
+        return "upload.zip"
+    normalised = raw_filename.replace("\\", "/")
+    name = PurePosixPath(normalised).name
+    if name in {"", ".", ".."}:
+        return "upload.zip"
+    return name
+
+
+def _random_collision_suffix() -> str:
+    return secrets.token_hex(4)
+
+
+def _allocate_bundle_destination(storage_dir: Path, raw_filename: str | None) -> tuple[str, Path]:
+    filename = _normalise_bundle_filename(raw_filename)
+    candidate_path = storage_dir / filename
+    if not candidate_path.exists():
+        return filename, candidate_path
+
+    base = Path(filename)
+    suffix = "".join(base.suffixes) or ".zip"
+    stem = base.name[: -len(suffix)] if suffix and filename.endswith(suffix) else base.stem
+    if not stem:
+        stem = "bundle"
+
+    while True:
+        candidate_name = f"{stem}-{_random_collision_suffix()}{suffix}"
+        candidate_path = storage_dir / candidate_name
+        if not candidate_path.exists():
+            return candidate_name, candidate_path
+
+
+def _ensure_valid_slug(slug: str) -> None:
+    try:
+        validate_slug(slug)
+    except InvalidToolkitSlugError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 async def _stream_upload_to_path(source: UploadFile, destination: Path) -> int:
@@ -70,9 +111,13 @@ def _get_toolkit_or_404(slug: str) -> ToolkitRecord:
     return toolkit
 
 
-@router.on_event("startup")
-def bootstrap_defaults() -> None:  # pragma: no cover - simple bootstrap
+@asynccontextmanager
+async def toolkits_lifespan(_: FastAPI) -> AsyncIterator[None]:  # pragma: no cover - simple bootstrap
     ensure_bundled_toolkits_installed()
+    yield
+
+
+router = APIRouter(lifespan=toolkits_lifespan)
 
 
 @router.get(
@@ -106,6 +151,7 @@ def toolkits_create(payload: ToolkitCreate):
     dependencies=[Depends(require_roles([ROLE_TOOLKIT_CURATOR]))],
 )
 def toolkits_update(slug: str, payload: ToolkitUpdate):
+    _ensure_valid_slug(slug)
     previous = _get_toolkit_or_404(slug)
     toolkit = update_toolkit(slug, payload)
     if not toolkit:
@@ -122,6 +168,7 @@ def toolkits_update(slug: str, payload: ToolkitUpdate):
     dependencies=[Depends(require_superuser)],
 )
 def toolkits_delete(slug: str):
+    _ensure_valid_slug(slug)
     toolkit = _get_toolkit_or_404(slug)
     try:
         deleted = delete_toolkit(slug)
@@ -148,6 +195,7 @@ def toolkits_delete(slug: str):
     dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
 )
 def toolkits_get(slug: str):
+    _ensure_valid_slug(slug)
     return _get_toolkit_or_404(slug)
 
 
@@ -195,18 +243,18 @@ def _resolve_safe_member_path(
     dependencies=[Depends(require_superuser)],
 )
 async def toolkits_install(slug: str | None = Form(None), file: UploadFile = File(...)):
-    if slug and any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789-_" for ch in slug.lower()):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Slug must contain only letters, numbers, hyphen, or underscore")
     if slug:
-        slug = slug.lower()
+        try:
+            slug = normalise_slug(slug)
+        except InvalidToolkitSlugError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     if not file.filename.endswith(".zip"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only .zip bundles are supported")
 
     storage_dir = Path(settings.toolkit_storage_dir)
     storage_dir.mkdir(parents=True, exist_ok=True)
-    bundle_filename = file.filename or "upload.zip"
-    bundle_path = storage_dir / bundle_filename
+    bundle_filename, bundle_path = _allocate_bundle_destination(storage_dir, file.filename)
 
     upload_root = storage_dir / "__uploads__"
     upload_root.mkdir(parents=True, exist_ok=True)
@@ -305,7 +353,6 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
     return {
         "uploaded": True,
         "toolkit": record,
-        "bundle_path": str(bundle_path.resolve()),
     }
 
 
@@ -316,6 +363,7 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
     dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
 )
 def toolkit_enqueue_job(slug: str, operation: str = Form(...), payload: str | None = Form(None)):
+    _ensure_valid_slug(slug)
     from ..worker_client import enqueue_job
 
     try:
