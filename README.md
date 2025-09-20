@@ -112,10 +112,14 @@ Core settings are read from environment variables (see `.env.example`). The tabl
 | `DATABASE_URL` | SQLAlchemy async database URL | `sqlite+aiosqlite:///./data/app.db` |
 | `REDIS_URL` / `REDIS_PREFIX` | Redis connection string and key prefix | `redis://redis:6379/0`, `sretoolbox` |
 | `TOOLKIT_STORAGE_DIR` | Filesystem directory for toolkit bundles | `./data/toolkits` |
+| `TOOLKIT_UPLOAD_MAX_BYTES` / `TOOLKIT_BUNDLE_MAX_BYTES` / `TOOLKIT_BUNDLE_MAX_FILE_BYTES` | Upload and extraction safeguards that block oversized bundles | `52428800` / `209715200` / `104857600` |
 | `FRONTEND_BASE_URL` | UI origin (no trailing slash) for automatic CORS configuration | `http://localhost:5173` |
 | `VITE_API_BASE_URL` | Frontend discovery of the API endpoint | `http://localhost:8080` |
-| `AUTH_JWT_SECRET`, `AUTH_JWT_ALGORITHM` | JWT signing secret/key algorithm | `change-me`, `HS256` |
+| `AUTH_JWT_SECRET` / `AUTH_JWT_PUBLIC_KEY` / `AUTH_JWT_PRIVATE_KEY` / `AUTH_JWT_ALGORITHM` | Signing secret or key pair and algorithm for access tokens | `change-me`, unset, unset, `HS256` |
+| `AUTH_ACCESS_TOKEN_TTL_SECONDS` / `AUTH_REFRESH_TOKEN_TTL_SECONDS` | Token lifetimes for access and refresh tokens | `900` / `1209600` |
 | `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_SAMESITE`, `AUTH_COOKIE_DOMAIN` | Refresh-token cookie attributes | `true`, `lax`, unset |
+| `AUTH_PROVIDERS_JSON` / `AUTH_PROVIDERS_FILE` | Bootstrap SSO providers via JSON payload or file path | unset |
+| `AUTH_SSO_STATE_TTL_SECONDS` | Lifetime for signed SSO state/nonce records | `600` |
 | `BOOTSTRAP_ADMIN_*` | Optional seed admin account (username, password, email) | unset |
 
 Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_PROVIDERS_JSON` or added at runtime through the Admin → Auth settings screen.
@@ -129,6 +133,13 @@ Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_
 - **Administration → Toolkits** – upload `.zip` bundles, toggle visibility, uninstall toolkits, and inspect metadata derived from `toolkit.json`.
 - **Administration → Users** – invite local users, assign roles, or import external identities.
 - **Administration → Auth settings** – configure local, OIDC, LDAP, or Active Directory providers without redeploying.
+
+## Authentication & role-based access control
+
+- **Roles** – every account receives `toolkit.user` for day-to-day operations. Grant `toolkit.curator` to manage toolkit enablement and `system.admin` for security-sensitive settings (auth providers, user management, audit exports). All FastAPI routes and in-app controls honor these roles.
+- **Providers** – configure local username/password auth or plug in OpenID Connect, LDAP, and Active Directory providers. Define providers inline via `AUTH_PROVIDERS_JSON`, point at a JSON file with `AUTH_PROVIDERS_FILE`, or manage them at runtime from **Administration → Auth settings**. Changes reload instantly—no restart required.
+- **Session hygiene** – access tokens default to 15 minutes, refresh tokens to 14 days, and the API rotates refresh-token IDs on each renewal while persisting session metadata for revocation and auditing. Set `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_SAMESITE`, and `AUTH_COOKIE_DOMAIN` to harden browser usage.
+- **SSO state** – requests are protected by signed state/nonce values with a configurable TTL (`AUTH_SSO_STATE_TTL_SECONDS`); pair this with HTTPS so cookies stay protected in transit.
 
 ## Bundled toolkits
 
