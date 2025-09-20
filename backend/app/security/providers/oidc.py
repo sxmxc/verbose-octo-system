@@ -164,7 +164,13 @@ class OidcAuthProvider(AuthProvider):
         header = jwt.get_unverified_header(id_token)
         token_alg = header.get("alg")
         if token_alg and token_alg not in supported_algs:
-            supported_algs = [token_alg, *[alg for alg in supported_algs if alg != token_alg]]
+            self._logger.error(
+                "OIDC token presented with unsupported algorithm '%s' for provider '%s' (supported=%s)",
+                token_alg,
+                self.name,
+                supported_algs,
+            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OIDC token algorithm not supported")
         try:
             claims = jwt.decode(
                 id_token,
