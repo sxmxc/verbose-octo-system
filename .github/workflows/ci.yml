@@ -81,29 +81,29 @@ jobs:
         run: |
           set -euo pipefail
           python <<'PY'
-import json
-import pathlib
-import subprocess
-import sys
+          import json
+          import pathlib
+          import subprocess
+          import sys
 
-dest = pathlib.Path('/tmp/toolkits')
-dest.mkdir(parents=True, exist_ok=True)
+          dest = pathlib.Path('/tmp/toolkits')
+          dest.mkdir(parents=True, exist_ok=True)
 
-manifests = sorted(pathlib.Path('toolkits').rglob('toolkit.json'))
-if not manifests:
-    raise SystemExit('No toolkit manifests found.')
+          manifests = sorted(pathlib.Path('toolkits').rglob('toolkit.json'))
+          if not manifests:
+              raise SystemExit('No toolkit manifests found.')
 
-for manifest_path in manifests:
-    toolkit_dir = manifest_path.parent
-    with manifest_path.open() as handle:
-        manifest = json.load(handle)
-    slug = (manifest.get('slug') or toolkit_dir.name).strip().lower().replace(' ', '-') or toolkit_dir.name
-    output_path = dest / f"{slug}_toolkit.zip"
-    subprocess.run(
-        [sys.executable, 'toolkits/scripts/package_toolkit.py', str(toolkit_dir), '--force', '--output', str(output_path)],
-        check=True,
-    )
-    print(f"Packaged {slug} toolkit from {toolkit_dir}")
+          for manifest_path in manifests:
+              toolkit_dir = manifest_path.parent
+              with manifest_path.open() as handle:
+                  manifest = json.load(handle)
+              slug = (manifest.get('slug') or toolkit_dir.name).strip().lower().replace(' ', '-') or toolkit_dir.name
+              output_path = dest / f"{slug}_toolkit.zip"
+              subprocess.run(
+                  [sys.executable, 'toolkits/scripts/package_toolkit.py', str(toolkit_dir), '--force', '--output', str(output_path)],
+                  check=True,
+              )
+              print(f"Packaged {slug} toolkit from {toolkit_dir}")
 PY
 
       - name: Upload toolkit archives
