@@ -1,0 +1,28 @@
+{
+  "slug": "latency-sleuth",
+  "name": "Latency Sleuth",
+  "description": "Model web latency probes, tune SLAs, and visualise performance drift with synthetic checks.",
+  "version": "1.0.0",
+  "updated_at": "2024-10-01T00:00:00Z",
+  "base_path": "/toolkits/latency-sleuth",
+  "backend": {
+    "module": "backend.app",
+    "router_attr": "router"
+  },
+  "worker": {
+    "module": "worker.tasks",
+    "register_attr": "register"
+  },
+  "frontend": {
+    "entry": "frontend/dist/index.js",
+    "source_entry": "frontend/index.tsx"
+  },
+  "dashboard_cards": [
+    {
+      "title": "Synthetic Probes",
+      "body": "Author SLA-aware HTTP probes, stream live latency telemetry, and wire alerts to on-call tools.",
+      "link_text": "Launch",
+      "link_href": "/toolkits/latency-sleuth"
+    }
+  ]
+}
