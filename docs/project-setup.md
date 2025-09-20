@@ -25,6 +25,9 @@ Follow this guide when cloning the repo or preparing a new development environme
 2. `npm install`
 3. `npm run dev -- --host 0.0.0.0 --port 5173`
 
+> **Security note**: The Vite dev server only whitelists `frontend/` and bundled toolkit sources under `toolkits/bundled/`. Keep
+> toolkit code you want hot reloaded inside that directory so you don't need to broaden the filesystem allowlist.
+
 ## Docker Compose (all services)
 1. Copy `.env.example` to `.env` and adjust values.
 2. Run `docker compose up --build` from the repo root.

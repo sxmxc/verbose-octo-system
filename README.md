@@ -98,6 +98,10 @@ npm install
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
+The Vite dev server only allows files from `frontend/` and checked-in bundled toolkits (`toolkits/bundled`) to be served. When
+iterating on a bundled toolkit locally, keep its source within that directory so hot module reloading continues to work without
+exposing additional host paths.
+
 ## Configuration
 
 Core settings are read from environment variables (see `.env.example`). The table below highlights the most common knobs.
