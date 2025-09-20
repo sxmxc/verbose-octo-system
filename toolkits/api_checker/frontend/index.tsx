@@ -695,7 +695,6 @@ export default function ApiCheckerApp() {
                 </div>
               )}
 
-              {authType === 'apiKey' and (
               {authType === 'apiKey' && (
                 <div style={{ display: 'grid', gap: '0.6rem', maxWidth: 420 }}>
                   <label className="tk-label" style={{ display: 'grid', gap: '0.25rem' }}>
