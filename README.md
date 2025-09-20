@@ -1,5 +1,7 @@
 # SRE Toolbox
 
+[![CI](https://github.com/sxmxc/verbose-octo-system/actions/workflows/ci.yml/badge.svg)](https://github.com/sxmxc/verbose-octo-system/actions/workflows/ci.yml) [![Docs](https://img.shields.io/badge/docs-quick%20start-0a0a0a?logo=readthedocs&logoColor=white)](docs/README.md) [![Compose](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml) [![Contribution Guide](https://img.shields.io/badge/contribute-guidelines-0366d6?logo=github)](docs/contributing.md)
+
 SRE Toolbox is a modular operations cockpit for site reliability teams. The lightweight core exposes a FastAPI control plane, a Celery worker, and a React shell. Feature teams ship functionality as **toolkits** that bundle API routers, background jobs, documentation, and optional UI panels that operators can enable at runtime.
 
 ```
@@ -36,6 +38,9 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 - `.env.example` – default environment variables for local development.
 
 ## Built with
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](backend) [![Pydantic](https://img.shields.io/badge/Pydantic-ff7f50?logo=python&logoColor=white)](backend) [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-d71f00?logo=python&logoColor=white)](backend) [![Alembic](https://img.shields.io/badge/Alembic-migrations-2d2d2d)](backend) [![Celery](https://img.shields.io/badge/Celery-task%20queue-37814A)](backend) [![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white)](backend)  
+[![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](frontend) [![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](frontend) [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](frontend) [![Vitest](https://img.shields.io/badge/Vitest-unit%20tests-6E9F18)](frontend)
 
 - **FastAPI** + **Pydantic** for the API surface, validation, and dependency injection.
 - **SQLAlchemy** (async) with **Alembic** migrations targeting PostgreSQL in production and SQLite in development.
