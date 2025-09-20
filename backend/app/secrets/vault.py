@@ -2,8 +2,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict
 
-import hvac
-from hvac.exceptions import InvalidPath, VaultError
+try:  # pragma: no cover - exercised indirectly when optional dep missing
+    import hvac
+    from hvac.exceptions import InvalidPath, VaultError
+except ModuleNotFoundError:  # pragma: no cover - tested via fallback behaviour
+    hvac = None  # type: ignore[assignment]
+
+    class InvalidPath(Exception):
+        """Placeholder used when hvac is unavailable."""
+
+    class VaultError(Exception):
+        """Placeholder used when hvac is unavailable."""
 
 from .models import VaultSecretRef
 
@@ -49,6 +58,10 @@ def get_vault_client(settings: "Settings") -> hvac.Client:
     client = getattr(settings, "_vault_client", None)
     if client:
         return client
+    if hvac is None:
+        raise RuntimeError(
+            "Vault integration requires the 'hvac' package. Install hvac or disable Vault secrets."
+        )
     if not settings.vault_addr:
         raise RuntimeError("VAULT_ADDR must be configured to resolve Vault secrets.")
     token = _load_token(settings)
