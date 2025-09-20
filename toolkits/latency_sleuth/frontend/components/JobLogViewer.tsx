@@ -1,18 +1,53 @@
 import { apiFetch, getReactRuntime } from '../runtime'
 import { useProbeTemplates } from '../hooks/useProbeTemplates'
 import { useJobStream } from '../hooks/useJobStream'
+import { useToolkitJobs } from '../hooks/useToolkitJobs'
 import type { ProbeExecutionSummary } from '../types'
 
 const React = getReactRuntime()
-const { useMemo, useState } = React
+const { useEffect, useMemo, useState } = React
+
+function formatRelativeTime(value: string | null | undefined) {
+  if (!value) return '—'
+  const timestamp = new Date(value).getTime()
+  if (Number.isNaN(timestamp)) return '—'
+  const diff = Date.now() - timestamp
+  const abs = Math.abs(diff)
+  const seconds = Math.round(abs / 1000)
+  if (seconds < 60) {
+    return diff >= 0 ? `${seconds}s ago` : `in ${seconds}s`
+  }
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) {
+    return diff >= 0 ? `${minutes}m ago` : `in ${minutes}m`
+  }
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) {
+    return diff >= 0 ? `${hours}h ago` : `in ${hours}h`
+  }
+  const days = Math.round(hours / 24)
+  return diff >= 0 ? `${days}d ago` : `in ${days}d`
+}
 
 export default function JobLogViewer() {
-  const { templates, loading: templatesLoading, error: templatesError } = useProbeTemplates()
+  const {
+    templates,
+    loading: templatesLoading,
+    error: templatesError,
+    refresh: refreshTemplates,
+  } = useProbeTemplates()
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
   const [preview, setPreview] = useState<ProbeExecutionSummary | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const { job, loading: jobLoading, error: jobError, refresh } = useJobStream(jobId)
+  const {
+    jobs,
+    loading: jobsLoading,
+    error: jobsError,
+    refresh: refreshJobs,
+  } = useToolkitJobs(selectedTemplate)
+  const [lastJobsSignature, setLastJobsSignature] = useState<string | null>(null)
 
   const templateOptions = useMemo(
     () =>
@@ -27,6 +62,31 @@ export default function JobLogViewer() {
     () => templates.find((template) => template.id === selectedTemplate) ?? null,
     [templates, selectedTemplate],
   )
+
+  useEffect(() => {
+    setJobId(null)
+    setPreview(null)
+    setStatus(null)
+    setLastJobsSignature(null)
+  }, [selectedTemplate])
+
+  useEffect(() => {
+    if (jobs.length === 0) {
+      return
+    }
+    const signature = jobs[0]?.updated_at || jobs[0]?.created_at
+    if (signature && signature !== lastJobsSignature) {
+      setLastJobsSignature(signature)
+      refreshTemplates()
+    }
+  }, [jobs, lastJobsSignature, refreshTemplates])
+
+  useEffect(() => {
+    if (jobId || jobs.length === 0) {
+      return
+    }
+    setJobId(jobs[0].id)
+  }, [jobs, jobId])
 
   const triggerPreview = async () => {
     if (!currentTemplate) return
@@ -53,14 +113,22 @@ export default function JobLogViewer() {
       )
       setJobId(response.job.id)
       setStatus('Probe dispatched to workers')
+      try {
+        await refreshJobs()
+      } catch (err) {
+        console.warn('Failed to refresh job list after manual run', err)
+      }
+      refreshTemplates()
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Failed to start probe')
     }
   }
 
+  const latestJob = jobs.length > 0 ? jobs[0] : null
+
   const renderLogs = () => {
     if (!job) {
-      return <p style={{ color: 'var(--color-text-secondary)' }}>Select a template and run a probe to stream logs.</p>
+      return <p style={{ color: 'var(--color-text-secondary)' }}>Select a run to stream logs.</p>
     }
 
     return (
@@ -87,6 +155,67 @@ export default function JobLogViewer() {
             {JSON.stringify(job.result, null, 2)}
           </pre>
         )}
+      </div>
+    )
+  }
+
+  const renderJobTable = () => {
+    if (!currentTemplate) {
+      return <p style={{ color: 'var(--color-text-secondary)' }}>Choose a template to inspect recent runs.</p>
+    }
+
+    if (jobsLoading) {
+      return <p>Loading recent runs…</p>
+    }
+
+    if (jobs.length === 0) {
+      return <p style={{ color: 'var(--color-text-secondary)' }}>No probe executions recorded yet.</p>
+    }
+
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table className="tk-table">
+          <thead>
+            <tr>
+              <th style={{ minWidth: 140 }}>Run</th>
+              <th>Status</th>
+              <th>Progress</th>
+              <th>Updated</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {jobs.map((entry) => {
+              const isActive = jobId === entry.id
+              const trigger = entry.logs?.[0]?.message?.includes('Scheduled run enqueued') ? 'Scheduled' : 'Manual'
+              return (
+                <tr key={entry.id} style={isActive ? { background: 'var(--color-surface-muted)' } : undefined}>
+                  <td>
+                    <div style={{ display: 'grid' }}>
+                      <span style={{ fontWeight: 600 }}>{trigger}</span>
+                      <span style={{ color: 'var(--color-text-secondary)' }}>
+                        {new Date(entry.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                  </td>
+                  <td style={{ textTransform: 'capitalize' }}>{entry.status}</td>
+                  <td>{entry.progress ?? 0}%</td>
+                  <td>{formatRelativeTime(entry.updated_at)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="tk-button"
+                      onClick={() => setJobId(entry.id)}
+                      disabled={isActive}
+                    >
+                      {isActive ? 'Viewing' : 'View logs'}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
     )
   }
@@ -121,6 +250,21 @@ export default function JobLogViewer() {
 
         {templatesError && <span style={{ color: 'var(--color-status-error)' }}>{templatesError}</span>}
 
+        {currentTemplate && (
+          <div className="tk-card" style={{ padding: '1rem', background: 'var(--color-surface-muted)' }}>
+            <h4 style={{ margin: '0 0 0.5rem' }}>Scheduling</h4>
+            <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
+              Next automatic run {formatRelativeTime(currentTemplate.next_run_at ?? null)}
+              {currentTemplate.next_run_at ? ` (${new Date(currentTemplate.next_run_at).toLocaleTimeString()})` : ''}.
+              {latestJob && (
+                <>
+                  {' '}Last run {formatRelativeTime(latestJob.updated_at)} – status {latestJob.status}.
+                </>
+              )}
+            </p>
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button className="tk-button" type="button" onClick={triggerPreview} disabled={!currentTemplate}>
             Preview run
@@ -130,6 +274,7 @@ export default function JobLogViewer() {
           </button>
           {status && <span style={{ color: 'var(--color-text-secondary)' }}>{status}</span>}
           {jobError && <span style={{ color: 'var(--color-status-error)' }}>{jobError}</span>}
+          {jobsError && <span style={{ color: 'var(--color-status-error)' }}>{jobsError}</span>}
         </div>
       </div>
 
@@ -149,7 +294,16 @@ export default function JobLogViewer() {
         </section>
       )}
 
-      <section>{renderLogs()}</section>
+      <section style={{ display: 'grid', gap: '1rem' }}>
+        <div className="tk-card" style={{ padding: '1rem' }}>
+          <h4 style={{ marginTop: 0 }}>Recent runs</h4>
+          {renderJobTable()}
+        </div>
+        <div className="tk-card" style={{ padding: '1rem' }}>
+          <h4 style={{ marginTop: 0 }}>Live logs</h4>
+          {renderLogs()}
+        </div>
+      </section>
     </div>
   )
 }

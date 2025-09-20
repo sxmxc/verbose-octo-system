@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from typing import Iterable, List, Optional
 from uuid import uuid4
 
@@ -57,6 +58,7 @@ def create_template(payload: ProbeTemplateCreate) -> ProbeTemplate:
         id=template_id,
         created_at=now,
         updated_at=now,
+        next_run_at=now,
         **payload.model_dump(),
     )
     redis.hset(TEMPLATES_KEY, template_id, _dump(_template_to_record(template)))
@@ -84,14 +86,73 @@ def update_template(template_id: str, payload: ProbeTemplateUpdate) -> Optional[
     data = current.model_dump()
     updates = payload.model_dump(exclude_none=True, exclude_unset=True)
     data.update(updates)
+    next_run_at = current.next_run_at
+    if (
+        payload.interval_seconds is not None
+        and payload.interval_seconds != current.interval_seconds
+    ):
+        next_run_at = utcnow()
+
     updated = ProbeTemplate.model_validate({
         **data,
         "id": template_id,
         "created_at": current.created_at,
         "updated_at": utcnow(),
+        "next_run_at": next_run_at,
     })
     redis = get_redis()
     redis.hset(TEMPLATES_KEY, template_id, _dump(_template_to_record(updated)))
+    return updated
+
+
+def _compute_next_run(template: ProbeTemplate, *, base_time=None) -> Optional[str]:
+    if template.interval_seconds <= 0:
+        return None
+    origin = base_time or utcnow()
+    next_run = origin + timedelta(seconds=template.interval_seconds)
+    return next_run.isoformat()
+
+
+def reserve_template_for_run(template_id: str, *, now=None) -> Optional[ProbeTemplate]:
+    template = get_template(template_id)
+    if not template:
+        return None
+
+    current_next = template.next_run_at or template.created_at
+    timestamp = now or utcnow()
+    if current_next and current_next > timestamp:
+        return None
+
+    redis = get_redis()
+    record = _template_to_record(template)
+    record["next_run_at"] = _compute_next_run(template, base_time=timestamp)
+    redis.hset(TEMPLATES_KEY, template_id, _dump(record))
+    return ProbeTemplate.model_validate(record)
+
+
+def list_due_templates(limit: Optional[int] = None, *, now=None) -> List[ProbeTemplate]:
+    timestamp = now or utcnow()
+    due: List[ProbeTemplate] = []
+    for template in list_templates():
+        next_run = template.next_run_at or template.created_at
+        if not next_run or next_run <= timestamp:
+            due.append(template)
+            if limit is not None and len(due) >= limit:
+                break
+    return due
+
+
+def bootstrap_schedule(*, now=None) -> int:
+    timestamp = now or utcnow()
+    redis = get_redis()
+    updated = 0
+    for template in list_templates():
+        if template.next_run_at is not None:
+            continue
+        record = _template_to_record(template)
+        record["next_run_at"] = timestamp.isoformat()
+        redis.hset(TEMPLATES_KEY, template.id, _dump(record))
+        updated += 1
     return updated
 
 

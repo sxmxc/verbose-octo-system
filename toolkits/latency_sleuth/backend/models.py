@@ -71,6 +71,7 @@ class ProbeTemplate(ProbeTemplateBase):
     id: str
     created_at: datetime
     updated_at: datetime
+    next_run_at: Optional[datetime] = None
 
 
 class ProbeExecutionSample(BaseModel):

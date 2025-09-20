@@ -5,11 +5,13 @@ import type { HeatmapCell, LatencyHeatmap } from '../types'
 const React = getReactRuntime()
 const { useEffect, useMemo, useState } = React
 
-function cellColor(cell: HeatmapCell) {
-  if (cell.breach) {
-    return 'var(--color-status-error-muted)'
-  }
-  return 'var(--color-status-success-muted)'
+function computeHeatColor(cell: HeatmapCell, slaMs: number | undefined) {
+  const sla = slaMs || 1
+  const ratio = Math.max(0, Math.min(cell.latency_ms / sla, 2.5))
+  const hue = Math.max(0, Math.min(120, 120 - ratio * 70))
+  const saturation = 75
+  const lightness = cell.breach ? 45 : 55 + Math.max(0, 1 - ratio) * 10
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`
 }
 
 export default function LatencyHeatmapView() {
@@ -18,6 +20,7 @@ export default function LatencyHeatmapView() {
   const [heatmap, setHeatmap] = useState<LatencyHeatmap | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState(0)
 
   const currentTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplate) ?? null,
@@ -58,7 +61,48 @@ export default function LatencyHeatmapView() {
     return () => {
       cancelled = true
     }
-  }, [currentTemplate])
+  }, [currentTemplate, refreshToken])
+
+  const renderLegend = () => {
+    if (!currentTemplate) {
+      return null
+    }
+    const sampleValues = [0.5, 0.9, 1, 1.25, 1.5, 2]
+    return (
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ color: 'var(--color-text-secondary)' }}>Latency vs SLA</span>
+        {sampleValues.map((ratio) => {
+          const fakeCell: HeatmapCell = {
+            timestamp: new Date().toISOString(),
+            latency_ms: currentTemplate.sla_ms * ratio,
+            breach: ratio > 1,
+          }
+          return (
+            <span
+              key={ratio}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                fontSize: '0.85rem',
+              }}
+            >
+              <span
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 4,
+                  background: computeHeatColor(fakeCell, currentTemplate.sla_ms),
+                  border: ratio > 1 ? '1px solid var(--color-status-error-border)' : '1px solid transparent',
+                }}
+              />
+              <span style={{ color: 'var(--color-text-secondary)' }}>{Math.round(ratio * 100)}%</span>
+            </span>
+          )
+        })}
+      </div>
+    )
+  }
 
   const renderGrid = () => {
     if (!heatmap || heatmap.rows.length === 0) {
@@ -68,21 +112,30 @@ export default function LatencyHeatmapView() {
     return (
       <div style={{ display: 'grid', gap: '0.75rem' }}>
         {heatmap.rows.map((row, rowIndex) => (
-          <div key={rowIndex} style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: `repeat(${heatmap.columns}, minmax(40px, 1fr))` }}>
+          <div
+            key={rowIndex}
+            style={{
+              display: 'grid',
+              gap: '0.5rem',
+              gridTemplateColumns: `repeat(${heatmap.columns}, minmax(40px, 1fr))`,
+            }}
+          >
             {row.map((cell, cellIndex) => (
               <div
                 key={cellIndex}
                 title={`${new Date(cell.timestamp).toLocaleString()} — ${cell.latency_ms} ms`}
                 style={{
-                  padding: '0.65rem 0.35rem',
-                  textAlign: 'center',
+                  padding: '0.75rem 0.5rem',
                   borderRadius: 6,
-                  background: cellColor(cell),
-                  color: cell.breach ? 'var(--color-status-error-text)' : 'var(--color-status-success-text)',
+                  border: cell.breach ? '1px solid var(--color-status-error-border)' : '1px solid transparent',
+                  background: computeHeatColor(cell, currentTemplate?.sla_ms),
+                  color: 'var(--color-surface)',
                   fontWeight: 600,
                 }}
+                role="img"
+                aria-label={`${Math.round(cell.latency_ms)} ms on ${new Date(cell.timestamp).toLocaleString()}`}
               >
-                {Math.round(cell.latency_ms)}
+                <span style={{ display: 'block', fontSize: '0.9rem' }}>{Math.round(cell.latency_ms)}</span>
               </div>
             ))}
           </div>
@@ -120,6 +173,20 @@ export default function LatencyHeatmapView() {
 
       {templatesError && <span style={{ color: 'var(--color-status-error)' }}>{templatesError}</span>}
       {error && <span style={{ color: 'var(--color-status-error)' }}>{error}</span>}
+
+      {currentTemplate && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          {renderLegend()}
+          <button
+            className="tk-button"
+            type="button"
+            onClick={() => setRefreshToken((value) => value + 1)}
+            disabled={loading}
+          >
+            Refresh
+          </button>
+        </div>
+      )}
 
       {loading ? <p>Loading heatmap…</p> : renderGrid()}
     </div>

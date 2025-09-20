@@ -19,6 +19,7 @@ export type ProbeTemplate = {
   tags: string[]
   created_at: string
   updated_at: string
+  next_run_at?: string | null
 }
 
 export type ProbeTemplateCreate = {
@@ -68,6 +69,9 @@ export type JobRecord = {
   status: string
   progress: number
   logs: { ts: string; message: string }[]
+  operation?: string
+  toolkit?: string
+  type?: string
   result?: unknown
   error?: string | null
   payload?: Record<string, unknown>
