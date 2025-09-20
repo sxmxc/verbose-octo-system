@@ -27,24 +27,24 @@ jobs:
         id: discover
         run: |
           python - <<'PY'
-import json
-import os
-import pathlib
+          import json
+          import os
+          import pathlib
 
-toolkits = []
-for manifest in sorted(pathlib.Path('toolkits').rglob('toolkit.json')):
-    toolkit_dir = manifest.parent
-    with manifest.open(encoding='utf-8') as handle:
-        data = json.load(handle)
-    slug = (data.get('slug') or toolkit_dir.name).strip().lower().replace(' ', '-') or toolkit_dir.name
-    toolkits.append({'slug': slug, 'path': str(toolkit_dir)})
+          toolkits = []
+          for manifest in sorted(pathlib.Path('toolkits').rglob('toolkit.json')):
+              toolkit_dir = manifest.parent
+              with manifest.open(encoding='utf-8') as handle:
+                  data = json.load(handle)
+              slug = (data.get('slug') or toolkit_dir.name).strip().lower().replace(' ', '-') or toolkit_dir.name
+              toolkits.append({'slug': slug, 'path': str(toolkit_dir)})
 
-if not toolkits:
-    raise SystemExit('No toolkit manifests found.')
+          if not toolkits:
+              raise SystemExit('No toolkit manifests found.')
 
-with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as fh:
-    fh.write('matrix=' + json.dumps(toolkits) + '\n')
-PY
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as fh:
+              fh.write('matrix=' + json.dumps(toolkits) + '\n')
+          PY
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
