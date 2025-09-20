@@ -8,6 +8,16 @@ services:
     environment:
       PYTHONPATH: /app
       DATABASE_URL: ${DATABASE_URL}
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      VAULT_TOKEN_FILE: ${VAULT_TOKEN_FILE:-}
+      VAULT_NAMESPACE: ${VAULT_NAMESPACE:-}
+      VAULT_KV_MOUNT: ${VAULT_KV_MOUNT:-secret}
+      VAULT_TLS_SKIP_VERIFY: ${VAULT_TLS_SKIP_VERIFY:-true}
+      VAULT_CA_CERT: ${VAULT_CA_CERT:-}
+      VAULT_AUTH_METHOD: ${VAULT_AUTH_METHOD:-token}
+      VAULT_APPROLE_ROLE_ID: ${VAULT_APPROLE_ROLE_ID:-}
+      VAULT_APPROLE_SECRET_ID: ${VAULT_APPROLE_SECRET_ID:-}
     ports:
       - "8080:8080"
     depends_on:
@@ -15,8 +25,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      vault:
+        condition: service_started
     volumes:
       - ./backend/data:/app/data
+      - ./config:/app/config:ro
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8080"
 
@@ -29,15 +42,57 @@ services:
     environment:
       PYTHONPATH: /app
       DATABASE_URL: ${DATABASE_URL}
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      VAULT_TOKEN_FILE: ${VAULT_TOKEN_FILE:-}
+      VAULT_NAMESPACE: ${VAULT_NAMESPACE:-}
+      VAULT_KV_MOUNT: ${VAULT_KV_MOUNT:-secret}
+      VAULT_TLS_SKIP_VERIFY: ${VAULT_TLS_SKIP_VERIFY:-true}
+      VAULT_CA_CERT: ${VAULT_CA_CERT:-}
+      VAULT_AUTH_METHOD: ${VAULT_AUTH_METHOD:-token}
+      VAULT_APPROLE_ROLE_ID: ${VAULT_APPROLE_ROLE_ID:-}
+      VAULT_APPROLE_SECRET_ID: ${VAULT_APPROLE_SECRET_ID:-}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
+      vault:
+        condition: service_started
     volumes:
       - ./backend/data:/app/data
+      - ./config:/app/config:ro
     command: >
       sh -c "celery -A worker.worker:celery_app worker --loglevel=INFO"
+
+  vault:
+    image: hashicorp/vault:1.14
+    container_name: sre-toolbox-vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_LOCAL_CONFIG: |
+        {
+          "ui": true,
+          "storage": {
+            "file": {
+              "path": "/vault/data"
+            }
+          },
+          "listener": {
+            "tcp": {
+              "address": "0.0.0.0:8200",
+              "tls_disable": 1
+            }
+          },
+          "default_lease_ttl": "168h",
+          "max_lease_ttl": "720h"
+        }
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault-data:/vault/data
 
   db:
     image: postgres:15-alpine
@@ -81,3 +136,4 @@ services:
 
 volumes:
   postgres-data:
+  vault-data:
