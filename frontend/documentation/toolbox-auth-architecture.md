@@ -1,73 +1,85 @@
 # Toolbox Authentication and Authorization Architecture
 
+The SRE Toolbox ships with a modular authentication stack that supports local logins and enterprise single sign-on out of the box. This document explains how the pieces fit together so operators can deploy the platform securely and extend it when new identity providers are required.
+
 ## Objectives
-- Support local username/password accounts with secure password hashing.
-- Allow pluggable single sign-on (SSO) providers including OpenID Connect (Keycloak), LDAP, and Active Directory.
-- Centralize identity data in an application database to support auditing and future features (RBAC, API tokens).
-- Provide stateless access tokens for API usage, refresh tokens for session renewal, and short-lived authorization codes for SSO handshakes.
-- Enforce role-based authorization across backend routes and surface capabilities to the frontend.
-- Role taxonomy: `toolkit.user` (use only), `toolkit.curator` (enable/disable), `system.admin` (full access including security settings).
-- Maintain deployability in development (SQLite) while allowing production databases (PostgreSQL/MySQL).
 
-## Backend Components
+- Provide secure local username/password accounts with strong password hashing.
+- Support pluggable single sign-on (SSO) providers including OpenID Connect, LDAP, and Active Directory without code changes.
+- Centralise identity data in the Toolbox database for auditing, revocation, and role assignment.
+- Issue short-lived access tokens and refresh tokens that can be rotated or revoked.
+- Enforce role-based access control (RBAC) consistently across the API and web shell.
+- Keep the deployment path simple for both local development (SQLite) and production (PostgreSQL).
 
-### Database Layer
-- Introduce SQLAlchemy 2.0 with PostgreSQL by default; fall back to SQLite for local development.
-- Tables: `users`, `roles`, `user_roles`, `sso_identities`, `audit_logs`, `sessions` (for refresh token tracking), `auth_provider_configs` (optional dynamic configuration).
-- Database URL configured via `DATABASE_URL` env var; default `sqlite+aiosqlite:///./data/app.db`.
-- Alembic migrations to be introduced in a follow-up iteration (initial metadata creation on startup for now).
+## Core components
 
-### Security Utilities
-- Password hashing via `passlib.context.CryptContext` with `bcrypt` hash.
-- JWT handling via `PyJWT` with asymmetric key support when configured; default HS256 secret pulled from `AUTH_JWT_SECRET`.
-- Token schema: access token (5-15 minutes), refresh token (7-30 days), both include subject, roles, provider, issued at, expiry, token id (for revocation).
-- Store refresh tokens keyed by token id for logout and rotation; persist latest metadata in `sessions` table or Redis fallback.
+### Database layer
 
-### Auth Providers
-- Base abstract class `AuthProvider` with methods: `get_login_metadata`, `begin_auth`, `complete_auth`, `get_display_name`.
-- Registry bootstrapped during application startup using provider configs from settings.
-- Local provider integrates with database for password validation and multi-factor hook (placeholder).
-- `OidcProvider` handles discovery, building authorization URL, validating state/nonce, exchanging code for tokens, verifying ID token signature (JWKS via PyJWT), mapping claims to user record, optional group-to-role mapping.
-- `LdapProvider` and `ActiveDirectoryProvider` use `ldap3` for bind authentication; they map distinguished names/groups to roles using configured filters/mappings. AD extends LDAP with start TLS and default attribute mappings.
-- Providers return normalized identity payload (user_id, email, display_name, roles, provider_id, attributes) for downstream handling.
+- SQLAlchemy 2.0 models back the authentication system and run on PostgreSQL by default (via Docker Compose) or SQLite in local development.
+- Tables include `users`, `roles`, `user_roles`, `sso_identities`, `auth_sessions`, `auth_provider_configs`, and `audit_logs`.
+- Alembic migrations ship with the repository; Docker Compose runs `alembic upgrade head` automatically, and `init_db()` creates tables when running the API manually.
 
-### API Surface
-- `/auth/login/{provider}` handles local and credential-based providers.
-- `/auth/providers` lists enabled providers and `/auth/providers/{provider}/begin` returns redirect metadata (OIDC).
-- `/auth/providers/{provider}/callback` finalizes SSO, `/auth/logout`, `/auth/refresh`, `/auth/me` support sessions.
-- Admin endpoints for managing users and roles live under `/admin/users`; provider configuration under `/admin/settings/providers` (superuser only).
-- Authorization dependencies `get_current_user`, `require_roles`, `require_superuser` gate backend routes.
+### Security utilities
 
-### Session Management
-- Access tokens verified via `Depends`. Refresh tokens stored as httpOnly secure cookies (for browser clients) and as bearer for API clients.
-- Token revocation tracked in `sessions` table (token id + expiry + metadata). On logout, session revoked. On refresh, rotate token id.
-- Rate limiting and brute-force prevention to leverage Redis in future iteration.
+- Passwords are hashed with `passlib`'s `CryptContext` (bcrypt by default).
+- JWTs are issued with `PyJWT`. Supply `AUTH_JWT_SECRET` for symmetric signing or an `AUTH_JWT_PRIVATE_KEY`/`AUTH_JWT_PUBLIC_KEY` pair for asymmetric signing.
+- `AuthSession` records persist refresh-token hashes, client metadata, and revocation timestamps.
+- Signed SSO state/nonce payloads use `AUTH_STATE_SECRET` (or fall back to `AUTH_JWT_SECRET`) and expire according to `AUTH_SSO_STATE_TTL_SECONDS`.
 
-## Frontend Adjustments
-- Authentication context to wrap router; store tokens in memory + rely on backend cookies when available.
-- Login screen with provider buttons and local form; SSO buttons either redirect (OIDC) or open modal for LDAP credentials.
-- Guarded routes redirect to `/login` when unauthenticated. Global layout shows user profile, logout, provider info.
-- Refresh token flow triggered on 401, obtains new access token via `/auth/refresh` before retrying API call.
+### Provider registry and configuration
 
-## Configuration
-- New env vars: `DATABASE_URL`, `AUTH_JWT_SECRET`, `AUTH_JWT_ALGORITHM`, `AUTH_ACCESS_TOKEN_TTL`, `AUTH_REFRESH_TOKEN_TTL`, `AUTH_TOKEN_ISSUER`, `AUTH_PROVIDERS`, `OIDC_DISCOVERY_URL`, `OIDC_CLIENT_ID`, ... per provider.
-- Provider configs can be declared as JSON in env (`AUTH_PROVIDERS_JSON`) or via YAML file referenced by `AUTH_PROVIDERS_FILE`.
-- Local admin bootstrap: load `AUTH_BOOTSTRAP_ADMIN` (username/email/password) when DB empty.
+- Providers are declared through `settings.auth_providers` and can be bootstrapped via `AUTH_PROVIDERS_JSON` or `AUTH_PROVIDERS_FILE`.
+- Runtime edits are stored in the `auth_provider_configs` table and are exposed through **Administration → Auth settings**. Performing these actions requires the `system.admin` role.
+- The `ProviderConfigService` persists provider definitions, reloads the registry, and immediately activates new or updated providers without a restart.
 
-## Migration Strategy
-- Alembic migrations live under `backend/alembic`; run `alembic upgrade head` (Docker Compose executes this before starting the API) whenever the service boots in a new environment.
-- The bootstrap admin helper still runs when the database is empty; you can rotate credentials afterwards from the UI.
+### Provider types
 
-## Security Considerations
-- Enforce HTTPS in production; mark cookies `Secure` & `SameSite=strict`.
-- Validate all SSO callbacks for state + nonce, verify issuer/audience against config, check token expiry.
-- Rate limit login attempts (to be implemented with Redis-based limiter).
-- Audit logging for auth events stored in `audit_logs`.
-- Provide `X-Request-Id` correlation to propagate across services.
-- Bind default CORS origins to configured frontends only once auth enforced.
+- **Local** – Username/password accounts backed by the Toolbox database. Supports optional self-registration (`allow_registration`) and works well for lab environments.
+- **OpenID Connect** – Integrates with providers such as Keycloak, Okta, and Azure AD. Configure discovery, client credentials, scopes, optional PKCE, audience validation, and claim/role mappings.
+- **LDAP** – Authenticates against generic LDAP directories. Supports bind DN credentials, user search templates, attribute mapping, and group-to-role translation via `role_mappings`.
+- **Active Directory** – Extends the LDAP provider with sensible attribute defaults and optional `default_domain` handling so users can authenticate with either a DN or UPN.
 
-## Open Questions / Next Steps
-- Confirm target production database (PostgreSQL vs MySQL).
-- Confirm whether service accounts/API keys needed now.
-- Decide on migration tooling timeline.
-- Determine UI design for multi-provider selection.
+### API surface
+
+- `GET /auth/providers` – Enumerate enabled providers and their display metadata.
+- `POST /auth/login/{provider}` – Handle local/LDAP credential submission and issue tokens.
+- `GET /auth/providers/{provider}/begin` and `POST /auth/providers/{provider}/callback` – Support OIDC redirect flows.
+- `POST /auth/refresh` – Rotate refresh tokens, issue a new access token, and persist session metadata.
+- `POST /auth/logout` – Revoke the active refresh token.
+- `GET /auth/me` – Return the authenticated user's profile and roles.
+- Administrative endpoints under `/admin/users` and `/admin/settings/providers` require `system.admin` and expose user management and provider configuration respectively.
+
+### Tokens and sessions
+
+- Access tokens default to 15 minutes (`AUTH_ACCESS_TOKEN_TTL_SECONDS`); refresh tokens default to 14 days (`AUTH_REFRESH_TOKEN_TTL_SECONDS`). Adjust both to match your organisational policies.
+- Refresh tokens are stored as bcrypt hashes in `auth_sessions`. Each refresh response rotates the token identifier and invalidates the previous token to prevent replay.
+- Browser clients receive refresh tokens as httpOnly cookies. Tune `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_SAMESITE`, and `AUTH_COOKIE_DOMAIN` to align with your deployment topology.
+- API clients can supply refresh tokens via the `Authorization` header when cookies are not practical.
+
+### Role enforcement
+
+- Default roles include `toolkit.user` (operate toolkits), `toolkit.curator` (enable/disable toolkits), and `system.admin` (full administrative access).
+- FastAPI dependencies such as `require_roles` guard dashboard, job, toolkit, and admin routes. The frontend mirrors these checks to hide UI controls from unauthorised accounts.
+- During startup, `ensure_core_roles` seeds these roles and `bootstrap_admin_user` can create a privileged account when `.env` provides `BOOTSTRAP_ADMIN_*` values.
+
+### Operations checklist
+
+1. Configure `AUTH_JWT_SECRET` (or upload signing keys) before exposing the Toolbox publicly.
+2. Set `FRONTEND_BASE_URL` so CORS origins match the deployed frontend and review cookie attributes for secure/production usage.
+3. Bootstrap an admin account via `BOOTSTRAP_ADMIN_*` or create one manually, then assign curator/system roles as needed.
+4. Add SSO providers either via environment variables at deploy time or through **Administration → Auth settings** once the platform is running.
+5. Periodically audit `auth_sessions` and `audit_logs` to ensure refresh tokens are rotated and administrative actions are tracked.
+
+## Security considerations
+
+- Enforce HTTPS in production so cookies (`Secure` + `SameSite`) remain protected in transit.
+- Validate redirect URIs on your identity provider to point back to the Toolbox callback routes.
+- Restrict who receives the `system.admin` role; toolkit installation and auth configuration both depend on it.
+- Monitor login failures and consider enabling network-level rate limiting while Redis-backed throttling is under evaluation.
+- Keep provider secrets (client secrets, bind passwords) in a dedicated secrets manager and reference them via environment variables at runtime.
+
+## Future enhancements
+
+- Redis-backed login throttling and lockouts for local/LDAP providers.
+- Optional enforcement that JWT secrets/keys must be overridden in production builds.
+- Expanded audit logging around provider configuration changes and session revocations.
