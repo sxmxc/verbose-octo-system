@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import ntpath
 import shutil
+import stat
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
@@ -122,6 +124,43 @@ def toolkits_get(slug: str):
     summary="Upload and register a toolkit bundle",
     dependencies=[Depends(require_superuser)],
 )
+def _resolve_safe_member_path(
+    member: zipfile.ZipInfo, destination_root: Path, destination_root_resolved: Path
+) -> Path:
+    """Validate the zip member path and return the resolved destination path."""
+    # Normalise separators to POSIX style to simplify validation
+    raw_name = member.filename
+    normalized = raw_name.replace("\\", "/")
+
+    # Remove trailing slash to treat directories uniformly after validation
+    if normalized.endswith("/"):
+        normalized = normalized.rstrip("/")
+
+    # Reject drive letters and absolute paths before joining
+    if ntpath.splitdrive(normalized)[0]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid zip entry path: {raw_name}")
+
+    pure_path = PurePosixPath(normalized)
+    if pure_path.is_absolute():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid zip entry path: {raw_name}")
+
+    # Normalise away current-directory references and reject parent traversals
+    parts = [part for part in pure_path.parts if part not in ("", ".")]
+    if any(part == ".." for part in parts):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid zip entry path: {raw_name}")
+
+    if not parts:
+        # Empty names (e.g. zip comment or root directory entry) resolve to the root
+        return destination_root_resolved
+
+    candidate_path = destination_root.joinpath(*parts)
+    candidate_resolved = candidate_path.resolve()
+    if candidate_resolved != destination_root_resolved and destination_root_resolved not in candidate_resolved.parents:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid zip entry path: {raw_name}")
+
+    return candidate_resolved
+
+
 async def toolkits_install(slug: str | None = Form(None), file: UploadFile = File(...)):
     if slug and any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789-_" for ch in slug.lower()):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Slug must contain only letters, numbers, hyphen, or underscore")
@@ -150,7 +189,32 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
 
     try:
         with zipfile.ZipFile(bundle_path) as zf:
-            zf.extractall(toolkit_root)
+            destination_root = toolkit_root
+            root_resolved = destination_root.resolve()
+            for member in zf.infolist():
+                target_path = _resolve_safe_member_path(member, destination_root, root_resolved)
+                # Ensure metadata (like standalone directory entries) don't attempt traversal
+                if target_path == root_resolved:
+                    continue
+
+                mode = member.external_attr >> 16
+                if stat.S_ISLNK(mode):
+                    raise HTTPException(status_code=400, detail="Toolkit bundle may not contain symbolic links")
+
+                if member.is_dir():
+                    target_path.mkdir(parents=True, exist_ok=True)
+                    continue
+
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(member) as source, target_path.open("wb") as destination:
+                    shutil.copyfileobj(source, destination)
+
+                if mode:
+                    target_path.chmod(mode & 0o777)
+    except HTTPException:
+        bundle_path.unlink(missing_ok=True)
+        shutil.rmtree(toolkit_root, ignore_errors=True)
+        raise
     except zipfile.BadZipFile as exc:
         bundle_path.unlink(missing_ok=True)
         shutil.rmtree(toolkit_root, ignore_errors=True)

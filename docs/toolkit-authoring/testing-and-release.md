@@ -18,6 +18,7 @@ Follow this sequence before publishing a toolkit bundle so operators receive a r
 - Run `python toolkits/scripts/package_toolkit.py <path>` to build `<slug>_toolkit.zip`.
 - Include the generated archive and release notes in your artifact store (GitHub Releases, internal registry, etc.).
 - Bump the toolkit version in `toolkit.json` and include a changelog entry summarising major changes and migration steps.
+- Ensure the archive does not contain absolute paths, drive letters, parent-directory segments, or symlinks—uploads are rejected when these appear to prevent directory traversal during install.
 
 ## Rollback Strategy
 - Keep the previous release bundle available so operators can reinstall quickly if issues arise.
