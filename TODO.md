@@ -27,7 +27,7 @@
 - [ ] Add automated tests covering malicious zip uploads, slug fuzzing, and toolkit activation edge cases.
 
 ## Job Orchestration
-- [ ] Update `/jobs` listing to keep toolkit and module filters separate so module-only queries return the correct jobs.
+- [x] Update `/jobs` listing to keep toolkit and module filters separate so module-only queries return the correct jobs.
 
 ## Toolkit Worker Lifecycle
 - [ ] Ensure `load_toolkit_workers` only records a slug as loaded after the worker module registers successfully, allowing retries when registration fails.

@@ -74,17 +74,29 @@ def get_job(job_id: str) -> Optional[Dict[str, Any]]:
     return job
 
 
-def list_jobs(limit: Optional[int] = None, toolkits: Optional[Iterable[str]] = None) -> List[Dict[str, Any]]:
+def list_jobs(
+    limit: Optional[int] = None,
+    toolkits: Optional[Iterable[str]] = None,
+    modules: Optional[Iterable[str]] = None,
+) -> List[Dict[str, Any]]:
     redis = get_redis()
     values = redis.hvals(JOBS_KEY)
     jobs = [_normalise(_load(raw)) for raw in values]
-    if toolkits:
-        toolkits_set = {m.lower() for m in toolkits}
-        jobs = [
-            job
-            for job in jobs
-            if (job.get("toolkit") or job.get("module", "")).lower() in toolkits_set
-        ]
+    toolkit_filters = {m.lower() for m in toolkits} if toolkits else None
+    module_filters = {m.lower() for m in modules} if modules else None
+    if toolkit_filters or module_filters:
+        filtered_jobs = []
+        for job in jobs:
+            if toolkit_filters:
+                toolkit_value = (job.get("toolkit") or "").lower()
+                if toolkit_value not in toolkit_filters:
+                    continue
+            if module_filters:
+                module_value = (job.get("module") or "").lower()
+                if module_value not in module_filters:
+                    continue
+            filtered_jobs.append(job)
+        jobs = filtered_jobs
     jobs.sort(key=lambda job: job.get("created_at", ""), reverse=True)
     if limit is not None:
         return jobs[:limit]
