@@ -14,6 +14,7 @@ from fastapi import FastAPI
 
 from .config import settings
 from .toolkits.registry import get_toolkit, list_toolkits
+from .toolkits.slugs import InvalidToolkitSlugError, validate_slug
 
 
 _APP_REF: Optional[FastAPI] = None
@@ -83,6 +84,11 @@ def import_toolkit_module(
     namespaces: Iterable[str] = ("backend",),
 ) -> Any:
     """Import a module from a toolkit bundle without polluting global namespaces."""
+
+    try:
+        validate_slug(slug)
+    except InvalidToolkitSlugError as exc:  # pragma: no cover - defensive guard
+        raise ModuleNotFoundError(f"Toolkit '{slug}' has an invalid slug: {exc}") from exc
 
     storage_dir = Path(settings.toolkit_storage_dir)
     toolkit_root = storage_dir / slug

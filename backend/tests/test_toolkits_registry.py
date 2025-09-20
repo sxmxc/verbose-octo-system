@@ -94,6 +94,26 @@ class ToolkitRegistryTests(unittest.TestCase):
         self.assertEqual(stored.name, "Demo")
         self.assertEqual(len(list_toolkits()), 1)
 
+    def test_toolkit_create_slug_normalised(self) -> None:
+        payload = ToolkitCreate(
+            slug="MixEd-Slug",
+            name="Demo",
+            description="Test",
+            base_path="/toolkits/mixed-slug",
+            enabled=True,
+        )
+        self.assertEqual(payload.slug, "mixed-slug")
+
+    def test_toolkit_create_rejects_invalid_slug(self) -> None:
+        with self.assertRaises(ValueError):
+            ToolkitCreate(
+                slug="invalid!slug",
+                name="Demo",
+                description="Test",
+                base_path="/toolkits/demo",
+                enabled=True,
+            )
+
     def test_update_toolkit_changes_enabled_state(self) -> None:
         payload = self._payload(enabled=False)
         create_toolkit(payload)

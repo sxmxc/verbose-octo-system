@@ -44,7 +44,7 @@ See the [UI](ui) reference for a full tour. Highlights:
 Follow the [Toolkit Build Workflow](toolkit-build) for a detailed walkthrough. In short:
 
 1. Build the frontend bundle (if applicable) so it matches `toolkit.json → frontend.entry`.
-2. Run `python toolkits/scripts/package_toolkit.py <path>` to validate required files and generate a release archive.
+2. Run `python toolkits/scripts/package_toolkit.py <path>` to validate required files—including the lowercase slug allowlist—and generate a release archive.
 3. Upload the resulting `.zip` via `/toolkits/install` or the Admin → Toolkits UI.
 4. Enable the toolkit to register routes, worker tasks, and frontend contributions.
 

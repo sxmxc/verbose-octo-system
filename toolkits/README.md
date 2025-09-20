@@ -13,6 +13,7 @@ python toolkits/scripts/package_toolkit.py toolkits/bundled/zabbix
 The script checks that:
 
 - `toolkit.json` exists and declares a slug.
+- The slug only contains lowercase letters, numbers, hyphen (`-`), or underscore (`_`).
 - Files referenced by `frontend.entry` / `frontend.source_entry` are present.
 - Default `frontend/dist/index.js` is included when no entry is specified.
 

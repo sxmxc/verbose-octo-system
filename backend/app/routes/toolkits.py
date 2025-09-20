@@ -21,6 +21,7 @@ from ..toolkits.registry import (
     list_toolkits,
     update_toolkit,
 )
+from ..toolkits.slugs import InvalidToolkitSlugError, normalise_slug, validate_slug
 from ..toolkits.seeder import ensure_bundled_toolkits_installed
 from ..toolkit_loader import activate_toolkit, mark_toolkit_removed
 from ..security.dependencies import require_roles, require_superuser
@@ -35,6 +36,13 @@ def _format_limit_mb(value: int) -> int:
 
 
 router = APIRouter()
+
+
+def _ensure_valid_slug(slug: str) -> None:
+    try:
+        validate_slug(slug)
+    except InvalidToolkitSlugError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 async def _stream_upload_to_path(source: UploadFile, destination: Path) -> int:
@@ -106,6 +114,7 @@ def toolkits_create(payload: ToolkitCreate):
     dependencies=[Depends(require_roles([ROLE_TOOLKIT_CURATOR]))],
 )
 def toolkits_update(slug: str, payload: ToolkitUpdate):
+    _ensure_valid_slug(slug)
     previous = _get_toolkit_or_404(slug)
     toolkit = update_toolkit(slug, payload)
     if not toolkit:
@@ -122,6 +131,7 @@ def toolkits_update(slug: str, payload: ToolkitUpdate):
     dependencies=[Depends(require_superuser)],
 )
 def toolkits_delete(slug: str):
+    _ensure_valid_slug(slug)
     toolkit = _get_toolkit_or_404(slug)
     try:
         deleted = delete_toolkit(slug)
@@ -148,6 +158,7 @@ def toolkits_delete(slug: str):
     dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
 )
 def toolkits_get(slug: str):
+    _ensure_valid_slug(slug)
     return _get_toolkit_or_404(slug)
 
 
@@ -195,10 +206,11 @@ def _resolve_safe_member_path(
     dependencies=[Depends(require_superuser)],
 )
 async def toolkits_install(slug: str | None = Form(None), file: UploadFile = File(...)):
-    if slug and any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789-_" for ch in slug.lower()):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Slug must contain only letters, numbers, hyphen, or underscore")
     if slug:
-        slug = slug.lower()
+        try:
+            slug = normalise_slug(slug)
+        except InvalidToolkitSlugError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     if not file.filename.endswith(".zip"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only .zip bundles are supported")
@@ -316,6 +328,7 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
     dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
 )
 def toolkit_enqueue_job(slug: str, operation: str = Form(...), payload: str | None = Form(None)):
+    _ensure_valid_slug(slug)
     from ..worker_client import enqueue_job
 
     try:

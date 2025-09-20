@@ -10,15 +10,22 @@ import pathlib
 import subprocess
 import sys
 
+from package_toolkit import PackagingError, normalise_slug
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 FRONTEND_ROOT = REPO_ROOT / "frontend"
 DEFAULT_TOOLKIT_DIR = REPO_ROOT / "toolkits"
 PACKAGE_SCRIPT = REPO_ROOT / "toolkits" / "scripts" / "package_toolkit.py"
 
 
-def slugify(name: str, fallback: str) -> str:
-    cleaned = name.strip().lower().replace(" ", "-")
-    return cleaned or fallback
+def resolve_slug(manifest: dict, toolkit_dir: pathlib.Path) -> str:
+    raw_slug = manifest.get("slug")
+    if raw_slug is None:
+        raise RuntimeError(f"toolkit.json in {toolkit_dir} must include a slug")
+    try:
+        return normalise_slug(raw_slug)
+    except PackagingError as exc:
+        raise RuntimeError(f"Invalid slug in {toolkit_dir}: {exc}") from exc
 
 
 def find_toolkits(base: pathlib.Path) -> list[pathlib.Path]:
@@ -39,7 +46,7 @@ def package_all(toolkits_dir: pathlib.Path, destination: pathlib.Path, overwrite
 
         ensure_frontend_bundle(toolkit_dir, manifest)
 
-        slug = slugify(manifest.get("slug", "") or toolkit_dir.name, toolkit_dir.name)
+        slug = resolve_slug(manifest, toolkit_dir)
         output = destination / f"{slug}_toolkit.zip"
 
         command = [

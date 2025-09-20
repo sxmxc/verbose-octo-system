@@ -18,6 +18,7 @@ from .registry import (
     get_toolkit,
     update_toolkit,
 )
+from .slugs import InvalidToolkitSlugError, normalise_slug
 
 
 class ToolkitManifestError(ValueError):
@@ -99,13 +100,19 @@ def install_toolkit_from_directory(
     manifest_path = toolkit_root / "toolkit.json"
     manifest = load_manifest(manifest_path)
 
-    manifest_slug = manifest.get("slug")
-    if not manifest_slug:
+    manifest_slug_raw = manifest.get("slug")
+    if not manifest_slug_raw:
         raise ToolkitManifestError("toolkit.json must define a slug")
-    manifest_slug = manifest_slug.strip().lower()
+    try:
+        manifest_slug = normalise_slug(manifest_slug_raw)
+    except InvalidToolkitSlugError as exc:
+        raise ToolkitManifestError(str(exc)) from exc
 
     if slug_override:
-        slug = slug_override.strip().lower()
+        try:
+            slug = normalise_slug(slug_override)
+        except InvalidToolkitSlugError as exc:
+            raise ToolkitManifestError(str(exc)) from exc
         if slug != manifest_slug:
             raise ToolkitManifestError("Manifest slug does not match override")
     else:

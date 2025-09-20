@@ -41,6 +41,30 @@ async def test_toolkits_install_rejects_path_traversal(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_toolkits_install_rejects_invalid_slug(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+
+    install_mock = MagicMock(side_effect=AssertionError("install_toolkit_from_directory should not run"))
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", install_mock)
+
+    bundle = io.BytesIO()
+    with zipfile.ZipFile(bundle, "w") as zf:
+        zf.writestr("toolkit.json", "{}")
+    bundle.seek(0)
+
+    upload = UploadFile(filename="valid.zip", file=io.BytesIO(bundle.getvalue()))
+
+    with pytest.raises(HTTPException) as exc_info:
+        await toolkits.toolkits_install(slug="NOT OK", file=upload)
+
+    assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
+    assert "Toolkit slug must" in exc_info.value.detail
+    install_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_toolkits_install_rejects_upload_exceeding_max_bytes(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
