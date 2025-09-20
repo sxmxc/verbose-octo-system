@@ -1,0 +1,22 @@
+{
+  "slug": "api-checker",
+  "name": "API Checker",
+  "description": "Craft HTTP requests, explore APIs, and inspect responses with ease.",
+  "base_path": "/toolkits/api-checker",
+  "backend": {
+    "module": "backend.app",
+    "router_attr": "router"
+  },
+  "frontend": {
+    "entry": "frontend/dist/index.js",
+    "source_entry": "frontend/index.tsx"
+  },
+  "dashboard_cards": [
+    {
+      "title": "API Checker",
+      "body": "Quickly compose requests, add auth headers, and validate external APIs.",
+      "link_text": "Open",
+      "link_href": "/toolkits/api-checker"
+    }
+  ]
+}
