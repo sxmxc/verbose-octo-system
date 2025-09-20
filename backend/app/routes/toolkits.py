@@ -118,12 +118,6 @@ def toolkits_get(slug: str):
     return _get_toolkit_or_404(slug)
 
 
-@router.post(
-    "/install",
-    status_code=status.HTTP_202_ACCEPTED,
-    summary="Upload and register a toolkit bundle",
-    dependencies=[Depends(require_superuser)],
-)
 def _resolve_safe_member_path(
     member: zipfile.ZipInfo, destination_root: Path, destination_root_resolved: Path
 ) -> Path:
@@ -161,6 +155,12 @@ def _resolve_safe_member_path(
     return candidate_resolved
 
 
+@router.post(
+    "/install",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Upload and register a toolkit bundle",
+    dependencies=[Depends(require_superuser)],
+)
 async def toolkits_install(slug: str | None = Form(None), file: UploadFile = File(...)):
     if slug and any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789-_" for ch in slug.lower()):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Slug must contain only letters, numbers, hyphen, or underscore")
