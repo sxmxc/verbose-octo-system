@@ -31,6 +31,7 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 - `backend/` – FastAPI service, Celery worker entrypoints, SQLAlchemy models, Redis helpers, and toolkit loader.
 - `frontend/` – React + Vite SPA; `src/AppShell.tsx` hosts global navigation and lazy-loads toolkit micro-frontends.
 - `toolkits/bundled/` – example toolkits (Regex playground, Zabbix helpers) packaged the same way third-party toolkits are distributed.
+- `docs/` – internal engineering guides (prompt engineering playbooks, coding standards, contribution notes, toolkit authoring).
 - `docker-compose.yml` – local orchestration for API, worker, Redis, and frontend.
 - `.env.example` – default environment variables for local development.
 

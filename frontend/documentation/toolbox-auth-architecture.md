@@ -1,4 +1,4 @@
-# Authentication and Authorization Architecture
+# Toolbox Authentication and Authorization Architecture
 
 ## Objectives
 - Support local username/password accounts with secure password hashing.
