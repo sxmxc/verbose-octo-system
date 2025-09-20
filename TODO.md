@@ -11,6 +11,7 @@
 - [ ] Investigate running toolkit build/test steps in an isolated workspace or container before activation.
 
 ## Authentication & Secrets
+- [ ] Implement audit and logging system
 - [ ] Enforce non-default JWT secrets (or require configured asymmetric key pairs) during startup.
 - [ ] Add `token_use` / `typ` assertions when refreshing tokens to prevent access-token replay.
 - [ ] Implement login throttling / lockout for the local provider; emit audit logs on failed attempts.
