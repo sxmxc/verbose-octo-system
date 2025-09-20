@@ -103,6 +103,9 @@ class Settings(BaseSettings):
     frontend_base_url: AnyHttpUrl | None = Field(default=None)
     cors_origins: List[str] = Field(default_factory=default_cors_origins)
     toolkit_storage_dir: Path = Field(default=Path("./data/toolkits"))
+    toolkit_upload_max_bytes: int = Field(default=50 * 1024 * 1024)
+    toolkit_bundle_max_bytes: int = Field(default=200 * 1024 * 1024)
+    toolkit_bundle_max_file_bytes: int = Field(default=100 * 1024 * 1024)
     database_url: str = Field(default="sqlite+aiosqlite:///./data/app.db")
 
     auth_jwt_secret: SecretStr = Field(default=SecretStr("change-me"), repr=False)

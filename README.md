@@ -139,7 +139,7 @@ These bundles mirror the format expected by the runtime, so you can use them as 
 2. **Backend module** – expose a FastAPI `APIRouter` (default attribute `router`) that is mounted under `/toolkits/<slug>`.
 3. **Worker module** – export a callable (default `register`) to register Celery tasks like `<slug>.<operation>`. The runtime injects the shared Celery app and a `register_handler` helper when requested.
 4. **Frontend bundle (optional)** – ship an ESM entry at `frontend/dist/index.js`. During development, toolkits can point to `frontend/index.tsx` so Vite provides hot reloads. At runtime the App Shell injects `React`, `React Router`, and `apiFetch` through `window.__SRE_TOOLKIT_RUNTIME`.
-5. **Package** – run `python toolkits/scripts/package_toolkit.py <path>` to validate the manifest and emit `<slug>_toolkit.zip`. Upload the archive from Admin → Toolkits or via `POST /toolkits/install`. The installer unpacks bundles into `TOOLKIT_STORAGE_DIR/<slug>/` and serves static assets from `/toolkit-assets/<slug>/…`.
+5. **Package** – run `python toolkits/scripts/package_toolkit.py <path>` to validate the manifest and emit `<slug>_toolkit.zip`. Upload the archive from Admin → Toolkits or via `POST /toolkits/install`. The installer rejects archives containing absolute paths, drive letters, parent-directory segments, or symlinks and, once validated, unpacks bundles into `TOOLKIT_STORAGE_DIR/<slug>/` while serving static assets from `/toolkit-assets/<slug>/…`.
 
 Example manifest:
 

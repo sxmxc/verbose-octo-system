@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import stat
 from pathlib import Path
 from typing import Optional
 
@@ -56,6 +57,34 @@ def load_manifest(path: Path) -> dict:
         return json.loads(path.read_text())
     except json.JSONDecodeError as exc:  # pragma: no cover - sanity gate
         raise ToolkitManifestError(f"Invalid toolkit.json: {exc}") from exc
+
+
+def _validate_toolkit_tree(toolkit_root: Path) -> None:
+    if not toolkit_root.exists() or not toolkit_root.is_dir():
+        raise ToolkitManifestError("Toolkit root is not a directory")
+    if toolkit_root.is_symlink():
+        raise ToolkitManifestError("Toolkit root may not be a symbolic link")
+
+    root_resolved = toolkit_root.resolve()
+
+    for entry in toolkit_root.rglob("*"):
+        if entry.is_symlink():
+            raise ToolkitManifestError(f"Toolkit bundle may not contain symbolic links (found: {entry.name})")
+
+        resolved_entry = entry.resolve()
+        try:
+            resolved_entry.relative_to(root_resolved)
+        except ValueError as exc:
+            raise ToolkitManifestError(f"Toolkit bundle contains entry outside the root: {entry}") from exc
+
+        if entry.is_dir():
+            continue
+
+        entry_mode = entry.stat().st_mode
+        if not stat.S_ISREG(entry_mode):
+            raise ToolkitManifestError(
+                f"Toolkit bundle contains unsupported file type: {entry.relative_to(toolkit_root)}"
+            )
 
 
 def install_toolkit_from_directory(
@@ -136,12 +165,22 @@ def install_toolkit_from_directory(
         )
 
     # Copy bundle to storage
+    _validate_toolkit_tree(toolkit_root)
+
     storage_dir = Path(settings.toolkit_storage_dir)
     storage_dir.mkdir(parents=True, exist_ok=True)
+    storage_dir_resolved = storage_dir.resolve()
+
     dest_root = storage_dir / slug
+    dest_root_resolved = dest_root.resolve()
+    try:
+        dest_root_resolved.relative_to(storage_dir_resolved)
+    except ValueError as exc:
+        raise ToolkitManifestError("Toolkit storage destination escapes configured storage directory") from exc
+
     if dest_root.exists():
         shutil.rmtree(dest_root)
-    shutil.copytree(toolkit_root, dest_root)
+    shutil.copytree(toolkit_root, dest_root, dirs_exist_ok=True)
 
     clear_toolkit_removal(slug)
 
