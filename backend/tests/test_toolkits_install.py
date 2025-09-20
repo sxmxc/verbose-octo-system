@@ -8,7 +8,7 @@ from fastapi import HTTPException, UploadFile, status
 from app.routes import toolkits
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_rejects_path_traversal(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,7 @@ async def test_toolkits_install_rejects_path_traversal(tmp_path, monkeypatch):
     assert not toolkit_root.exists()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_strips_directory_segments(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -74,7 +74,7 @@ async def test_toolkits_install_strips_directory_segments(tmp_path, monkeypatch)
     assert (storage_dir / "clean.zip").exists()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_randomises_collisions(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -113,7 +113,7 @@ async def test_toolkits_install_randomises_collisions(tmp_path, monkeypatch):
     assert (storage_dir / "frombundle.zip").exists()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_rejects_invalid_slug(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -137,7 +137,7 @@ async def test_toolkits_install_rejects_invalid_slug(tmp_path, monkeypatch):
     install_mock.assert_not_called()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_rejects_upload_exceeding_max_bytes(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -162,7 +162,7 @@ async def test_toolkits_install_rejects_upload_exceeding_max_bytes(tmp_path, mon
     assert not (storage_dir / "__uploads__" / "huge").exists()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_rejects_entry_over_file_limit(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -195,7 +195,7 @@ async def test_toolkits_install_rejects_entry_over_file_limit(tmp_path, monkeypa
     assert not toolkit_root.exists()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_rejects_total_uncompressed_limit(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)

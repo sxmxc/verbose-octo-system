@@ -6,9 +6,11 @@ import secrets
 import shutil
 import stat
 import zipfile
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 
 from ..config import settings
 from ..toolkits.install_utils import ToolkitManifestError, install_toolkit_from_directory
@@ -34,9 +36,6 @@ UPLOAD_WRITE_CHUNK_SIZE = 1024 * 1024
 
 def _format_limit_mb(value: int) -> int:
     return max(1, (value + (1024 * 1024 - 1)) // (1024 * 1024))
-
-
-router = APIRouter()
 
 
 def _normalise_bundle_filename(raw_filename: str | None) -> str:
@@ -112,9 +111,13 @@ def _get_toolkit_or_404(slug: str) -> ToolkitRecord:
     return toolkit
 
 
-@router.on_event("startup")
-def bootstrap_defaults() -> None:  # pragma: no cover - simple bootstrap
+@asynccontextmanager
+async def toolkits_lifespan(_: FastAPI) -> AsyncIterator[None]:  # pragma: no cover - simple bootstrap
     ensure_bundled_toolkits_installed()
+    yield
+
+
+router = APIRouter(lifespan=toolkits_lifespan)
 
 
 @router.get(
