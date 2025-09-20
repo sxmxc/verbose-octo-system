@@ -19,9 +19,9 @@
 
 ## Provider Secret Management
 - [x] Setup audit and logging system
-- [ ] Stand up a secrets manager (e.g. HashiCorp Vault running in its own container) for storing OIDC/LDAP credentials.
-- [ ] Replace plain JSON storage of provider configs with references to Vault secrets; fetch at runtime via a Vault client.
-- [ ] Document secret provisioning workflow for operators (Vault policies, rotations, bootstrap tokens).
+- [x] Stand up a secrets manager (e.g. HashiCorp Vault running in its own container) for storing OIDC/LDAP credentials.
+- [x] Replace plain JSON storage of provider configs with references to Vault secrets; fetch at runtime via a Vault client.
+- [x] Document secret provisioning workflow for operators (Vault policies, rotations, bootstrap tokens).
 
 ## Infrastructure & Tooling
 - [x] Tighten `frontend/vite.config.ts` dev-server `fs.allow` list to the bare minimum.

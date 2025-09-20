@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
+import logging
 import os
 from typing import Any, Dict, Optional
 
@@ -37,17 +39,20 @@ def _default_claims(config: OidcAuthConfig) -> Dict[str, str]:
 
 class OidcAuthProvider(AuthProvider):
     config_model = OidcAuthConfig
+
     def __init__(self, config: OidcAuthConfig) -> None:
         super().__init__(config)
         self.config = config
         self._metadata: Dict[str, Any] | None = None
         self._jwks_client: PyJWKClient | None = None
+        self._logger = logging.getLogger(__name__)
 
     async def _metadata_client(self) -> Dict[str, Any]:
         if self._metadata:
             return self._metadata
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(self.config.discovery_url)
+            discovery_url = str(self.config.discovery_url)
+            resp = await client.get(discovery_url)
             resp.raise_for_status()
             data = resp.json()
         self._metadata = data
@@ -106,13 +111,21 @@ class OidcAuthProvider(AuthProvider):
             "redirect_uri": redirect_uri,
             "client_id": self.config.client_id,
         }
+        auth = None
         if self.config.client_secret:
-            data["client_secret"] = self.config.client_secret.get_secret_value()
+            secret_value = self.config.client_secret.get_secret_value()
+            auth = httpx.BasicAuth(self.config.client_id, secret_value)
         if code_verifier:
             data["code_verifier"] = code_verifier
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(token_endpoint, data=data)
+            resp = await client.post(token_endpoint, data=data, auth=auth)
             if resp.status_code >= 400:
+                body = resp.text
+                self._logger.error(
+                    "OIDC token exchange failed for provider '%s': %s",
+                    self.name,
+                    body.strip() or resp.status_code,
+                )
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OIDC token exchange failed")
             payload = resp.json()
         return payload
@@ -145,16 +158,44 @@ class OidcAuthProvider(AuthProvider):
         metadata = await self._metadata_client()
         signing_key = self._jwks(metadata).get_signing_key_from_jwt(id_token)
         audience = self.config.audience or self.config.client_id
+        supported_algs = metadata.get("id_token_signing_alg_values_supported", ["RS256"])
+        if isinstance(supported_algs, str):
+            supported_algs = [supported_algs]
+        header = jwt.get_unverified_header(id_token)
+        token_alg = header.get("alg")
+        if token_alg and token_alg not in supported_algs:
+            self._logger.error(
+                "OIDC token presented with unsupported algorithm '%s' for provider '%s' (supported=%s)",
+                token_alg,
+                self.name,
+                supported_algs,
+            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OIDC token algorithm not supported")
         try:
             claims = jwt.decode(
                 id_token,
                 signing_key.key,
-                algorithms=[metadata.get("id_token_signing_alg_values_supported", ["RS256"])[0]],
+                algorithms=supported_algs,
                 audience=audience,
                 issuer=metadata.get("issuer"),
                 options={"verify_at_hash": False},
             )
         except jwt.PyJWTError as exc:
+            raw_claims: Dict[str, Any] | None = None
+            try:
+                body = id_token.split(".")[1]
+                padded = body + "=" * (-len(body) % 4)
+                raw_claims = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+            except Exception:  # pragma: no cover - diagnostic path
+                raw_claims = None
+            self._logger.error(
+                "OIDC token validation failed for provider '%s': %s | audience=%s issuer=%s claims=%s",
+                self.name,
+                exc,
+                audience,
+                metadata.get("issuer"),
+                raw_claims,
+            )
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OIDC token validation failed") from exc
 
         nonce = state_data.get("nonce")

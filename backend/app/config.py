@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import AnyHttpUrl, BaseModel, Field, HttpUrl, SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .secrets import VaultSecretRef
+
 
 class AuthProviderBase(BaseModel):
     name: str
@@ -30,7 +32,8 @@ class OidcAuthProvider(AuthProviderBase):
     type: Literal["oidc"] = "oidc"
     discovery_url: HttpUrl
     client_id: str
-    client_secret: SecretStr
+    client_secret: Optional[SecretStr] = None
+    client_secret_vault: Optional[VaultSecretRef] = None
     redirect_base_url: Optional[HttpUrl] = None
     scopes: List[str] = Field(default_factory=lambda: ["openid", "profile", "email"])
     prompt: Optional[str] = None
@@ -41,12 +44,21 @@ class OidcAuthProvider(AuthProviderBase):
     role_mappings: Dict[str, List[str]] = Field(default_factory=dict)
     use_pkce: bool = True
 
+    @model_validator(mode="after")
+    def _ensure_secret(self) -> "OidcAuthProvider":
+        if not self.enabled:
+            return self
+        if not self.client_secret and not self.client_secret_vault:
+            raise ValueError("OIDC provider requires client_secret or client_secret_vault")
+        return self
+
 
 class LdapAuthProvider(AuthProviderBase):
     type: Literal["ldap"] = "ldap"
     server_uri: str
     bind_dn: Optional[str] = None
     bind_password: Optional[SecretStr] = None
+    bind_password_vault: Optional[VaultSecretRef] = None
     user_dn_template: Optional[str] = None
     user_search_base: Optional[str] = None
     user_filter: Optional[str] = None
@@ -127,6 +139,17 @@ class Settings(BaseSettings):
     auth_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     auth_state_secret: Optional[SecretStr] = None
     auth_sso_state_ttl_seconds: int = 600
+
+    vault_addr: Optional[AnyHttpUrl] = None
+    vault_token: Optional[SecretStr] = Field(default=None, repr=False)
+    vault_token_file: Optional[Path] = None
+    vault_namespace: Optional[str] = None
+    vault_kv_mount: str = "secret"
+    vault_tls_skip_verify: bool = False
+    vault_ca_cert: Optional[Path] = None
+    vault_auth_method: Literal["token", "approle"] = "token"
+    vault_approle_role_id: Optional[SecretStr] = Field(default=None, repr=False)
+    vault_approle_secret_id: Optional[SecretStr] = Field(default=None, repr=False)
 
     auth_providers: List[AuthProviderConfig] = Field(default_factory=list)
     auth_providers_json: Optional[str] = None
@@ -210,10 +233,52 @@ class Settings(BaseSettings):
             provider_cls = provider_cls_map.get(provider_type)
             if not provider_cls:
                 raise ValueError(f"Unsupported auth provider type: {provider_type}")
+            item = cls._resolve_provider_secrets(settings, item, provider_type)
             try:
                 providers.append(provider_cls(**item))
             except ValidationError as exc:  # pragma: no cover - configuration phase
                 raise ValueError(f"Invalid configuration for provider {item.get('name')}: {exc}") from exc
         return providers
+
+    @classmethod
+    def _resolve_provider_secrets(
+        cls,
+        settings: "Settings",
+        raw_item: Dict[str, Any],
+        provider_type: str,
+    ) -> Dict[str, Any]:
+        secret_fields = {
+            "oidc": [("client_secret", "client_secret_vault")],
+            "ldap": [("bind_password", "bind_password_vault")],
+            "active_directory": [("bind_password", "bind_password_vault")],
+        }
+        mappings = secret_fields.get(provider_type, [])
+        if not mappings:
+            return raw_item
+        if not raw_item.get("enabled", True):
+            return raw_item
+        resolved = dict(raw_item)
+        for field_name, vault_field in mappings:
+            if vault_field not in resolved:
+                continue
+            try:
+                ref = VaultSecretRef.model_validate(resolved[vault_field])
+            except ValidationError as exc:
+                raise ValueError(
+                    f"Invalid Vault reference for provider {raw_item.get('name') or raw_item.get('type')}: {exc}"
+                ) from exc
+            resolved[vault_field] = ref
+            if resolved.get(field_name):
+                continue
+            try:
+                from .secrets.vault import read_vault_secret
+
+                secret_value = read_vault_secret(settings, ref)
+            except RuntimeError as exc:
+                raise ValueError(
+                    f"Failed to resolve secret for provider {raw_item.get('name')}: {exc}"
+                ) from exc
+            resolved[field_name] = SecretStr(secret_value)
+        return resolved
 
 settings = Settings()
