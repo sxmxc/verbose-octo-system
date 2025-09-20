@@ -1,11 +1,26 @@
 import io
 import zipfile
-from unittest.mock import MagicMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException, UploadFile, status
 
 from app.routes import toolkits
+
+
+def make_session_stub():
+    return SimpleNamespace(
+        add=MagicMock(),
+        flush=AsyncMock(),
+        commit=AsyncMock(),
+        execute=AsyncMock(return_value=SimpleNamespace(rowcount=0)),
+        get=AsyncMock(return_value=None),
+    )
+
+
+def make_request_stub():
+    return SimpleNamespace(client=SimpleNamespace(host=None), headers={})
 
 
 @pytest.mark.anyio("asyncio")
@@ -24,8 +39,11 @@ async def test_toolkits_install_rejects_path_traversal(tmp_path, monkeypatch):
 
     upload = UploadFile(filename="malicious.zip", file=io.BytesIO(malicious_zip.getvalue()))
 
+    session = make_session_stub()
+    request = make_request_stub()
+
     with pytest.raises(HTTPException) as exc_info:
-        await toolkits.toolkits_install(slug="evil", file=upload)
+        await toolkits.toolkits_install(slug="evil", file=upload, current_user=None, session=session, request=request)
 
     assert exc_info.value.status_code == 400
     install_mock.assert_not_called()
@@ -46,8 +64,7 @@ async def test_toolkits_install_strips_directory_segments(tmp_path, monkeypatch)
     storage_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
 
-    record = MagicMock()
-    record.slug = "clean"
+    record = SimpleNamespace(slug="clean", name="Clean Toolkit", origin="uploaded", enabled=False)
     monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
 
     bundle = io.BytesIO()
@@ -66,7 +83,12 @@ async def test_toolkits_install_strips_directory_segments(tmp_path, monkeypatch)
 
     upload = UploadFile(filename="../../nested\\evil.zip", file=io.BytesIO(bundle.getvalue()))
 
-    result = await toolkits.toolkits_install(slug="clean", file=upload)
+    session = make_session_stub()
+    request = make_request_stub()
+
+    result = await toolkits.toolkits_install(
+        slug="clean", file=upload, current_user=None, session=session, request=request
+    )
 
     assert captured["destination"].name == "evil.zip"
     assert captured["destination"].parent == storage_dir
@@ -83,8 +105,7 @@ async def test_toolkits_install_randomises_collisions(tmp_path, monkeypatch):
     existing = storage_dir / "duplicate.zip"
     existing.write_bytes(b"existing")
 
-    record = MagicMock()
-    record.slug = "frombundle"
+    record = SimpleNamespace(slug="frombundle", name="Bundled Toolkit", origin="uploaded", enabled=False)
     monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
 
     bundle = io.BytesIO()
@@ -104,7 +125,16 @@ async def test_toolkits_install_randomises_collisions(tmp_path, monkeypatch):
 
     upload = UploadFile(filename="duplicate.zip", file=io.BytesIO(bundle.getvalue()))
 
-    result = await toolkits.toolkits_install(slug=None, file=upload)
+    session = make_session_stub()
+    request = make_request_stub()
+
+    result = await toolkits.toolkits_install(
+        slug=None,
+        file=upload,
+        current_user=None,
+        session=session,
+        request=request,
+    )
 
     assert captured["destination"].name == "duplicate-deadbeef.zip"
     assert captured["destination"].parent == storage_dir
@@ -129,8 +159,13 @@ async def test_toolkits_install_rejects_invalid_slug(tmp_path, monkeypatch):
 
     upload = UploadFile(filename="valid.zip", file=io.BytesIO(bundle.getvalue()))
 
+    session = make_session_stub()
+    request = make_request_stub()
+
     with pytest.raises(HTTPException) as exc_info:
-        await toolkits.toolkits_install(slug="NOT OK", file=upload)
+        await toolkits.toolkits_install(
+            slug="NOT OK", file=upload, current_user=None, session=session, request=request
+        )
 
     assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
     assert "Toolkit slug must" in exc_info.value.detail
@@ -153,8 +188,13 @@ async def test_toolkits_install_rejects_upload_exceeding_max_bytes(tmp_path, mon
     payload = b"x" * 128
     upload = UploadFile(filename="too-big.zip", file=io.BytesIO(payload))
 
+    session = make_session_stub()
+    request = make_request_stub()
+
     with pytest.raises(HTTPException) as exc_info:
-        await toolkits.toolkits_install(slug="huge", file=upload)
+        await toolkits.toolkits_install(
+            slug="huge", file=upload, current_user=None, session=session, request=request
+        )
 
     assert exc_info.value.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
     install_mock.assert_not_called()
@@ -182,8 +222,13 @@ async def test_toolkits_install_rejects_entry_over_file_limit(tmp_path, monkeypa
 
     upload = UploadFile(filename="oversized.zip", file=io.BytesIO(oversized_zip.getvalue()))
 
+    session = make_session_stub()
+    request = make_request_stub()
+
     with pytest.raises(HTTPException) as exc_info:
-        await toolkits.toolkits_install(slug="limit", file=upload)
+        await toolkits.toolkits_install(
+            slug="limit", file=upload, current_user=None, session=session, request=request
+        )
 
     assert exc_info.value.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
     install_mock.assert_not_called()
@@ -216,8 +261,13 @@ async def test_toolkits_install_rejects_total_uncompressed_limit(tmp_path, monke
 
     upload = UploadFile(filename="expands.zip", file=io.BytesIO(bomb_zip.getvalue()))
 
+    session = make_session_stub()
+    request = make_request_stub()
+
     with pytest.raises(HTTPException) as exc_info:
-        await toolkits.toolkits_install(slug="expands", file=upload)
+        await toolkits.toolkits_install(
+            slug="expands", file=upload, current_user=None, session=session, request=request
+        )
 
     assert exc_info.value.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
     install_mock.assert_not_called()

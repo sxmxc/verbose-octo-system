@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_session
@@ -42,6 +42,7 @@ async def list_users(
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     payload: UserCreateRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user=Depends(require_roles([ROLE_TOOLKIT_CURATOR])),
 ) -> UserResponse:
@@ -60,6 +61,18 @@ async def create_user(
         roles=payload.roles,
         is_superuser=payload.is_superuser,
     )
+    await service.audit(
+        user=user,
+        actor=current_user,
+        event="user.create",
+        payload={
+            "created_user_id": user.id,
+            "roles": payload.roles,
+            "is_superuser": payload.is_superuser,
+        },
+        source_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     await session.commit()
     return _serialize_user(user)
 
@@ -68,6 +81,7 @@ async def create_user(
 async def update_user(
     user_id: str,
     payload: UserUpdateRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
     current_user=Depends(require_roles([ROLE_TOOLKIT_CURATOR])),
 ) -> UserResponse:
@@ -75,20 +89,72 @@ async def update_user(
     user = await service.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    source_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    previous_roles = sorted(role.slug for role in user.roles)
+    previous_email = user.email
+    previous_display_name = user.display_name
+    previous_active = user.is_active
+    previous_superuser = user.is_superuser
+    roles_changed = False
     if payload.roles is not None:
         if ROLE_SYSTEM_ADMIN in payload.roles and not current_user.is_superuser:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot assign system admin role")
         await service.set_roles(user, payload.roles)
-    if payload.email is not None:
+        updated_roles = sorted(role.slug for role in user.roles)
+        roles_changed = updated_roles != previous_roles
+    else:
+        updated_roles = previous_roles
+    profile_changes = {}
+    if payload.email is not None and payload.email != previous_email:
         user.email = payload.email
-    if payload.display_name is not None:
+        profile_changes["email"] = {"from": previous_email, "to": payload.email}
+    if payload.display_name is not None and payload.display_name != previous_display_name:
         user.display_name = payload.display_name
-    if payload.is_active is not None:
+        profile_changes["display_name"] = {"from": previous_display_name, "to": payload.display_name}
+    status_change = None
+    if payload.is_active is not None and payload.is_active != previous_active:
         user.is_active = payload.is_active
-    if payload.is_superuser is not None:
+        status_change = {"from": previous_active, "to": payload.is_active}
+    privilege_change = None
+    if payload.is_superuser is not None and payload.is_superuser != previous_superuser:
         if not current_user.is_superuser:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot modify superuser flag")
         user.is_superuser = payload.is_superuser
+        privilege_change = {"from": previous_superuser, "to": payload.is_superuser}
+    if profile_changes:
+        await service.audit(
+            user=user,
+            actor=current_user,
+            event="user.update",
+            payload={"changes": profile_changes},
+            source_ip=source_ip,
+            user_agent=user_agent,
+        )
+    if status_change is not None:
+        await service.audit(
+            user=user,
+            actor=current_user,
+            event="user.status.update",
+            payload=status_change,
+            source_ip=source_ip,
+            user_agent=user_agent,
+        )
+    if roles_changed or privilege_change:
+        payload_details = {
+            "previous_roles": previous_roles,
+            "roles": updated_roles,
+        }
+        if privilege_change:
+            payload_details["superuser"] = privilege_change
+        await service.audit(
+            user=user,
+            actor=current_user,
+            event="user.roles.update",
+            payload=payload_details,
+            source_ip=source_ip,
+            user_agent=user_agent,
+        )
     await session.commit()
     await session.refresh(user)
     return _serialize_user(user)
@@ -101,14 +167,23 @@ async def update_user(
 )
 async def delete_user(
     user_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
-    _: object = Depends(require_roles([ROLE_TOOLKIT_CURATOR])),
+    current_user=Depends(require_roles([ROLE_TOOLKIT_CURATOR])),
 ) -> Response:
     service = UserService(session)
     user = await service.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     await service.delete_user(user)
+    await service.audit(
+        user=user,
+        actor=current_user,
+        event="user.delete",
+        payload={"deleted_user_id": user.id, "username": user.username},
+        source_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -116,16 +191,22 @@ async def delete_user(
 @router.post("/import", response_model=List[UserResponse])
 async def import_users(
     payload: UserImportRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
-    _: object = Depends(require_roles([ROLE_TOOLKIT_CURATOR])),
+    current_user=Depends(require_roles([ROLE_TOOLKIT_CURATOR])),
 ) -> List[UserResponse]:
     provider = get_provider(payload.provider)
     if not provider:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not configured")
     service = UserService(session)
+    source_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
     created_users: List[UserResponse] = []
     for entry in payload.entries:
         user = await service.find_by_identity(provider.name, entry.external_id)
+        outcome = "existing_identity"
+        roles_applied: List[str] = []
+        was_created = False
         if user:
             pass
         else:
@@ -141,20 +222,35 @@ async def import_users(
                 )
                 session.add(user)
                 await session.flush()
+                was_created = True
+                outcome = "created"
+            else:
+                outcome = "linked_identity"
             roles_to_apply = entry.roles or provider.default_roles
             if roles_to_apply:
                 await service.assign_roles(user, roles_to_apply)
+                roles_applied = list(roles_to_apply)
             await service.link_identity(
                 user,
                 provider=provider.name,
                 subject=entry.external_id,
                 attributes={"imported": True},
             )
-            await service.audit(
-                user=user,
-                event="import_user",
-                payload={"provider": provider.name, "external_id": entry.external_id},
-            )
+        await service.audit(
+            user=user,
+            actor=current_user,
+            event="user.import",
+            payload={
+                "provider": provider.name,
+                "external_id": entry.external_id,
+                "username": entry.username,
+                "outcome": outcome,
+                "created": was_created,
+                "roles_applied": roles_applied,
+            },
+            source_ip=source_ip,
+            user_agent=user_agent,
+        )
         created_users.append(_serialize_user(user))
     await session.commit()
     return created_users

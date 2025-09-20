@@ -45,11 +45,12 @@ class ProviderConfigService:
         await self.session.flush()
         return record
 
-    async def delete_config(self, name: str) -> None:
+    async def delete_config(self, name: str) -> AuthProviderConfig:
         record = await self.get_config(name)
         if not record:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
         await self.session.delete(record)
+        return record
 
     async def reload_registry(self) -> None:
         await load_providers(self.session)

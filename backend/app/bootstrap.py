@@ -36,6 +36,6 @@ async def bootstrap_admin_user(session: AsyncSession) -> None:
         roles=[ROLE_SYSTEM_ADMIN, *DEFAULT_ROLE_SLUGS],
         is_superuser=True,
     )
-    await service.audit(user=user, event="bootstrap_admin_created", payload={"username": username})
+    await service.audit(user=user, event="user.bootstrap", payload={"username": username})
     await session.commit()
     logger.info("Bootstrapped initial admin user %s", user.username)

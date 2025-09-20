@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db.session import get_session
 from ..security.dependencies import require_superuser
 from ..services.provider_configs import ProviderConfigService
+from ..services.users import UserService
 
 router = APIRouter(prefix="/admin/settings", tags=["admin-settings"])
 
@@ -38,7 +39,7 @@ async def list_provider_configs(
 async def upsert_provider_config(
     request: Request,
     session: AsyncSession = Depends(get_session),
-    _: object = Depends(require_superuser),
+    current_user=Depends(require_superuser),
 ) -> Dict[str, Any]:
     payload = await request.json()
     if "type" not in payload:
@@ -46,6 +47,21 @@ async def upsert_provider_config(
     service = ProviderConfigService(session)
     record = await service.upsert_config(payload)
     await service.reload_registry()
+    user_service = UserService(session)
+    await user_service.audit(
+        user=None,
+        actor=current_user,
+        event="security.provider.update",
+        payload={
+            "name": record.name,
+            "type": record.type,
+            "enabled": record.enabled,
+        },
+        source_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        target_type="auth_provider",
+        target_id=record.name,
+    )
     await session.commit()
     return _serialize(record)
 
@@ -57,11 +73,26 @@ async def upsert_provider_config(
 )
 async def delete_provider_config(
     name: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
-    _: object = Depends(require_superuser),
+    current_user=Depends(require_superuser),
 ) -> Response:
     service = ProviderConfigService(session)
-    await service.delete_config(name)
+    record = await service.delete_config(name)
     await service.reload_registry()
+    user_service = UserService(session)
+    await user_service.audit(
+        user=None,
+        actor=current_user,
+        event="security.provider.delete",
+        payload={
+            "name": record.name,
+            "type": record.type,
+        },
+        source_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        target_type="auth_provider",
+        target_id=name,
+    )
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

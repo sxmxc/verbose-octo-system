@@ -1,3 +1,11 @@
+from .audit import (
+    AuditEventSchema,
+    AuditLogActor,
+    AuditLogEntry,
+    AuditLogListResponse,
+    AuditSettingsResponse,
+    AuditSettingsUpdateRequest,
+)
 from .user import (
     ImportedUserEntry,
     UserCreateRequest,
@@ -12,4 +20,10 @@ __all__ = [
     "UserResponse",
     "UserImportRequest",
     "ImportedUserEntry",
+    "AuditLogListResponse",
+    "AuditLogEntry",
+    "AuditLogActor",
+    "AuditEventSchema",
+    "AuditSettingsResponse",
+    "AuditSettingsUpdateRequest",
 ]

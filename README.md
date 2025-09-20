@@ -26,6 +26,7 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 - **Persistent state** – SQLAlchemy models backed by PostgreSQL (or SQLite for local development) handle users, roles, sessions, and provider configuration.
 - **Adaptive app shell** – the React sidebar renders toolkit navigation dynamically and injects shared UI primitives (`tk-*` components) so micro-frontends inherit Toolbox theming without custom CSS.
 - **Hardened access control** – JWT-backed authentication with local, OIDC, LDAP, or Active Directory providers that can be configured at runtime.
+- **Security audit trail** – centralized logging of authentication, permission, and toolkit lifecycle events with configurable retention and administrator-only viewing tools.
 - **Container ready** – `docker compose up --build` brings up the API, worker, Redis, and Vite dev server in one command.
 
 ## Repository layout

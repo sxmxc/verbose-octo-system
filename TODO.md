@@ -11,13 +11,14 @@
 - [ ] Investigate running toolkit build/test steps in an isolated workspace or container before activation.
 
 ## Authentication & Secrets
-- [ ] Implement audit and logging system
+- [x] Implement audit and logging system
 - [ ] Enforce non-default JWT secrets (or require configured asymmetric key pairs) during startup.
 - [ ] Add `token_use` / `typ` assertions when refreshing tokens to prevent access-token replay.
 - [ ] Implement login throttling / lockout for the local provider; emit audit logs on failed attempts.
 - [ ] Keep access tokens out of `localStorage`; rely on httpOnly refresh cookies or in-memory storage on the SPA.
 
 ## Provider Secret Management
+- [x] Setup audit and logging system
 - [ ] Stand up a secrets manager (e.g. HashiCorp Vault running in its own container) for storing OIDC/LDAP credentials.
 - [ ] Replace plain JSON storage of provider configs with references to Vault secrets; fetch at runtime via a Vault client.
 - [ ] Document secret provisioning workflow for operators (Vault policies, rotations, bootstrap tokens).

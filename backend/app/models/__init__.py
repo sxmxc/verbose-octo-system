@@ -1,4 +1,5 @@
 from .auth_provider import AuthProviderConfig
+from .system import SystemSetting
 from .toolkit import Toolkit, ToolkitRemoval
 from .user import AuditLog, AuthSession, Role, SsoIdentity, User, UserRole
 
@@ -10,6 +11,7 @@ __all__ = [
     "AuthSession",
     "AuditLog",
     "AuthProviderConfig",
+    "SystemSetting",
     "Toolkit",
     "ToolkitRemoval",
 ]
