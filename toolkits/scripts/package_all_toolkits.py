@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Package every toolkit manifest found under the repository."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import pathlib
+import subprocess
+import sys
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+DEFAULT_TOOLKIT_DIR = REPO_ROOT / "toolkits"
+PACKAGE_SCRIPT = REPO_ROOT / "toolkits" / "scripts" / "package_toolkit.py"
+
+
+def slugify(name: str, fallback: str) -> str:
+    cleaned = name.strip().lower().replace(" ", "-")
+    return cleaned or fallback
+
+
+def find_toolkits(base: pathlib.Path) -> list[pathlib.Path]:
+    return sorted(path.parent for path in base.rglob("toolkit.json"))
+
+
+def package_all(toolkits_dir: pathlib.Path, destination: pathlib.Path, overwrite: bool) -> None:
+    manifests = find_toolkits(toolkits_dir)
+    if not manifests:
+        raise SystemExit("No toolkit manifests found.")
+
+    destination.mkdir(parents=True, exist_ok=True)
+
+    for toolkit_dir in manifests:
+        manifest_path = toolkit_dir / "toolkit.json"
+        with manifest_path.open() as handle:
+            manifest = json.load(handle)
+
+        slug = slugify(manifest.get("slug", "") or toolkit_dir.name, toolkit_dir.name)
+        output = destination / f"{slug}_toolkit.zip"
+
+        command = [
+            sys.executable,
+            str(PACKAGE_SCRIPT),
+            str(toolkit_dir),
+            "--output",
+            str(output),
+        ]
+        if overwrite:
+            command.insert(-2, "--force")
+
+        subprocess.run(command, check=True)
+        print(f"Packaged {slug} toolkit from {toolkit_dir}")
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Package all toolkits into zip archives.")
+    parser.add_argument(
+        "--destination",
+        type=pathlib.Path,
+        default=pathlib.Path("/tmp/toolkits"),
+        help="Directory to write toolkit archives into.",
+    )
+    parser.add_argument(
+        "--toolkits-dir",
+        type=pathlib.Path,
+        default=DEFAULT_TOOLKIT_DIR,
+        help="Root directory to scan for toolkit manifests.",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing archives when present.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    package_all(args.toolkits_dir.resolve(), args.destination.resolve(), args.force)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
