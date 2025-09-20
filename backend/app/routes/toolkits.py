@@ -10,7 +10,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
 
-from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..toolkits.install_utils import ToolkitManifestError, install_toolkit_from_directory
@@ -29,6 +30,8 @@ from ..toolkits.seeder import ensure_bundled_toolkits_installed
 from ..toolkit_loader import activate_toolkit, mark_toolkit_removed
 from ..security.dependencies import require_roles, require_superuser
 from ..security.roles import ROLE_TOOLKIT_CURATOR, ROLE_TOOLKIT_USER
+from ..db.session import get_session
+from ..services.users import UserService
 
 
 UPLOAD_WRITE_CHUNK_SIZE = 1024 * 1024
@@ -148,9 +151,14 @@ def toolkits_create(payload: ToolkitCreate):
     "/{slug}",
     response_model=ToolkitRecord,
     summary="Update a toolkit definition",
-    dependencies=[Depends(require_roles([ROLE_TOOLKIT_CURATOR]))],
 )
-def toolkits_update(slug: str, payload: ToolkitUpdate):
+async def toolkits_update(
+    slug: str,
+    payload: ToolkitUpdate,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user=Depends(require_roles([ROLE_TOOLKIT_CURATOR])),
+):
     _ensure_valid_slug(slug)
     previous = _get_toolkit_or_404(slug)
     toolkit = update_toolkit(slug, payload)
@@ -158,6 +166,25 @@ def toolkits_update(slug: str, payload: ToolkitUpdate):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Toolkit not found")
     if toolkit.enabled and not previous.enabled:
         activate_toolkit(slug)
+    if toolkit.enabled != previous.enabled:
+        user_service = UserService(session)
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        await user_service.audit(
+            user=current_user,
+            actor=current_user,
+            event="toolkit.enable" if toolkit.enabled else "toolkit.disable",
+            payload={
+                "slug": toolkit.slug,
+                "name": toolkit.name,
+                "enabled": toolkit.enabled,
+            },
+            source_ip=client_ip,
+            user_agent=user_agent,
+            target_type="toolkit",
+            target_id=toolkit.slug,
+        )
+        await session.commit()
     return toolkit
 
 
@@ -165,9 +192,13 @@ def toolkits_update(slug: str, payload: ToolkitUpdate):
     "/{slug}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a custom toolkit",
-    dependencies=[Depends(require_superuser)],
 )
-def toolkits_delete(slug: str):
+async def toolkits_delete(
+    slug: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user=Depends(require_superuser),
+):
     _ensure_valid_slug(slug)
     toolkit = _get_toolkit_or_404(slug)
     try:
@@ -186,6 +217,25 @@ def toolkits_delete(slug: str):
         bundle_path.unlink()
 
     mark_toolkit_removed(slug)
+
+    user_service = UserService(session)
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    await user_service.audit(
+        user=current_user,
+        actor=current_user,
+        event="toolkit.uninstall",
+        payload={
+            "slug": slug,
+            "name": toolkit.name,
+            "origin": toolkit.origin,
+        },
+        source_ip=client_ip,
+        user_agent=user_agent,
+        target_type="toolkit",
+        target_id=slug,
+    )
+    await session.commit()
 
 
 @router.get(
@@ -240,9 +290,14 @@ def _resolve_safe_member_path(
     "/install",
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload and register a toolkit bundle",
-    dependencies=[Depends(require_superuser)],
 )
-async def toolkits_install(slug: str | None = Form(None), file: UploadFile = File(...)):
+async def toolkits_install(
+    request: Request,
+    slug: str | None = Form(None),
+    file: UploadFile = File(...),
+    current_user=Depends(require_superuser),
+    session: AsyncSession = Depends(get_session),
+):
     if slug:
         try:
             slug = normalise_slug(slug)
@@ -349,6 +404,27 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
 
     if toolkit_root.exists():
         shutil.rmtree(toolkit_root, ignore_errors=True)
+
+    user_service = UserService(session)
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    await user_service.audit(
+        user=current_user,
+        actor=current_user,
+        event="toolkit.install",
+        payload={
+            "slug": record.slug,
+            "name": record.name,
+            "origin": record.origin,
+            "enabled": record.enabled,
+            "bundle_filename": bundle_path.name,
+        },
+        source_ip=client_ip,
+        user_agent=user_agent,
+        target_type="toolkit",
+        target_id=record.slug,
+    )
+    await session.commit()
 
     return {
         "uploaded": True,

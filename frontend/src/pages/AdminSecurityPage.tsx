@@ -34,13 +34,21 @@ type AuditLogEntry = {
 
 type AuditLogResponse = {
   items: AuditLogEntry[]
-  next_cursor: string | null
+  page: number
+  page_size: number
+  total: number
+  pages: number
   events: AuditEventDefinition[]
+  retention_days: number
 }
 
 type AuditFilters = {
   event: string
   severity: string
+}
+
+type AuditSettingsResponse = {
+  retention_days: number
 }
 
 const cardStyle: React.CSSProperties = {
@@ -95,6 +103,36 @@ const badgeBase: React.CSSProperties = {
 const mutedTextStyle: React.CSSProperties = {
   color: 'var(--color-text-secondary)',
   fontSize: '0.85rem',
+}
+
+const retentionSectionStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: '0.5rem',
+  padding: '0.75rem 1rem',
+  borderRadius: 10,
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-surface-alt, rgba(255,255,255,0.65))',
+}
+
+const retentionFormStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '0.75rem',
+  alignItems: 'center',
+  flexWrap: 'wrap' as const,
+}
+
+const retentionInputStyle: React.CSSProperties = {
+  borderRadius: 8,
+  border: '1px solid var(--color-border)',
+  padding: '0.5rem 0.75rem',
+  background: 'var(--color-surface)',
+  color: 'var(--color-text-primary)',
+  width: '6rem',
+}
+
+const inlineMessageStyle: React.CSSProperties = {
+  fontSize: '0.8rem',
+  color: 'var(--color-text-secondary)',
 }
 
 function formatTimestamp(value: string) {
@@ -171,14 +209,42 @@ function payloadPreview(payload: Record<string, unknown> | null) {
 export default function AdminSecurityPage() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [events, setEvents] = useState<AuditEventDefinition[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<AuditFilters>({ event: 'all', severity: 'all' })
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [retentionDays, setRetentionDays] = useState<number | null>(null)
+  const [retentionDraft, setRetentionDraft] = useState('')
+  const [retentionSaving, setRetentionSaving] = useState(false)
+  const [retentionMessage, setRetentionMessage] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const [total, setTotal] = useState(0)
+  const [pages, setPages] = useState(1)
   const requestRef = useRef(0)
 
+  const toggleExpanded = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
   const loadLogs = useCallback(
-    async ({ reset, cursor }: { reset?: boolean; cursor?: string | null } = {}) => {
+    async ({
+      reset,
+      targetPage,
+      overridePageSize,
+    }: {
+      reset?: boolean
+      targetPage?: number
+      overridePageSize?: number
+    } = {}) => {
       const requestId = requestRef.current + 1
       requestRef.current = requestId
       setLoading(true)
@@ -186,26 +252,31 @@ export default function AdminSecurityPage() {
       try {
         if (reset) {
           setLogs([])
-          setNextCursor(null)
+          setExpandedIds(new Set())
         }
         const params = new URLSearchParams()
-        params.set('limit', '100')
+        const desiredPage = targetPage ?? 1
+        const effectivePageSize = overridePageSize ?? pageSize
+        params.set('page', String(desiredPage))
+        params.set('page_size', String(effectivePageSize))
         if (filters.event !== 'all') {
           params.set('event', filters.event)
         }
         if (filters.severity !== 'all') {
           params.set('severity', filters.severity)
         }
-        if (cursor) {
-          params.set('before', cursor)
-        }
         const response = await apiFetch<AuditLogResponse>(`/admin/security/audit-logs?${params.toString()}`)
         if (requestId !== requestRef.current) {
           return
         }
         setEvents(response.events)
-        setNextCursor(response.next_cursor)
-        setLogs((prev) => (reset ? response.items : [...prev, ...response.items]))
+        setRetentionDays(response.retention_days)
+        setRetentionDraft(String(response.retention_days))
+        setPage(response.page)
+        setPageSize(response.page_size)
+        setTotal(response.total)
+        setPages(response.pages)
+        setLogs(response.items)
       } catch (err) {
         if (requestId === requestRef.current) {
           setError(err instanceof Error ? err.message : String(err))
@@ -216,12 +287,13 @@ export default function AdminSecurityPage() {
         }
       }
     },
-    [filters]
+    [filters, pageSize]
   )
 
   useEffect(() => {
-    void loadLogs({ reset: true })
-  }, [loadLogs])
+    void loadLogs({ reset: true, targetPage: 1 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const severityOptions = useMemo(() => {
     const options = new Set<string>(['info', 'warning', 'critical'])
@@ -236,6 +308,34 @@ export default function AdminSecurityPage() {
   }, [events])
 
   const selectedEventDefinition = useMemo(() => events.find((event) => event.name === filters.event), [events, filters.event])
+
+  const handleRetentionSubmit = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      const parsed = Number(retentionDraft)
+      if (!Number.isFinite(parsed) || parsed < 1) {
+        setRetentionMessage('Error: retention must be at least 1 day.')
+        return
+      }
+      setRetentionSaving(true)
+      setRetentionMessage(null)
+      try {
+        const response = await apiFetch<AuditSettingsResponse>('/admin/security/settings', {
+          method: 'PUT',
+          body: { retention_days: Math.floor(parsed) },
+        })
+        setRetentionDays(response.retention_days)
+        setRetentionDraft(String(response.retention_days))
+        setRetentionMessage('Retention updated successfully.')
+        void loadLogs({ reset: true, targetPage: page })
+      } catch (err) {
+        setRetentionMessage(`Error: ${err instanceof Error ? err.message : String(err)}`)
+      } finally {
+        setRetentionSaving(false)
+      }
+    },
+    [retentionDraft, loadLogs, page]
+  )
 
   return (
     <div style={cardStyle}>
@@ -257,6 +357,8 @@ export default function AdminSecurityPage() {
             onChange={(event) => {
               const value = event.target.value
               setFilters((prev) => ({ ...prev, event: value }))
+              setPage(1)
+              void loadLogs({ reset: true, targetPage: 1 })
             }}
             style={selectStyle}
           >
@@ -274,6 +376,8 @@ export default function AdminSecurityPage() {
             onChange={(event) => {
               const value = event.target.value
               setFilters((prev) => ({ ...prev, severity: value }))
+              setPage(1)
+              void loadLogs({ reset: true, targetPage: 1 })
             }}
             style={selectStyle}
           >
@@ -284,9 +388,28 @@ export default function AdminSecurityPage() {
             ))}
           </select>
         </label>
+        <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+          Page size
+          <select
+            value={pageSize}
+            onChange={(event) => {
+              const value = Number(event.target.value)
+              setPageSize(value)
+              setPage(1)
+              void loadLogs({ reset: true, targetPage: 1, overridePageSize: value })
+            }}
+            style={selectStyle}
+          >
+            {[25, 50, 100, 200].map((value) => (
+              <option key={value} value={value}>
+                {value} per page
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
-          onClick={() => void loadLogs({ reset: true })}
+          onClick={() => void loadLogs({ reset: true, targetPage: page })}
           style={{
             alignSelf: 'end',
             padding: '0.65rem 1rem',
@@ -306,6 +429,53 @@ export default function AdminSecurityPage() {
         </button>
       </section>
 
+      <section style={retentionSectionStyle}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <strong style={{ color: 'var(--color-text-primary)' }}>Log retention</strong>
+            <p style={{ ...mutedTextStyle, margin: '0.2rem 0 0' }}>
+              Define how long audit entries are kept before automatic cleanup. Older records are purged immediately after changes.
+            </p>
+          </div>
+        </header>
+        <form onSubmit={handleRetentionSubmit} style={retentionFormStyle}>
+          <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+            Retention (days)
+            <input
+              type="number"
+              min={1}
+              value={retentionDraft}
+              onChange={(event) => setRetentionDraft(event.target.value)}
+              style={retentionInputStyle}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={retentionSaving}
+            style={{
+              padding: '0.6rem 1rem',
+              borderRadius: 10,
+              border: '1px solid transparent',
+              background: 'var(--color-sidebar-button-bg)',
+              color: 'var(--color-sidebar-button-text)',
+              fontWeight: 600,
+              cursor: retentionSaving ? 'wait' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              opacity: retentionSaving ? 0.7 : 1,
+            }}
+          >
+            <MaterialIcon name={retentionSaving ? 'hourglass_empty' : 'save'} />
+            Save retention
+          </button>
+          {retentionDays !== null && (
+            <span style={inlineMessageStyle}>Currently retaining for {retentionDays} day{retentionDays === 1 ? '' : 's'}.</span>
+          )}
+        </form>
+        {retentionMessage && <div style={{ ...inlineMessageStyle }}>{retentionMessage}</div>}
+      </section>
+
       {selectedEventDefinition && (
         <div style={{ ...mutedTextStyle, background: 'var(--color-surface-alt, rgba(0,0,0,0.02))', borderRadius: 8, padding: '0.75rem 1rem' }}>
           <strong>{selectedEventDefinition.name}</strong> · {selectedEventDefinition.description}
@@ -319,33 +489,71 @@ export default function AdminSecurityPage() {
       )}
 
       <section style={logListStyle}>
-        {logs.map((log) => (
-          <article key={log.id} style={logItemStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-              <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{formatTimestamp(log.created_at)}</span>
-              <span style={severityBadgeStyle(log.severity)}>{log.severity}</span>
-            </div>
-            <div>
-              <strong style={{ display: 'block', fontSize: '1.05rem', color: 'var(--color-text-primary)' }}>{log.event}</strong>
-              {log.description && <span style={mutedTextStyle}>{log.description}</span>}
-            </div>
-            <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>
-              <span>
-                <strong>Actor:</strong> {renderActor(log.actor)}
-              </span>
-              <span>
-                <strong>Target:</strong> {renderTarget(log)}
-              </span>
-              <span>
-                <strong>Source:</strong> {log.source_ip || 'N/A'}
-              </span>
-              <span>
-                <strong>User agent:</strong> {log.user_agent || 'N/A'}
-              </span>
-            </div>
-            {payloadPreview(log.payload)}
-          </article>
-        ))}
+        {logs.map((log) => {
+          const isExpanded = expandedIds.has(log.id)
+          const actorText = renderActor(log.actor)
+          const targetText = renderTarget(log)
+          const summaryText = targetText && targetText !== '—' ? `${actorText} → ${targetText}` : actorText
+          return (
+            <article key={log.id} style={logItemStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{formatTimestamp(log.created_at)}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <span style={severityBadgeStyle(log.severity)}>{log.severity}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(log.id)}
+                    aria-expanded={isExpanded}
+                    style={{
+                      padding: '0.4rem 0.75rem',
+                      borderRadius: 8,
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text-primary)',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <MaterialIcon name={isExpanded ? 'expand_less' : 'expand_more'} />
+                    {isExpanded ? 'Hide details' : 'Show details'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.05rem', color: 'var(--color-text-primary)' }}>{log.event}</strong>
+                <span style={{ ...mutedTextStyle, display: 'block', marginTop: '0.25rem' }}>
+                  {log.description || (isExpanded ? summaryText : '')}
+                </span>
+                {!isExpanded && (
+                  <span style={{ ...mutedTextStyle, display: 'block', marginTop: '0.2rem', fontSize: '0.8rem' }}>{summaryText}</span>
+                )}
+              </div>
+              {isExpanded && (
+                <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>
+                  <span>
+                    <strong>Actor:</strong> {actorText}
+                  </span>
+                  <span>
+                    <strong>Target:</strong> {targetText}
+                  </span>
+                  <span>
+                    <strong>Source:</strong> {log.source_ip || 'N/A'}
+                  </span>
+                  <span>
+                    <strong>User agent:</strong> {log.user_agent || 'N/A'}
+                  </span>
+                </div>
+              )}
+              {isExpanded && payloadPreview(log.payload)}
+            </article>
+          )
+        })}
         {!loading && logs.length === 0 && !error && (
           <div style={{ ...mutedTextStyle, textAlign: 'center', padding: '2rem 0' }}>No audit entries found for the selected filters.</div>
         )}
@@ -353,33 +561,51 @@ export default function AdminSecurityPage() {
 
       <footer style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
         <span style={{ ...mutedTextStyle }}>
-          Showing {logs.length} entr{logs.length === 1 ? 'y' : 'ies'}
+          Page {page} of {pages} · {total} entr{total === 1 ? 'y' : 'ies'}
         </span>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          {nextCursor && (
-            <button
-              type="button"
-              onClick={() => void loadLogs({ cursor: nextCursor })}
-              disabled={loading}
-              style={{
-                padding: '0.65rem 1rem',
-                borderRadius: 10,
-                border: '1px solid transparent',
-                background: 'var(--color-sidebar-button-bg)',
-                color: 'var(--color-sidebar-button-text)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                justifyContent: 'center',
-                opacity: loading ? 0.7 : 1,
-                pointerEvents: loading ? 'none' : 'auto',
-              }}
-            >
-              <MaterialIcon name="expand_more" /> Load older
-            </button>
-          )}
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => page > 1 && loadLogs({ targetPage: page - 1 })}
+            disabled={loading || page <= 1}
+            style={{
+              padding: '0.65rem 1rem',
+              borderRadius: 10,
+              border: '1px solid transparent',
+              background: 'var(--color-sidebar-button-bg)',
+              color: 'var(--color-sidebar-button-text)',
+              fontWeight: 600,
+              cursor: page <= 1 ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              justifyContent: 'center',
+              opacity: loading || page <= 1 ? 0.5 : 1,
+            }}
+          >
+            <MaterialIcon name="chevron_left" /> Newer
+          </button>
+          <button
+            type="button"
+            onClick={() => page < pages && loadLogs({ targetPage: page + 1 })}
+            disabled={loading || page >= pages}
+            style={{
+              padding: '0.65rem 1rem',
+              borderRadius: 10,
+              border: '1px solid transparent',
+              background: 'var(--color-sidebar-button-bg)',
+              color: 'var(--color-sidebar-button-text)',
+              fontWeight: 600,
+              cursor: page >= pages ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              justifyContent: 'center',
+              opacity: loading || page >= pages ? 0.5 : 1,
+            }}
+          >
+            Older <MaterialIcon name="chevron_right" />
+          </button>
           {loading && <span style={mutedTextStyle}>Loading…</span>}
         </div>
       </footer>

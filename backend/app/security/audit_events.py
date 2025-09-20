@@ -97,6 +97,30 @@ AUDIT_EVENT_DEFINITIONS: Dict[str, AuditEventDefinition] = {
         description="Authentication provider configuration was removed.",
         severity="warning",
     ),
+    "toolkit.install": AuditEventDefinition(
+        name="toolkit.install",
+        category="toolkit_lifecycle",
+        description="Toolkit bundle was installed or updated on the platform.",
+        severity="warning",
+    ),
+    "toolkit.uninstall": AuditEventDefinition(
+        name="toolkit.uninstall",
+        category="toolkit_lifecycle",
+        description="Toolkit was removed from the registry and storage.",
+        severity="critical",
+    ),
+    "toolkit.enable": AuditEventDefinition(
+        name="toolkit.enable",
+        category="toolkit_lifecycle",
+        description="Toolkit was enabled for operators.",
+        severity="info",
+    ),
+    "toolkit.disable": AuditEventDefinition(
+        name="toolkit.disable",
+        category="toolkit_lifecycle",
+        description="Toolkit was disabled and hidden from operators.",
+        severity="warning",
+    ),
 }
 
 

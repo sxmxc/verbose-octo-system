@@ -95,6 +95,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
     app_name: str = "SRE Toolbox"
     app_env: str = "dev"
@@ -112,6 +113,7 @@ class Settings(BaseSettings):
     toolkit_bundle_max_bytes: int = Field(default=200 * 1024 * 1024)
     toolkit_bundle_max_file_bytes: int = Field(default=100 * 1024 * 1024)
     database_url: str = Field(default="sqlite+aiosqlite:///./data/app.db")
+    audit_log_retention_days: int = Field(default=90, ge=1, description="Number of days to retain audit log entries")
 
     auth_jwt_secret: SecretStr = Field(default=SecretStr("change-me"), repr=False)
     auth_jwt_algorithm: str = "HS256"

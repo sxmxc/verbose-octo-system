@@ -3,11 +3,18 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_session
-from ..schemas.audit import AuditEventSchema, AuditLogActor, AuditLogEntry, AuditLogListResponse
+from ..schemas.audit import (
+    AuditEventSchema,
+    AuditLogActor,
+    AuditLogEntry,
+    AuditLogListResponse,
+    AuditSettingsResponse,
+    AuditSettingsUpdateRequest,
+)
 from ..security.audit_events import get_audit_event, list_audit_events
 from ..security.dependencies import require_roles
 from ..security.roles import ROLE_SYSTEM_ADMIN
@@ -19,7 +26,8 @@ router = APIRouter(prefix="/admin/security", tags=["admin-security"])
 @router.get("/audit-logs", response_model=AuditLogListResponse)
 async def list_audit_logs(
     *,
-    limit: int = Query(100, ge=1, le=500),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     before: datetime | None = Query(None),
     event: str | None = Query(None),
     severity: str | None = Query(None),
@@ -30,8 +38,9 @@ async def list_audit_logs(
     _: object = Depends(require_roles([ROLE_SYSTEM_ADMIN])),
 ) -> AuditLogListResponse:
     service = AuditService(session)
-    records = await service.list_logs(
-        limit=limit,
+    records, total = await service.list_logs(
+        page=page,
+        page_size=page_size,
         created_before=before,
         user_ids=[user_id] if user_id else None,
         events=[event] if event else None,
@@ -66,7 +75,8 @@ async def list_audit_logs(
                 payload=parse_payload(record),
             )
         )
-    next_cursor = items[-1].created_at if len(items) == limit else None
+    retention_days = await service.get_retention_days()
+    total_pages = (total + page_size - 1) // page_size if page_size else 1
     events = [
         AuditEventSchema(
             name=definition.name,
@@ -76,4 +86,38 @@ async def list_audit_logs(
         )
         for definition in list_audit_events()
     ]
-    return AuditLogListResponse(items=items, next_cursor=next_cursor, events=events)
+    return AuditLogListResponse(
+        items=items,
+        page=page,
+        page_size=page_size,
+        total=total,
+        pages=total_pages,
+        events=events,
+        retention_days=retention_days,
+    )
+
+
+@router.get("/settings", response_model=AuditSettingsResponse)
+async def get_audit_settings(
+    session: AsyncSession = Depends(get_session),
+    _: object = Depends(require_roles([ROLE_SYSTEM_ADMIN])),
+) -> AuditSettingsResponse:
+    service = AuditService(session)
+    retention_days = await service.get_retention_days()
+    return AuditSettingsResponse(retention_days=retention_days)
+
+
+@router.put("/settings", response_model=AuditSettingsResponse)
+async def update_audit_settings(
+    payload: AuditSettingsUpdateRequest,
+    session: AsyncSession = Depends(get_session),
+    _: object = Depends(require_roles([ROLE_SYSTEM_ADMIN])),
+) -> AuditSettingsResponse:
+    service = AuditService(session)
+    try:
+        await service.set_retention_days(payload.retention_days)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    await service.purge_expired(payload.retention_days)
+    await session.commit()
+    return AuditSettingsResponse(retention_days=payload.retention_days)

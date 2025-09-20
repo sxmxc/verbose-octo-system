@@ -40,3 +40,7 @@ Follow this guide when cloning the repo or preparing a new development environme
 - Upload additional bundles from Admin → Toolkits or via `POST /toolkits/install`.
 - Toolkit uploads are capped by `TOOLKIT_UPLOAD_MAX_BYTES` (compressed size) and unpacking safeguards `TOOLKIT_BUNDLE_MAX_BYTES` / `TOOLKIT_BUNDLE_MAX_FILE_BYTES` to block zip bombs; tweak these in `.env` when needed.
 - Uploaded bundle filenames are normalised—directory segments are stripped and collisions gain a random suffix before the artefact is persisted.
+
+## Audit Logging
+- Set `AUDIT_LOG_RETENTION_DAYS` (default `90`) to control how long audit entries persist before automatic cleanup.
+- Administrators can adjust retention and review audit history in the UI under **Administration → Security**; backend changes to the env var provide the default.

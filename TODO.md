@@ -18,6 +18,7 @@
 - [ ] Keep access tokens out of `localStorage`; rely on httpOnly refresh cookies or in-memory storage on the SPA.
 
 ## Provider Secret Management
+- [x] Setup audit and logging system
 - [ ] Stand up a secrets manager (e.g. HashiCorp Vault running in its own container) for storing OIDC/LDAP credentials.
 - [ ] Replace plain JSON storage of provider configs with references to Vault secrets; fetch at runtime via a Vault client.
 - [ ] Document secret provisioning workflow for operators (Vault policies, rotations, bootstrap tokens).

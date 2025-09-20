@@ -37,5 +37,17 @@ class AuditLogEntry(BaseModel):
 
 class AuditLogListResponse(BaseModel):
     items: List[AuditLogEntry]
-    next_cursor: Optional[datetime]
+    page: int
+    page_size: int
+    total: int
+    pages: int
     events: List[AuditEventSchema]
+    retention_days: int
+
+
+class AuditSettingsResponse(BaseModel):
+    retention_days: int
+
+
+class AuditSettingsUpdateRequest(BaseModel):
+    retention_days: int

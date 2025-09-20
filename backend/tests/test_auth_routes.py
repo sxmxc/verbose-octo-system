@@ -47,7 +47,12 @@ class AuthRouteTests(unittest.IsolatedAsyncioTestCase):
             user, bundle, payload = await auth._complete_provider_login(provider, self.request, self.session)
 
         provider.complete.assert_awaited_once_with(self.request, self.session)
-        service.resolve_user.assert_awaited_once_with(provider, "auth-result")
+        service.resolve_user.assert_awaited_once_with(
+            provider,
+            "auth-result",
+            source_ip=None,
+            user_agent="pytest",
+        )
         service.issue_tokens.assert_awaited_once_with(self.user, provider, client_info="pytest")
         self.session.commit.assert_awaited_once()
         self.session.rollback.assert_not_called()
