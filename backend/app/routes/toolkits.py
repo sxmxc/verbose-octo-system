@@ -27,7 +27,40 @@ from ..security.dependencies import require_roles, require_superuser
 from ..security.roles import ROLE_TOOLKIT_CURATOR, ROLE_TOOLKIT_USER
 
 
+UPLOAD_WRITE_CHUNK_SIZE = 1024 * 1024
+
+
+def _format_limit_mb(value: int) -> int:
+    return max(1, (value + (1024 * 1024 - 1)) // (1024 * 1024))
+
+
 router = APIRouter()
+
+
+async def _stream_upload_to_path(source: UploadFile, destination: Path) -> int:
+    """Write an upload to disk without loading it fully into memory."""
+    total_written = 0
+    max_bytes = settings.toolkit_upload_max_bytes
+    try:
+        await source.seek(0)
+        with destination.open("wb") as buffer:
+            while True:
+                chunk = await source.read(UPLOAD_WRITE_CHUNK_SIZE)
+                if not chunk:
+                    break
+                total_written += len(chunk)
+                if total_written > max_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"Toolkit bundle exceeds the {_format_limit_mb(max_bytes)}MB upload limit",
+                    )
+                buffer.write(chunk)
+    except HTTPException:
+        destination.unlink(missing_ok=True)
+        raise
+    finally:
+        await source.close()
+    return total_written
 
 
 def _get_toolkit_or_404(slug: str) -> ToolkitRecord:
@@ -180,8 +213,7 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
     extraction_dirname = slug or Path(bundle_filename).stem or "bundle"
     toolkit_root = upload_root / extraction_dirname
 
-    contents = await file.read()
-    bundle_path.write_bytes(contents)
+    await _stream_upload_to_path(file, bundle_path)
 
     if toolkit_root.exists():
         shutil.rmtree(toolkit_root)
@@ -191,6 +223,9 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
         with zipfile.ZipFile(bundle_path) as zf:
             destination_root = toolkit_root
             root_resolved = destination_root.resolve()
+            total_uncompressed = 0
+            max_total_bytes = settings.toolkit_bundle_max_bytes
+            max_file_bytes = settings.toolkit_bundle_max_file_bytes
             for member in zf.infolist():
                 target_path = _resolve_safe_member_path(member, destination_root, root_resolved)
                 # Ensure metadata (like standalone directory entries) don't attempt traversal
@@ -205,9 +240,33 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
                     target_path.mkdir(parents=True, exist_ok=True)
                     continue
 
+                if member.file_size > max_file_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"Toolkit file '{member.filename}' exceeds the {_format_limit_mb(max_file_bytes)}MB limit",
+                    )
+
+                total_uncompressed += member.file_size
+                if total_uncompressed > max_total_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"Toolkit bundle expands beyond the {_format_limit_mb(max_total_bytes)}MB limit",
+                    )
+
                 target_path.parent.mkdir(parents=True, exist_ok=True)
+                bytes_written = 0
                 with zf.open(member) as source, target_path.open("wb") as destination:
-                    shutil.copyfileobj(source, destination)
+                    while True:
+                        chunk = source.read(UPLOAD_WRITE_CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        bytes_written += len(chunk)
+                        if bytes_written > max_file_bytes:
+                            raise HTTPException(
+                                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                                detail=f"Toolkit file '{member.filename}' exceeds the {_format_limit_mb(max_file_bytes)}MB limit",
+                            )
+                        destination.write(chunk)
 
                 if mode:
                     target_path.chmod(mode & 0o777)

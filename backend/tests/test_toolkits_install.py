@@ -3,7 +3,7 @@ import zipfile
 from unittest.mock import MagicMock
 
 import pytest
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException, UploadFile, status
 
 from app.routes import toolkits
 
@@ -37,4 +37,96 @@ async def test_toolkits_install_rejects_path_traversal(tmp_path, monkeypatch):
     assert not bundle_path.exists()
 
     toolkit_root = storage_dir / "__uploads__" / "evil"
+    assert not toolkit_root.exists()
+
+
+@pytest.mark.asyncio
+async def test_toolkits_install_rejects_upload_exceeding_max_bytes(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+    monkeypatch.setattr(toolkits.settings, "toolkit_upload_max_bytes", 64)
+    monkeypatch.setattr(toolkits.settings, "toolkit_bundle_max_bytes", 1024)
+    monkeypatch.setattr(toolkits.settings, "toolkit_bundle_max_file_bytes", 1024)
+
+    install_mock = MagicMock(side_effect=AssertionError("install_toolkit_from_directory should not run"))
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", install_mock)
+
+    payload = b"x" * 128
+    upload = UploadFile(filename="too-big.zip", file=io.BytesIO(payload))
+
+    with pytest.raises(HTTPException) as exc_info:
+        await toolkits.toolkits_install(slug="huge", file=upload)
+
+    assert exc_info.value.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    install_mock.assert_not_called()
+    assert not (storage_dir / "too-big.zip").exists()
+    assert not (storage_dir / "__uploads__" / "huge").exists()
+
+
+@pytest.mark.asyncio
+async def test_toolkits_install_rejects_entry_over_file_limit(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+    monkeypatch.setattr(toolkits.settings, "toolkit_upload_max_bytes", 1024)
+    monkeypatch.setattr(toolkits.settings, "toolkit_bundle_max_bytes", 1024)
+    monkeypatch.setattr(toolkits.settings, "toolkit_bundle_max_file_bytes", 5)
+
+    install_mock = MagicMock(side_effect=AssertionError("install_toolkit_from_directory should not run"))
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", install_mock)
+
+    oversized_zip = io.BytesIO()
+    with zipfile.ZipFile(oversized_zip, "w") as zf:
+        zf.writestr("big.txt", "0123456789")
+    oversized_zip.seek(0)
+
+    upload = UploadFile(filename="oversized.zip", file=io.BytesIO(oversized_zip.getvalue()))
+
+    with pytest.raises(HTTPException) as exc_info:
+        await toolkits.toolkits_install(slug="limit", file=upload)
+
+    assert exc_info.value.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    install_mock.assert_not_called()
+
+    bundle_path = storage_dir / "oversized.zip"
+    assert not bundle_path.exists()
+
+    toolkit_root = storage_dir / "__uploads__" / "limit"
+    assert not toolkit_root.exists()
+
+
+@pytest.mark.asyncio
+async def test_toolkits_install_rejects_total_uncompressed_limit(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+    monkeypatch.setattr(toolkits.settings, "toolkit_upload_max_bytes", 2048)
+    monkeypatch.setattr(toolkits.settings, "toolkit_bundle_max_bytes", 15)
+    monkeypatch.setattr(toolkits.settings, "toolkit_bundle_max_file_bytes", 20)
+
+    install_mock = MagicMock(side_effect=AssertionError("install_toolkit_from_directory should not run"))
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", install_mock)
+
+    bomb_zip = io.BytesIO()
+    with zipfile.ZipFile(bomb_zip, "w") as zf:
+        zf.writestr("a.txt", "abcdefghij")
+        zf.writestr("b.txt", "abcdefghij")
+    bomb_zip.seek(0)
+
+    upload = UploadFile(filename="expands.zip", file=io.BytesIO(bomb_zip.getvalue()))
+
+    with pytest.raises(HTTPException) as exc_info:
+        await toolkits.toolkits_install(slug="expands", file=upload)
+
+    assert exc_info.value.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    install_mock.assert_not_called()
+
+    bundle_path = storage_dir / "expands.zip"
+    assert not bundle_path.exists()
+
+    toolkit_root = storage_dir / "__uploads__" / "expands"
     assert not toolkit_root.exists()

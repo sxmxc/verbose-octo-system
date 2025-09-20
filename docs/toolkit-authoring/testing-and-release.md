@@ -19,6 +19,7 @@ Follow this sequence before publishing a toolkit bundle so operators receive a r
 - Include the generated archive and release notes in your artifact store (GitHub Releases, internal registry, etc.).
 - Bump the toolkit version in `toolkit.json` and include a changelog entry summarising major changes and migration steps.
 - Ensure the archive does not contain absolute paths, drive letters, parent-directory segments, or symlinks—uploads are rejected when these appear to prevent directory traversal during install.
+- Keep the archive within the enforced limits (`TOOLKIT_UPLOAD_MAX_BYTES` compressed, `TOOLKIT_BUNDLE_MAX_BYTES` total extracted, `TOOLKIT_BUNDLE_MAX_FILE_BYTES` per file) so installs cannot inflate into zip bombs.
 
 ## Rollback Strategy
 - Keep the previous release bundle available so operators can reinstall quickly if issues arise.
