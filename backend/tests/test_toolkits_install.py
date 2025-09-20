@@ -41,6 +41,77 @@ async def test_toolkits_install_rejects_path_traversal(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_toolkits_install_strips_directory_segments(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+
+    record = MagicMock()
+    record.slug = "clean"
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
+
+    bundle = io.BytesIO()
+    with zipfile.ZipFile(bundle, "w") as zf:
+        zf.writestr("toolkit.json", "{}")
+    bundle.seek(0)
+
+    original_stream = toolkits._stream_upload_to_path
+    captured = {}
+
+    async def capture_stream(source, destination):
+        captured["destination"] = destination
+        return await original_stream(source, destination)
+
+    monkeypatch.setattr(toolkits, "_stream_upload_to_path", capture_stream)
+
+    upload = UploadFile(filename="../../nested\\evil.zip", file=io.BytesIO(bundle.getvalue()))
+
+    result = await toolkits.toolkits_install(slug="clean", file=upload)
+
+    assert captured["destination"].name == "evil.zip"
+    assert captured["destination"].parent == storage_dir
+    assert result["bundle_path"] == str((storage_dir / "clean.zip").resolve())
+
+
+@pytest.mark.asyncio
+async def test_toolkits_install_randomises_collisions(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+
+    existing = storage_dir / "duplicate.zip"
+    existing.write_bytes(b"existing")
+
+    record = MagicMock()
+    record.slug = "frombundle"
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
+
+    bundle = io.BytesIO()
+    with zipfile.ZipFile(bundle, "w") as zf:
+        zf.writestr("toolkit.json", "{}")
+    bundle.seek(0)
+
+    original_stream = toolkits._stream_upload_to_path
+    captured = {}
+
+    async def capture_stream(source, destination):
+        captured["destination"] = destination
+        return await original_stream(source, destination)
+
+    monkeypatch.setattr(toolkits, "_stream_upload_to_path", capture_stream)
+    monkeypatch.setattr(toolkits, "_random_collision_suffix", lambda: "deadbeef")
+
+    upload = UploadFile(filename="duplicate.zip", file=io.BytesIO(bundle.getvalue()))
+
+    result = await toolkits.toolkits_install(slug=None, file=upload)
+
+    assert captured["destination"].name == "duplicate-deadbeef.zip"
+    assert captured["destination"].parent == storage_dir
+    assert existing.exists()
+    assert result["bundle_path"] == str((storage_dir / "frombundle.zip").resolve())
+
+
+@pytest.mark.asyncio
 async def test_toolkits_install_rejects_invalid_slug(tmp_path, monkeypatch):
     storage_dir = tmp_path / "storage"
     storage_dir.mkdir(parents=True, exist_ok=True)

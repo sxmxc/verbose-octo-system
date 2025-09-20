@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import ntpath
+import secrets
 import shutil
 import stat
 import zipfile
@@ -36,6 +37,39 @@ def _format_limit_mb(value: int) -> int:
 
 
 router = APIRouter()
+
+
+def _normalise_bundle_filename(raw_filename: str | None) -> str:
+    if not raw_filename:
+        return "upload.zip"
+    normalised = raw_filename.replace("\\", "/")
+    name = PurePosixPath(normalised).name
+    if name in {"", ".", ".."}:
+        return "upload.zip"
+    return name
+
+
+def _random_collision_suffix() -> str:
+    return secrets.token_hex(4)
+
+
+def _allocate_bundle_destination(storage_dir: Path, raw_filename: str | None) -> tuple[str, Path]:
+    filename = _normalise_bundle_filename(raw_filename)
+    candidate_path = storage_dir / filename
+    if not candidate_path.exists():
+        return filename, candidate_path
+
+    base = Path(filename)
+    suffix = "".join(base.suffixes) or ".zip"
+    stem = base.name[: -len(suffix)] if suffix and filename.endswith(suffix) else base.stem
+    if not stem:
+        stem = "bundle"
+
+    while True:
+        candidate_name = f"{stem}-{_random_collision_suffix()}{suffix}"
+        candidate_path = storage_dir / candidate_name
+        if not candidate_path.exists():
+            return candidate_name, candidate_path
 
 
 def _ensure_valid_slug(slug: str) -> None:
@@ -217,8 +251,7 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
 
     storage_dir = Path(settings.toolkit_storage_dir)
     storage_dir.mkdir(parents=True, exist_ok=True)
-    bundle_filename = file.filename or "upload.zip"
-    bundle_path = storage_dir / bundle_filename
+    bundle_filename, bundle_path = _allocate_bundle_destination(storage_dir, file.filename)
 
     upload_root = storage_dir / "__uploads__"
     upload_root.mkdir(parents=True, exist_ok=True)
