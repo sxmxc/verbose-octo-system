@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import subprocess
 import sys
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+FRONTEND_ROOT = REPO_ROOT / "frontend"
 DEFAULT_TOOLKIT_DIR = REPO_ROOT / "toolkits"
 PACKAGE_SCRIPT = REPO_ROOT / "toolkits" / "scripts" / "package_toolkit.py"
 
@@ -35,6 +37,8 @@ def package_all(toolkits_dir: pathlib.Path, destination: pathlib.Path, overwrite
         with manifest_path.open() as handle:
             manifest = json.load(handle)
 
+        ensure_frontend_bundle(toolkit_dir, manifest)
+
         slug = slugify(manifest.get("slug", "") or toolkit_dir.name, toolkit_dir.name)
         output = destination / f"{slug}_toolkit.zip"
 
@@ -50,6 +54,54 @@ def package_all(toolkits_dir: pathlib.Path, destination: pathlib.Path, overwrite
 
         subprocess.run(command, check=True)
         print(f"Packaged {slug} toolkit from {toolkit_dir}")
+
+
+def ensure_frontend_bundle(toolkit_dir: pathlib.Path, manifest: dict) -> None:
+    frontend = manifest.get("frontend") or {}
+    entry_rel = frontend.get("entry") or "frontend/dist/index.js"
+    entry_path = toolkit_dir / entry_rel
+
+    if entry_path.exists():
+        return
+
+    source_rel = frontend.get("source_entry")
+    if not source_rel:
+        raise RuntimeError(
+            f"frontend entry '{entry_rel}' declared in toolkit.json is missing and no source_entry was provided for {toolkit_dir}"
+        )
+
+    source_path = toolkit_dir / source_rel
+    if not source_path.exists():
+        raise RuntimeError(
+            f"frontend.source_entry '{source_rel}' declared in toolkit.json is missing for {toolkit_dir}"
+        )
+
+    entry_path.parent.mkdir(parents=True, exist_ok=True)
+
+    relative_source = os.path.relpath(source_path, FRONTEND_ROOT)
+    relative_output = os.path.relpath(entry_path, FRONTEND_ROOT)
+
+    command = [
+        "npx",
+        "--yes",
+        "esbuild",
+        relative_source,
+        "--bundle",
+        "--format=esm",
+        "--platform=browser",
+        f"--outfile={relative_output}",
+        "--external:react",
+        "--external:react-dom",
+        "--external:react-router-dom",
+        "--loader:.ts=ts",
+        "--loader:.tsx=tsx",
+    ]
+
+    print(f"-- bundling toolkit frontend via esbuild: {' '.join(command)}")
+    subprocess.run(command, check=True, cwd=FRONTEND_ROOT)
+
+    if not entry_path.exists():
+        raise RuntimeError(f"esbuild did not produce expected bundle at {entry_path}")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
