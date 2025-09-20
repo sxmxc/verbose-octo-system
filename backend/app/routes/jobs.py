@@ -31,14 +31,7 @@ def list_jobs(
     toolkit: Optional[List[str]] = Query(default=None),
     module: Optional[List[str]] = Query(default=None),
 ):
-    combined = None
-    if toolkit or module:
-        combined = []
-        if toolkit:
-            combined.extend(toolkit)
-        if module:
-            combined.extend(module)
-    jobs = list_job_status(toolkits=combined)
+    jobs = list_job_status(toolkits=toolkit, modules=module)
     return {"jobs": jobs}
 
 
