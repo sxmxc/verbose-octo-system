@@ -7,7 +7,7 @@
   - [x] Copy artefacts with traversal-safe APIs (e.g. `copytree(..., dirs_exist_ok=True)` after validation).
 - [x] Validate toolkit slugs everywhere (manifest parsing, API input, CLI packagers) against a strict allowlist before using them in file paths or imports.
 - [x] Normalize uploaded filenames before persisting (strip directories, randomise collisions).
-- [ ] Remove the resolved `bundle_path` from API responses to avoid leaking server layout.
+- [x] Remove the resolved `bundle_path` from API responses to avoid leaking server layout.
 - [ ] Investigate running toolkit build/test steps in an isolated workspace or container before activation.
 
 ## Authentication & Secrets

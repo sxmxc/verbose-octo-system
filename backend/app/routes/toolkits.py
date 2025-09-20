@@ -350,7 +350,6 @@ async def toolkits_install(slug: str | None = Form(None), file: UploadFile = Fil
     return {
         "uploaded": True,
         "toolkit": record,
-        "bundle_path": str(bundle_path.resolve()),
     }
 
 

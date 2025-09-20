@@ -70,7 +70,8 @@ async def test_toolkits_install_strips_directory_segments(tmp_path, monkeypatch)
 
     assert captured["destination"].name == "evil.zip"
     assert captured["destination"].parent == storage_dir
-    assert result["bundle_path"] == str((storage_dir / "clean.zip").resolve())
+    assert "bundle_path" not in result
+    assert (storage_dir / "clean.zip").exists()
 
 
 @pytest.mark.asyncio
@@ -108,7 +109,8 @@ async def test_toolkits_install_randomises_collisions(tmp_path, monkeypatch):
     assert captured["destination"].name == "duplicate-deadbeef.zip"
     assert captured["destination"].parent == storage_dir
     assert existing.exists()
-    assert result["bundle_path"] == str((storage_dir / "frombundle.zip").resolve())
+    assert "bundle_path" not in result
+    assert (storage_dir / "frombundle.zip").exists()
 
 
 @pytest.mark.asyncio
