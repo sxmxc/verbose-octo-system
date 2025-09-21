@@ -4,23 +4,48 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from typing import Optional
 
 from redis import Redis
 
 _DEFAULT_REDIS_URL = "redis://redis:6379/0"
 _DEFAULT_REDIS_PREFIX = "sretoolbox"
 
+try:  # pragma: no cover - optional dependency during runtime
+    from backend.app.config import settings as _backend_settings
+except Exception:  # noqa: BLE001 - falling back to environment defaults
+    _backend_settings = None
+
+
+def _settings_value(name: str) -> Optional[str]:
+    if _backend_settings is None:
+        return None
+
+    value = getattr(_backend_settings, name, None)
+    if isinstance(value, str) and value:
+        return value
+
+    return None
+
 
 def redis_url() -> str:
     """Return the Redis connection URL visible to toolkits."""
 
-    return os.getenv("REDIS_URL", _DEFAULT_REDIS_URL)
+    return (
+        os.getenv("REDIS_URL")
+        or _settings_value("redis_url")
+        or _DEFAULT_REDIS_URL
+    )
 
 
 def redis_prefix() -> str:
     """Return the prefix applied to toolkit Redis keys."""
 
-    value = os.getenv("REDIS_PREFIX", _DEFAULT_REDIS_PREFIX)
+    value = (
+        os.getenv("REDIS_PREFIX")
+        or _settings_value("redis_prefix")
+        or _DEFAULT_REDIS_PREFIX
+    )
     stripped = value.strip(":")
     return stripped or _DEFAULT_REDIS_PREFIX
 
