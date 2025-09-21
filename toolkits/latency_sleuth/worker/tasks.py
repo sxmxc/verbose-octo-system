@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Iterable, List, Sequence
 
-from app.services import jobs as job_store
+from toolkit_runtime import jobs as job_store
 
 from ..backend.models import utcnow
 from ..backend.probes import execute_probe

@@ -18,6 +18,7 @@ COPY backend/app ./app
 COPY backend/worker ./worker
 COPY backend/alembic.ini ./alembic.ini
 COPY backend/alembic ./alembic
+COPY toolkit_runtime ./toolkit_runtime
 COPY toolkits/bundled ./toolkits/bundled
 
 EXPOSE 8080

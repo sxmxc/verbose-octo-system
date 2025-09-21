@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-
 import logging
+import os
 import textwrap
 from datetime import datetime, timezone
+from functools import lru_cache
 from time import perf_counter
 from typing import Iterable, List, Optional
 
@@ -13,16 +14,39 @@ from redis.exceptions import RedisError
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.config import settings
-from app.db.session import SessionLocal
-from app.worker_client import celery_app
+from toolkit_runtime.worker import get_celery_app
 
 from .models import ComponentHealth, ComponentName, HealthStatus, HealthSummary
 from .storage import load_components, load_summary, save_summary
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+_DEFAULT_DATABASE_URL = "sqlite+aiosqlite:///./data/app.db"
+
+
+def _database_url() -> str:
+    return os.getenv("DATABASE_URL", _DEFAULT_DATABASE_URL)
+
+
+@lru_cache(maxsize=1)
+def _session_factory() -> async_sessionmaker[AsyncSession]:
+    engine = create_async_engine(_database_url(), future=True)
+    return async_sessionmaker(engine, expire_on_commit=False)
+
+
+def _frontend_base_url() -> Optional[str]:
+    value = os.getenv("FRONTEND_BASE_URL")
+    if not value:
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+celery_app = get_celery_app()
 
 
 
@@ -43,7 +67,8 @@ def _short_error(exc: Exception) -> str:
 async def _check_backend() -> ComponentHealth:
     started = perf_counter()
     try:
-        async with SessionLocal() as session:
+        session_factory = _session_factory()
+        async with session_factory() as session:
             await session.execute(text("SELECT 1"))
         latency = (perf_counter() - started) * 1000
         return ComponentHealth(
@@ -100,7 +125,7 @@ async def _check_worker(timeout: float = 2.0) -> ComponentHealth:
 
 
 async def _check_frontend() -> ComponentHealth:
-    base_url = settings.frontend_base_url
+    base_url = _frontend_base_url()
     if not base_url:
         return ComponentHealth(
             component="frontend",
@@ -238,4 +263,3 @@ def get_or_refresh_summary_sync(force_refresh: bool = False) -> HealthSummary:
         return cached
 
     return build_health_summary_sync()
-

@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.services import jobs as job_store
+from toolkit_runtime import jobs as job_store
 
 from toolkits.latency_sleuth.backend.app import router
 from toolkits.latency_sleuth.backend.models import ProbeTemplate

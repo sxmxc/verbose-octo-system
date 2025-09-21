@@ -8,14 +8,11 @@ from typing import Dict, Iterator, List
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-BACKEND_ROOT = ROOT / "backend"
 if str(ROOT) not in os.sys.path:
     os.sys.path.insert(0, str(ROOT))
-if str(BACKEND_ROOT) not in os.sys.path:
-    os.sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.core import redis as redis_module
-from app.services import jobs as job_store
+from toolkit_runtime import jobs as job_store
+from toolkit_runtime import redis as redis_module
 from toolkits.latency_sleuth.backend import storage as storage_module
 
 
