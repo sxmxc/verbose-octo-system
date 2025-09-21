@@ -71,15 +71,14 @@ def ensure_frontend_bundle(toolkit_dir: pathlib.Path, manifest: dict) -> None:
     frontend = frontend or {}
     entry_rel = frontend.get("entry") or "frontend/dist/index.js"
     entry_path = toolkit_dir / entry_rel
-
-    if entry_path.exists():
-        return
-
     source_rel = frontend.get("source_entry")
     if not source_rel:
-        raise RuntimeError(
-            f"frontend entry '{entry_rel}' declared in toolkit.json is missing and no source_entry was provided for {toolkit_dir}"
-        )
+        if not entry_path.exists():
+            raise RuntimeError(
+                f"frontend entry '{entry_rel}' declared in toolkit.json is missing "
+                f"and no source_entry was provided for {toolkit_dir}"
+            )
+        return
 
     source_path = toolkit_dir / source_rel
     if not source_path.exists():

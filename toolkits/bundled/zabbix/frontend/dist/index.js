@@ -1,4 +1,4 @@
-// toolkits/bundled/zabbix/frontend/runtime.ts
+// ../toolkits/bundled/zabbix/frontend/runtime.ts
 function getToolkitRuntime() {
   if (typeof window === "undefined" || !window.__SRE_TOOLKIT_RUNTIME) {
     throw new Error("SRE Toolkit runtime not injected yet");
@@ -15,7 +15,7 @@ function getReactRouterRuntime() {
   return getToolkitRuntime().reactRouterDom;
 }
 
-// toolkits/bundled/zabbix/frontend/pages/hooks.ts
+// ../toolkits/bundled/zabbix/frontend/pages/hooks.ts
 var React = getReactRuntime();
 var { useCallback, useEffect, useMemo, useState } = React;
 function useZabbixInstances(options = {}) {
@@ -66,7 +66,7 @@ function useZabbixInstances(options = {}) {
   };
 }
 
-// toolkits/bundled/zabbix/frontend/pages/ZabbixBulkHostsPage.tsx
+// ../toolkits/bundled/zabbix/frontend/pages/ZabbixBulkHostsPage.tsx
 var initialRow = {
   host: "demo-host-1",
   ip: "10.0.0.10",
@@ -258,7 +258,7 @@ function parseKeyValue(value) {
   return result;
 }
 
-// toolkits/bundled/zabbix/frontend/pages/ZabbixOverviewPage.tsx
+// ../toolkits/bundled/zabbix/frontend/pages/ZabbixOverviewPage.tsx
 var React3 = getReactRuntime();
 var { useEffect: useEffect2, useState: useState3 } = React3;
 var iconStyle2 = {
@@ -312,7 +312,7 @@ var instanceCardStyle = {
   alignItems: "center"
 };
 
-// toolkits/bundled/zabbix/frontend/pages/ZabbixSettingsPage.tsx
+// ../toolkits/bundled/zabbix/frontend/pages/ZabbixSettingsPage.tsx
 var initialForm = {
   name: "",
   base_url: "",
@@ -601,7 +601,7 @@ var resultStyle2 = {
   border: "1px solid var(--color-border)"
 };
 
-// toolkits/bundled/zabbix/frontend/pages/ZabbixBulkExportPage.tsx
+// ../toolkits/bundled/zabbix/frontend/pages/ZabbixBulkExportPage.tsx
 var React5 = getReactRuntime();
 var { useEffect: useEffect4, useMemo: useMemo4, useState: useState5 } = React5;
 var iconStyle4 = {
@@ -805,7 +805,7 @@ function ZabbixBulkExportPage() {
   )), /* @__PURE__ */ React5.createElement("div", { style: { display: "flex", gap: "0.75rem", flexWrap: "wrap" } }, /* @__PURE__ */ React5.createElement("button", { type: "button", className: "tk-button", onClick: performPreview, disabled: busy }, /* @__PURE__ */ React5.createElement("span", { className: "material-symbols-outlined", style: iconStyle4, "aria-hidden": true }, "preview"), "Preview dataset"), /* @__PURE__ */ React5.createElement("button", { type: "button", className: "tk-button tk-button--primary", onClick: enqueueExport, disabled: busy }, /* @__PURE__ */ React5.createElement("span", { className: "material-symbols-outlined", style: { ...iconStyle4, color: "var(--color-accent)" }, "aria-hidden": true }, "cloud_upload"), "Queue export job")), feedback && /* @__PURE__ */ React5.createElement("p", { style: { color: "var(--color-text-secondary)" } }, feedback), lastJobMessage && /* @__PURE__ */ React5.createElement("p", { style: { color: "var(--color-text-secondary)" } }, lastJobMessage)))), preview && /* @__PURE__ */ React5.createElement("section", { style: sectionStyle3 }, /* @__PURE__ */ React5.createElement("h4", { style: { margin: 0, display: "flex", alignItems: "center", gap: "0.4rem" } }, /* @__PURE__ */ React5.createElement("span", { className: "material-symbols-outlined", style: iconStyle4, "aria-hidden": true }, "dataset_linked"), "Preview summary"), /* @__PURE__ */ React5.createElement("div", { style: { display: "grid", gap: "0.4rem", color: "var(--color-text-secondary)", fontSize: "0.9rem" } }, /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("strong", { style: { color: "var(--color-text-primary)" } }, "Target:"), " ", preview.target), /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("strong", { style: { color: "var(--color-text-primary)" } }, "Format:"), " ", preview.format.toUpperCase()), /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("strong", { style: { color: "var(--color-text-primary)" } }, "Estimated records:"), " ", preview.estimated_records), preview.filters_applied && /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("strong", { style: { color: "var(--color-text-primary)" } }, "Filters:"), /* @__PURE__ */ React5.createElement("pre", { style: resultStyle3 }, JSON.stringify(preview.filters_applied, null, 2))), preview.notes && /* @__PURE__ */ React5.createElement("div", null, preview.notes)), /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("h5", { style: { margin: "0.75rem 0 0.3rem" } }, "Sample fields"), /* @__PURE__ */ React5.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.3rem" } }, preview.sample_fields.map((field) => /* @__PURE__ */ React5.createElement("span", { key: field, className: "tk-tag" }, field)))), preview.sample_rows.length > 0 && /* @__PURE__ */ React5.createElement("div", null, /* @__PURE__ */ React5.createElement("h5", { style: { margin: "0.75rem 0 0.3rem" } }, "Sample rows"), /* @__PURE__ */ React5.createElement("pre", { style: resultStyle3 }, JSON.stringify(preview.sample_rows, null, 2)))));
 }
 
-// toolkits/bundled/zabbix/frontend/pages/ZabbixDbScriptsPage.tsx
+// ../toolkits/bundled/zabbix/frontend/pages/ZabbixDbScriptsPage.tsx
 var React6 = getReactRuntime();
 var { useEffect: useEffect5, useMemo: useMemo5, useState: useState6 } = React6;
 var iconStyle5 = {
@@ -1021,7 +1021,7 @@ function renderInput(input, value, update) {
   );
 }
 
-// toolkits/bundled/zabbix/frontend/index.tsx
+// ../toolkits/bundled/zabbix/frontend/index.tsx
 var React7 = getReactRuntime();
 var ReactRouterDom = getReactRouterRuntime();
 var { NavLink, Navigate, Route, Routes } = ReactRouterDom;
