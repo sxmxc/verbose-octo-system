@@ -14,9 +14,9 @@ from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.app.config import settings
-from backend.app.db.session import SessionLocal
-from backend.app.worker_client import celery_app
+from app.config import settings
+from app.db.session import SessionLocal
+from app.worker_client import celery_app
 
 from .models import ComponentHealth, ComponentName, HealthStatus, HealthSummary
 from .storage import load_components, load_summary, save_summary
