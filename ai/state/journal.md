@@ -21,3 +21,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Implemented `Settings._validate_jwt_settings` to reject placeholder, short, or missing secrets while requiring key pairs for RS/ES algorithms (`backend/app/config.py`; Context7 #2, #5).
 - Added unit coverage that reloads settings with different env permutations to confirm the new validation paths (`backend/tests/test_config.py`; Context7 #6).
 - Updated operator docs and `.env.example` so the enforced requirements are explicit for future sessions (`README.md`, `docs/project-setup.md`, `docs/runtime-architecture.md`, `frontend/documentation/toolbox-auth-architecture.md`; Context7 #7).
+
+## 2025-09-21 Stack bootstrap automation
+- Authored `bootstrap-stack.sh` to start Docker Compose dependencies, initialise Vault once, and skip any steps that were previously completed.
+- Persisted generated unseal keys and root tokens without overwriting existing material, and ensured placeholder Vault secrets are seeded only when absent.
+- Refreshed `.gitignore`, `README.md`, `docs/project-setup.md`, and `docs/runtime-architecture.md` to document the new helper and point operators at the automated flow.

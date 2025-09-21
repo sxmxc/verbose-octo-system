@@ -14,7 +14,7 @@ This document describes how the SRE Toolbox services interact and which dependen
 
 ## Startup sequence
 
-1. **Vault** must exist and be unsealed. Configure `VAULT_ADDR`, `VAULT_TOKEN`/`VAULT_TOKEN_FILE`, and `VAULT_KV_MOUNT` in `.env`.
+1. **Vault** must exist and be unsealed. Configure `VAULT_ADDR`, `VAULT_TOKEN`/`VAULT_TOKEN_FILE`, and `VAULT_KV_MOUNT` in `.env`. Use `./bootstrap-stack.sh` to initialise and unseal the container without overwriting existing keys or secrets.
 2. **toolbox-data-init** (Compose service) sets ownership on the shared toolkit volume when the stack starts.
 3. **PostgreSQL** and **Redis** start and expose their default ports. The API uses healthchecks to wait for them.
 4. **API container** runs `alembic upgrade head` before starting Uvicorn. If migrations fail, the service exits.

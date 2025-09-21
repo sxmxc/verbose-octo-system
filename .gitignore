@@ -63,6 +63,7 @@ docker-compose.override.yml
 docker-data/
 data/
 config/vault/unseal.key
+.vault-token
 
 # --- Misc binaries / archives ---
 *.zip
