@@ -9,6 +9,56 @@ workflow:
     - "Mark finished items with status: done and keep a short completion summary."
     - "Document blockers directly on the task so future sessions can unblock them quickly."
 areas:
+  - id: apichecker-ui-improvements
+    title: API Checker Toolkit UI Improvements
+    summary: Improvements to the API Checker Toolkit UI for better user experience.
+    tasks:
+      - id: improve-design
+        title: Move Response area to the right side for better visibility.
+        status: backlog
+        priority: high
+        notes:
+          - "Consider a two-column layout with Request on the left and Response on the right."
+          - "Ensure History panel is still easily accessible. Consider a collapsible sidebar."
+      - id: enhance-error-messages
+        title: Enhance error messages for better clarity.
+        status: backlog
+        priority: medium
+      - id: improve-navigation
+        title: Improve navigation within the toolkit UI.
+        status: backlog
+        priority: low
+      - id: add-user-guides
+        title: Add user guides and tooltips for new users.
+        status: backlog
+        priority: low
+  - id: latency-sleuth-toolkit-ui-improvements
+    title: Latency Sleuth Toolkit UI Improvements
+    summary: Improvements to the Latency Sleuth Toolkit UI for better user experience.
+    tasks:
+      - id: recent-runs-pagination
+        title: Add pagination or infinite scroll to Recent Runs panel in the Job Logs tab when a template is selected.
+        status: backlog
+        priority: high
+        notes:
+          - "Implement pagination controls or infinite scroll to manage long lists of runs."
+          - "Ensure performance remains optimal with large datasets."
+      - id: improve-heatmap
+        title: Improve heatmap visualization for better clarity.
+        status: backlog
+        priority: medium
+        notes:
+          - "Consider color schemes that enhance readability and data interpretation."
+          - "Add tooltips or legends to explain heatmap data points."
+          - "Use existing javascript libraries for heatmap rendering if applicable."
+      - id: improve-navigation
+        title: Improve navigation within the toolkit UI.
+        status: backlog
+        priority: low
+      - id: add-user-guides
+        title: Add user guides and tooltips for new users.
+        status: backlog
+        priority: low
   - id: toolkit-sandbox
     title: Toolkit upload & execution
     summary: Hardening the toolkit install pipeline and pre-flight checks.
@@ -16,7 +66,7 @@ areas:
       - id: sandbox-build-validation
         title: Run toolkit build/test steps in an isolated workspace before activation.
         status: backlog
-        priority: high
+        priority: low
         notes:
           - "Explore disposable containers or ephemeral directories to contain untrusted archives."
           - "Capture findings in the journal and propose automation in backend/toolkit installer if feasible."
