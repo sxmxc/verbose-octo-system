@@ -78,7 +78,7 @@ areas:
     tasks:
       - id: public-repo-setup
         title: Set up a public GitHub repository for community-contributed toolkits.
-        status: backlog
+        status: done
         priority: high
         notes:
           - "Need dedicated repository for this"
@@ -86,6 +86,7 @@ areas:
           - "Expose via github pages or similar for easy browsing."
           - "Provide zip of initial repository structure witha all defined elements"
           - "Should be codex-friendly with all relevant docs and elements"
+          - "2025-09-21: Bootstrapped community repo scaffold and delivered toolkit-community-repo.zip for import."
       - id: toolkit-discovery
         title: Implement a discovery mechanism within the Toolbox UI to browse and install community toolkits.
         status: backlog

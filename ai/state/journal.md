@@ -31,3 +31,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Closed TODO `recent-runs-pagination` by introducing client-side pagination with a load-more footer in the Job Logs tab (`toolkits/latency_sleuth/frontend/components/JobLogViewer.tsx`; Context7 #1, #7).
 - Added a reusable `usePaginatedJobs` hook and accompanying Vitest coverage to guard pagination resets and page growth (`toolkits/latency_sleuth/frontend/hooks`; Context7 #6).
 - Ran the targeted Vitest suite via the toolkit-specific config to confirm the new hook behaviour before PR prep (`toolkits/latency_sleuth/frontend/vitest.config.mts`; Context7 #6).
+
+## 2025-09-21 Community repository scaffold
+- Focused on TODO `public-repo-setup`, creating a zipped starter repository with governance docs, automation scripts, and sample toolkit.
+- Packaged artifact `toolkit-community-repo.zip` for maintainers to publish in a dedicated repo without modifying the main codebase.
+- Updated TODO and progress tracking to reflect completion and provide follow-up context for discovery and versioning tasks.
