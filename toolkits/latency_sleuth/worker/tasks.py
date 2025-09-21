@@ -129,12 +129,13 @@ def _dispatch_due_probes(celery_app, *, now=None) -> None:
             },
         )
         job = job_store.append_log(job, "Scheduled run enqueued by Latency Sleuth interval")
+        queue = celery_app.conf.task_default_queue or "celery"
         try:
             task = celery_app.tasks.get("worker.tasks.run_job")
             if task is not None:
-                result = task.apply_async(args=[job["id"]])
+                result = task.apply_async(args=[job["id"]], queue=queue)
             else:  # pragma: no cover - defensive
-                result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]])
+                result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]], queue=queue)
         except Exception as exc:  # pragma: no cover - defensive guard
             job["status"] = "failed"
             job["error"] = str(exc)
@@ -171,12 +172,13 @@ def _resubmit_stale_jobs(celery_app, *, now=None) -> None:
         if (timestamp - updated_at).total_seconds() < STALE_JOB_GRACE_SECONDS:
             continue
 
+        queue = celery_app.conf.task_default_queue or "celery"
         try:
             task = celery_app.tasks.get("worker.tasks.run_job")
             if task is not None:
-                result = task.apply_async(args=[job["id"]])
+                result = task.apply_async(args=[job["id"]], queue=queue)
             else:  # pragma: no cover - defensive
-                result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]])
+                result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]], queue=queue)
         except Exception as exc:  # pragma: no cover - defensive guard
             job["status"] = "failed"
             job["error"] = str(exc)
