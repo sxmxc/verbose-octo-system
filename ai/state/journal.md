@@ -36,3 +36,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Focused on TODO `public-repo-setup`, creating a zipped starter repository with governance docs, automation scripts, and sample toolkit.
 - Packaged artifact `toolkit-community-repo.zip` for maintainers to publish in a dedicated repo without modifying the main codebase.
 - Updated TODO and progress tracking to reflect completion and provide follow-up context for discovery and versioning tasks.
+
+## 2025-09-21 Latency Sleuth designer overhaul
+- Closed TODO `improve-designer-tab` by reshaping the Probe Designer view into a responsive two-column layout with inline catalog actions (`toolkits/latency_sleuth/frontend/components/ProbeDesigner.tsx`; Context7 #1, #7).
+- Added a reusable filtering helper with Vitest coverage to guarantee deterministic search/tag behaviour (`toolkits/latency_sleuth/frontend/components/filterProbeTemplates.ts`, `toolkits/latency_sleuth/frontend/components/__tests__/filterProbeTemplates.test.tsx`; Context7 #6).
+- Ran the Latency Sleuth frontend Vitest config directly via the repository toolchain to confirm the suite stays green (`toolkits/latency_sleuth/frontend/vitest.config.mts`; Context7 #6).
