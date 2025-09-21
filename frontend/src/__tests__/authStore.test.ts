@@ -6,6 +6,7 @@ let clearAccessToken: typeof import('../authStore').clearAccessToken
 let subscribe: typeof import('../authStore').subscribe
 let refreshAccessToken: typeof import('../authStore').refreshAccessToken
 let warnSpy: ReturnType<typeof vi.spyOn> | undefined
+let storage: Storage
 
 function createMockStorage(): Storage {
   const store = new Map<string, string>()
@@ -34,8 +35,7 @@ function createMockStorage(): Storage {
 beforeEach(async () => {
   vi.resetModules()
   warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const storage = createMockStorage()
-  vi.stubGlobal('localStorage', storage)
+  storage = createMockStorage()
   vi.stubGlobal(
     'window',
     {
@@ -43,7 +43,7 @@ beforeEach(async () => {
       location: { href: 'http://localhost/' } as Location,
     } as Window
   )
-  localStorage.clear()
+  storage.clear()
   ;({ getAccessToken, setAccessToken, clearAccessToken, subscribe, refreshAccessToken } = await import('../authStore'))
 })
 
@@ -61,7 +61,7 @@ describe('authStore', () => {
     setAccessToken('abc123')
 
     expect(getAccessToken()).toBe('abc123')
-    expect(localStorage.getItem('sre-toolbox.accessToken')).toBe('abc123')
+    expect(window.localStorage.getItem('sre-toolbox.accessToken')).toBe('abc123')
     expect(listener).toHaveBeenCalledWith('abc123')
 
     unsubscribe()
@@ -94,6 +94,6 @@ describe('authStore', () => {
 
     expect(result).toBeNull()
     expect(getAccessToken()).toBeNull()
-    expect(localStorage.getItem('sre-toolbox.accessToken')).toBeNull()
+    expect(window.localStorage.getItem('sre-toolbox.accessToken')).toBeNull()
   })
 })
