@@ -1,4 +1,4 @@
-# Context7 – SRE Toolbox
+# Context – SRE Toolbox
 
 1. **Platform topology** – The Toolbox pairs a React App Shell with a FastAPI control plane, Celery worker, Redis, PostgreSQL, and Vault; study `docs/toolbox-architecture.md` for component responsibilities and `docs/runtime-architecture.md` for runtime dependencies before proposing cross-service changes.
 2. **Service interactions & data flow** – API routers, Celery tasks, and toolkit runtime adapters live under `backend/` and publish job telemetry into Redis while persisting state in PostgreSQL; consult `backend/README.md` (if present), inline module docs, and `docs/project-setup.md` for connection string guidance and worker orchestration expectations.
@@ -8,3 +8,4 @@
 6. **Local development & testing** – Use `docker-compose.yml` / `docker-compose.prod.yml` for container orchestration and `test-all.sh` or targeted `npm test` / `pytest` runs for validation; update onboarding notes in `README.md` or `docs/project-setup.md` if workflows change.
 7. **Backlog & automation state** – Task selection and status live in `docs/TODO.yaml`, with machine-readable progress in `ai/state/progress.json` and narrative entries in `ai/state/journal.md`; follow `ai/ops/codex.md` when coordinating multi-session work.
 8. **Documentation, citations & PRs** – Observe repository-wide instructions in `AGENTS.md` and match contributions with explicit file-path citations in summaries and journals; run required checks, update docs alongside code, and capture rationale in the journal before opening a PR.
+9. **Context** - Always use context7 MCP to ensure our code is up to date and following best practices.

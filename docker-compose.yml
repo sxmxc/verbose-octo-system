@@ -41,6 +41,7 @@ services:
     volumes:
       - toolbox-data:/app/data
       - ./config:/app/config:ro
+      - ${VAULT_TOKEN_FILE:-./.vault-token}:/app/.vault-token:ro
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8080"
 
@@ -77,6 +78,7 @@ services:
     volumes:
       - toolbox-data:/app/data
       - ./config:/app/config:ro
+      - ${VAULT_TOKEN_FILE:-./.vault-token}:/app/.vault-token:ro
     command: >
       sh -c "celery -A worker.worker:celery_app worker --loglevel=INFO"
 

@@ -1,7 +1,7 @@
 import { apiFetch, getReactRuntime } from '../runtime'
 import { useProbeTemplates } from '../hooks/useProbeTemplates'
 import { useJobStream } from '../hooks/useJobStream'
-import { useToolkitJobs } from '../hooks/useToolkitJobs'
+import { usePaginatedJobs } from '../hooks/usePaginatedJobs'
 import type { ProbeExecutionSummary } from '../types'
 
 const React = getReactRuntime()
@@ -42,11 +42,15 @@ export default function JobLogViewer() {
   const [status, setStatus] = useState<string | null>(null)
   const { job, loading: jobLoading, error: jobError, refresh } = useJobStream(jobId)
   const {
-    jobs,
+    jobs: visibleJobs,
+    allJobs,
+    totalJobs,
+    hasMore,
+    loadMore,
     loading: jobsLoading,
     error: jobsError,
     refresh: refreshJobs,
-  } = useToolkitJobs(selectedTemplate)
+  } = usePaginatedJobs(selectedTemplate)
   const [lastJobsSignature, setLastJobsSignature] = useState<string | null>(null)
 
   const templateOptions = useMemo(
@@ -71,22 +75,22 @@ export default function JobLogViewer() {
   }, [selectedTemplate])
 
   useEffect(() => {
-    if (jobs.length === 0) {
+    if (allJobs.length === 0) {
       return
     }
-    const signature = jobs[0]?.updated_at || jobs[0]?.created_at
+    const signature = allJobs[0]?.updated_at || allJobs[0]?.created_at
     if (signature && signature !== lastJobsSignature) {
       setLastJobsSignature(signature)
       refreshTemplates()
     }
-  }, [jobs, lastJobsSignature, refreshTemplates])
+  }, [allJobs, lastJobsSignature, refreshTemplates])
 
   useEffect(() => {
-    if (jobId || jobs.length === 0) {
+    if (jobId || visibleJobs.length === 0) {
       return
     }
-    setJobId(jobs[0].id)
-  }, [jobs, jobId])
+    setJobId(visibleJobs[0].id)
+  }, [visibleJobs, jobId])
 
   const triggerPreview = async () => {
     if (!currentTemplate) return
@@ -124,7 +128,7 @@ export default function JobLogViewer() {
     }
   }
 
-  const latestJob = jobs.length > 0 ? jobs[0] : null
+  const latestJob = allJobs.length > 0 ? allJobs[0] : null
 
   const renderLogs = () => {
     if (!job) {
@@ -164,28 +168,29 @@ export default function JobLogViewer() {
       return <p style={{ color: 'var(--color-text-secondary)' }}>Choose a template to inspect recent runs.</p>
     }
 
-    if (jobsLoading) {
+    if (jobsLoading && visibleJobs.length === 0) {
       return <p>Loading recent runs…</p>
     }
 
-    if (jobs.length === 0) {
+    if (visibleJobs.length === 0) {
       return <p style={{ color: 'var(--color-text-secondary)' }}>No probe executions recorded yet.</p>
     }
 
     return (
-      <div style={{ overflowX: 'auto' }}>
-        <table className="tk-table">
-          <thead>
-            <tr>
-              <th style={{ minWidth: 140 }}>Run</th>
-              <th>Status</th>
-              <th>Progress</th>
-              <th>Updated</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.map((entry) => {
+      <div style={{ display: 'grid', gap: '0.75rem' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="tk-table">
+            <thead>
+              <tr>
+                <th style={{ minWidth: 140 }}>Run</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Updated</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+            {visibleJobs.map((entry) => {
               const isActive = jobId === entry.id
               const trigger = entry.logs?.[0]?.message?.includes('Scheduled run enqueued') ? 'Scheduled' : 'Manual'
               return (
@@ -216,6 +221,22 @@ export default function JobLogViewer() {
             })}
           </tbody>
         </table>
+        </div>
+        <footer style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--color-text-secondary)' }}>
+            Showing {visibleJobs.length} of {totalJobs} run{totalJobs === 1 ? '' : 's'}
+          </span>
+          {hasMore && (
+            <button
+              type="button"
+              className="tk-button"
+              onClick={loadMore}
+              disabled={jobsLoading}
+            >
+              {jobsLoading ? 'Loading…' : 'Load older runs'}
+            </button>
+          )}
+        </footer>
       </div>
     )
   }
