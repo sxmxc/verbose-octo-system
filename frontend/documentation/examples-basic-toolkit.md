@@ -23,8 +23,9 @@ status-toolkit/
 {
   "name": "Status",
   "slug": "status",
-  "backend_entry": "backend/routes.py",
-  "frontend_source_entry": "frontend/index.tsx"
+  "base_path": "/toolkits/status",
+  "backend": { "module": "backend.routes", "router_attr": "router" },
+  "frontend": { "source_entry": "frontend/index.tsx" }
 }
 ```
 
@@ -43,15 +44,14 @@ def get_health() -> dict[str, str]:
 `frontend/index.tsx`
 
 ```tsx
-import React from 'react'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { apiFetch } from '../runtime'
 
 export default function StatusToolkit() {
-  const [state, setState] = useState('loading…')
+  const [state, setState] = useState('loading...')
 
   useEffect(() => {
-    fetch('/toolkits/status/status/health')
-      .then((response) => response.json())
+    apiFetch<{ state: string }>('/toolkits/status/status/health')
       .then((payload) => setState(payload.state))
       .catch(() => setState('unreachable'))
   }, [])
@@ -67,8 +67,9 @@ export default function StatusToolkit() {
 
 ## Deploying
 
-1. Zip the directory.
-2. Upload via **Administration → Toolkits**.
-3. Enable the toolkit and browse to `/toolkits/status` to view the UI panel.
+1. Build the frontend bundle so `frontend/dist/index.js` exists (for example, run your bundler or `npm run build`).
+2. Zip the directory.
+3. Upload via **Administration → Toolkits**.
+4. Enable the toolkit and browse to `/toolkits/status` to view the UI panel.
 
 Extend the example by adding worker jobs that poll upstream systems or by styling the UI using the guidance in [Toolkit UI Guide](toolkit-ui).

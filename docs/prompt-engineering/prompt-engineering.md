@@ -10,7 +10,7 @@ This playbook captures how we craft instructions for SRE Toolbox automations and
 
 ## Principles
 
-1. **Prime with context** – remind the agent about available toolkits, current tenant state, and relevant environment variables (`VITE_API_BASE_URL`, `TOOLKIT_STORAGE_DIR`, etc.).
+1. **Prime with context** – remind the agent about available toolkits, current tenant state, and relevant environment variables (`VITE_API_BASE_URL`, `VITE_DEV_API_PROXY`, `FRONTEND_BASE_URL`, `TOOLKIT_STORAGE_DIR`, etc.).
 2. **State the desired outcome** – describe the measurable end state (e.g. "Celery job succeeds and log contains \"Synced 42 hosts\"").
 3. **Enumerate guardrails** – list safe commands, forbidden operations, approval checkpoints, and observability hooks.
 4. **Reference UI affordances** – quote route paths rendered by `AppShell.tsx` (`/jobs`, `/toolkits/:slug/*`, Admin sections) so the agent mirrors the operator journey.

@@ -26,14 +26,14 @@
 ## Infrastructure & Tooling
 - [x] Tighten `frontend/vite.config.ts` dev-server `fs.allow` list to the bare minimum.
 - [ ] Remove default Postgres credentials from `docker-compose.yml` (force overrides or prompt at deploy time).
-- [ ] Add automated tests covering slug fuzzing and toolkit activation edge cases.
+- [x] Add automated tests covering slug fuzzing and toolkit activation edge cases.
 - [x] Add automated test to reject malicious zip uploads during toolkit installation.
 
 ## Job Orchestration
 - [x] Update `/jobs` listing to keep toolkit and module filters separate so module-only queries return the correct jobs.
 
 ## Toolkit Worker Lifecycle
-- [ ] Ensure `load_toolkit_workers` only records a slug as loaded after the worker module registers successfully, allowing retries when registration fails.
+- [x] Ensure `load_toolkit_workers` only records a slug as loaded after the worker module registers successfully, allowing retries when registration fails.
 
 ## Follow-up Questions / Planning
 - [ ] Define the review/approval process for community-submitted toolkits before they reach production.

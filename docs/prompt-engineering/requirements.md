@@ -4,7 +4,8 @@ Use this checklist before publishing a new or updated prompt for SRE Toolbox age
 
 ## Environment Assumptions
 - Operator is authenticated; otherwise redirect to `/login`.
-- `API_BASE_URL` and `VITE_API_BASE_URL` are set and reachable.
+- `VITE_API_BASE_URL` (or `VITE_DEV_API_PROXY`) resolves to the API origin used by the SPA.
+- `FRONTEND_BASE_URL` matches the deployed shell origin for redirect and CORS checks.
 - Relevant toolkits are installed and enabled (verify through `/admin/toolkits`).
 
 ## Role Mapping
