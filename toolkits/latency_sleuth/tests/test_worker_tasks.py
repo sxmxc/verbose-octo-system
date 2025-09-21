@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from app.services import jobs as job_store
+from datetime import timedelta
 
-from toolkits.latency_sleuth.backend.models import ProbeTemplateCreate
+from toolkit_runtime import jobs as job_store
+
+from toolkits.latency_sleuth.backend.models import ProbeTemplateCreate, utcnow
 from toolkits.latency_sleuth.backend.storage import (
     create_template,
     get_template,
     list_history,
 )
-from datetime import timedelta
-
-from toolkits.latency_sleuth.backend.models import utcnow
 from toolkits.latency_sleuth.worker import tasks
 
 
@@ -87,7 +86,7 @@ class _DummyCelery:
         self._counter = 0
         self.tasks = {}
 
-    def send_task(self, name: str, args=None, kwargs=None):
+    def send_task(self, name: str, args=None, kwargs=None, **options):
         self._counter += 1
         task_id = f"task-{self._counter}"
         self.sent.append((name, args, kwargs))
@@ -98,7 +97,7 @@ class _DummyApplyTask:
     def __init__(self, celery: _DummyCelery) -> None:
         self._celery = celery
 
-    def apply_async(self, args=None, kwargs=None):
+    def apply_async(self, args=None, kwargs=None, **options):
         self._celery._counter += 1
         task_id = f"task-{self._celery._counter}"
         self._celery.sent.append(("apply_async", args, kwargs))
@@ -115,8 +114,8 @@ def test_scheduler_dispatches_due_template(fake_redis) -> None:
     name, args, _ = celery.sent[0]
     assert name == "worker.tasks.run_job"
 
-    jobs = job_store.list_jobs()
-    assert len(jobs) == 1
+    jobs, total = job_store.list_jobs()
+    assert total == 1
     assert args == [jobs[0]["id"]]
 
     template = get_template(template_id)
@@ -162,7 +161,7 @@ def test_scheduler_resubmits_stale_job(fake_redis) -> None:
     )
     job["status"] = "queued"
     job["updated_at"] = (utcnow() - timedelta(minutes=5)).isoformat()
-    job_store.save_job(job)
+    job_store.save_job(job, update_timestamp=False)
 
     celery = _DummyCelery()
     celery.tasks["worker.tasks.run_job"] = _DummyApplyTask(celery)

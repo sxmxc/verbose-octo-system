@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Callable, Dict
 
-from app.services import jobs as job_store
+from toolkit_runtime import jobs as job_store
 
 from backend.probes import simulate_connectivity
 from backend.storage import get_target

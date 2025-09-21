@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Iterable, List, Optional
 from uuid import uuid4
 
-from app.core.redis import get_redis, redis_key
+from toolkit_runtime.redis import get_redis, redis_key
 from redis.exceptions import WatchError
 
 from .models import (

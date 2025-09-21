@@ -8,14 +8,11 @@ from typing import Dict, Iterator, List
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-BACKEND_ROOT = ROOT / "backend"
 if str(ROOT) not in os.sys.path:
     os.sys.path.insert(0, str(ROOT))
-if str(BACKEND_ROOT) not in os.sys.path:
-    os.sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.core import redis as redis_module
-from app.services import jobs as job_store
+from toolkit_runtime import jobs as job_store
+from toolkit_runtime import redis as redis_module
 from toolkits.latency_sleuth.backend import storage as storage_module
 
 
@@ -24,6 +21,42 @@ class FakeRedis:
         self._hashes: Dict[str, Dict[str, str]] = defaultdict(dict)
         self._lists: Dict[str, List[str]] = defaultdict(list)
 
+    class _Pipeline:
+        def __init__(self, redis: "FakeRedis") -> None:
+            self._redis = redis
+            self._commands: List[tuple] = []
+
+        def __enter__(self) -> "FakeRedis._Pipeline":
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            self._commands.clear()
+            return False
+
+        # Redis pipeline API (no-op implementations for watch/unwatch)
+        def watch(self, *names: str) -> None:  # pragma: no cover - compatibility shim
+            return None
+
+        def unwatch(self) -> None:  # pragma: no cover - compatibility shim
+            return None
+
+        def hget(self, name: str, key: str) -> str | None:
+            return self._redis.hget(name, key)
+
+        def multi(self) -> None:  # pragma: no cover - compatibility shim
+            self._commands.clear()
+
+        def hset(self, name: str, key: str, value: str) -> None:
+            self._commands.append(("hset", name, key, value))
+
+        def execute(self) -> List[None]:
+            for command, name, key, value in self._commands:
+                if command == "hset":
+                    self._redis.hset(name, key, value)
+            self._commands.clear()
+            return []
+
+    # Basic API used by the code under test
     # Hash operations
     def hset(self, name: str, key: str, value: str) -> None:
         self._hashes[name][key] = value
@@ -71,6 +104,9 @@ class FakeRedis:
     def flushall(self) -> None:
         self._hashes.clear()
         self._lists.clear()
+
+    def pipeline(self):
+        return self._Pipeline(self)
 
 
 @pytest.fixture(autouse=True)

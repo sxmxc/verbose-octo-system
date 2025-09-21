@@ -1,10 +1,3 @@
-// ../toolkits/bundled/regex/frontend/index.tsx
-import React2 from "react";
-import { NavLink, Navigate, Route, Routes } from "react-router-dom";
-
-// ../toolkits/bundled/regex/frontend/pages/RegexTesterPage.tsx
-import React, { useState } from "react";
-
 // ../toolkits/bundled/regex/frontend/runtime.ts
 function getToolkitRuntime() {
   if (typeof window === "undefined" || !window.__SRE_TOOLKIT_RUNTIME) {
@@ -15,8 +8,16 @@ function getToolkitRuntime() {
 function apiFetch(path, options) {
   return getToolkitRuntime().apiFetch(path, options);
 }
+function getReactRuntime() {
+  return getToolkitRuntime().react;
+}
+function getReactRouterRuntime() {
+  return getToolkitRuntime().reactRouterDom;
+}
 
 // ../toolkits/bundled/regex/frontend/pages/RegexTesterPage.tsx
+var React = getReactRuntime();
+var { useState } = React;
 var flagOptions = ["IGNORECASE", "MULTILINE", "DOTALL", "VERBOSE", "UNICODE", "ASCII"];
 var iconStyle = {
   fontSize: "1.1rem",
@@ -109,6 +110,9 @@ var matchCardStyle = {
 };
 
 // ../toolkits/bundled/regex/frontend/index.tsx
+var React2 = getReactRuntime();
+var Router = getReactRouterRuntime();
+var { NavLink, Navigate, Route, Routes } = Router;
 var layoutStyles = {
   wrapper: {
     background: "var(--color-surface)",

@@ -1,4 +1,12 @@
 services:
+  toolbox-data-init:
+    image: busybox:1.36
+    container_name: sre-toolbox-data-init
+    command: ["sh", "-c", "chown -R ${APP_UID:-1000}:${APP_GID:-1000} /mnt"]
+    volumes:
+      - toolbox-data:/mnt
+    restart: "no"
+
   api:
     build:
       context: .
@@ -22,6 +30,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
+      toolbox-data-init:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -29,7 +39,7 @@ services:
       vault:
         condition: service_started
     volumes:
-      - ./backend/data:/app/data
+      - toolbox-data:/app/data
       - ./config:/app/config:ro
     command: >
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8080"
@@ -56,6 +66,8 @@ services:
       VAULT_APPROLE_SECRET_ID: ${VAULT_APPROLE_SECRET_ID:-}
       CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP: ${CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP:-true}
     depends_on:
+      toolbox-data-init:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -63,7 +75,7 @@ services:
       vault:
         condition: service_started
     volumes:
-      - ./backend/data:/app/data
+      - toolbox-data:/app/data
       - ./config:/app/config:ro
     command: >
       sh -c "celery -A worker.worker:celery_app worker --loglevel=INFO"
@@ -128,3 +140,4 @@ services:
 volumes:
   postgres-data:
   vault-data:
+  toolbox-data:

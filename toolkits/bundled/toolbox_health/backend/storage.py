@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Iterable, List, Optional
 
-from app.core.redis import get_redis, redis_key
+from toolkit_runtime.redis import get_redis, redis_key
 
 from .models import ComponentHealth, HealthSummary
 

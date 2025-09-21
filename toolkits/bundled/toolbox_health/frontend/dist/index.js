@@ -16,7 +16,6 @@ function apiFetch(path, options) {
 }
 
 // ../toolkits/bundled/toolbox_health/frontend/components/StatusIndicator.tsx
-var React = getReactRuntime();
 var statusConfig = {
   healthy: {
     label: "Healthy",
@@ -47,6 +46,7 @@ var statusConfig = {
     textColor: "var(--color-text-secondary)"
   }
 };
+var React = getReactRuntime();
 function getStatusConfig(status) {
   return statusConfig[status] ?? statusConfig.unknown;
 }
@@ -118,9 +118,7 @@ function HealthCard({ summary }) {
   );
 }
 function ComponentGrid({ components }) {
-
   return /* @__PURE__ */ React2.createElement("section", { className: "tk-card", style: { padding: "1.5rem", display: "grid", gap: "1rem" } }, /* @__PURE__ */ React2.createElement("header", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" } }, /* @__PURE__ */ React2.createElement("h4", { style: { margin: 0, display: "flex", alignItems: "center", gap: "0.4rem" } }, /* @__PURE__ */ React2.createElement("span", { className: "material-symbols-outlined", style: { fontSize: "1.1rem", color: "var(--color-link)" }, "aria-hidden": true }, "lan"), "Component details"), /* @__PURE__ */ React2.createElement("span", { style: { color: "var(--color-text-secondary)", fontSize: "0.85rem" } }, "Refresh manually or wait for automatic updates every minute.")), /* @__PURE__ */ React2.createElement("div", { style: { display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" } }, components.map((component) => {
-
     const description = componentDescriptions[component.component] ?? "Monitored service.";
     return /* @__PURE__ */ React2.createElement(
       "article",
@@ -145,7 +143,6 @@ function OverviewPage() {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-
   const fetchSummary = useCallback(
     async ({ signal, forceRefresh = false, showSpinner = false } = {}) => {
       if (showSpinner) {
@@ -195,7 +192,6 @@ function OverviewPage() {
       setError("Failed to load health summary.");
     });
   }, [fetchSummary]);
-
   const components = useMemo(() => summary?.components ?? [], [summary]);
   return /* @__PURE__ */ React2.createElement("div", { style: { display: "grid", gap: "1.5rem" } }, /* @__PURE__ */ React2.createElement("div", { style: { display: "flex", justifyContent: "flex-end" } }, /* @__PURE__ */ React2.createElement(
     "button",

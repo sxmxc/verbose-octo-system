@@ -1,140 +1,115 @@
-from __future__ import annotations
+"""Shim module re-exporting the shared toolkit runtime job helpers."""
 
-import json
-from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Optional
-from uuid import uuid4
+from contextlib import contextmanager
+from functools import wraps
+from typing import Any, Callable
 
-from ..core.redis import get_redis, redis_key
-
-
-JOBS_KEY = redis_key("jobs")
-TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
+from toolkit_runtime import jobs as _runtime_jobs
+from toolkit_runtime.redis import get_redis as _get_redis
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+JOBS_KEY = _runtime_jobs.JOBS_KEY
+TERMINAL_STATUSES = _runtime_jobs.TERMINAL_STATUSES
 
 
-def _dump(job: Dict[str, Any]) -> str:
-    return json.dumps(job)
+@contextmanager
+def _bind_runtime_redis() -> None:
+    original = _runtime_jobs.get_redis
+    _runtime_jobs.get_redis = get_redis
+    try:
+        yield
+    finally:  # pragma: no cover - best-effort restoration
+        _runtime_jobs.get_redis = original
 
 
-def _load(raw: str) -> Dict[str, Any]:
-    return json.loads(raw)
+def _with_runtime_binding(func: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with _bind_runtime_redis():
+            return func(*args, **kwargs)
+
+    return wrapper
 
 
-def _normalise(job: Dict[str, Any]) -> Dict[str, Any]:
-    job.setdefault("logs", [])
-    job.setdefault("result", None)
-    job.setdefault("error", None)
-    job.setdefault("progress", 0)
-    job.setdefault("status", "queued")
-    job.setdefault("celery_task_id", None)
-    job.setdefault("created_at", _now())
-    job.setdefault("updated_at", job["created_at"])
-    return job
+@_with_runtime_binding
+def create_job(toolkit: str, operation: str, payload: dict) -> dict:
+    return _runtime_jobs.create_job(toolkit, operation, payload)
 
 
-def create_job(toolkit: str, operation: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    job_id = str(uuid4())
-    now = _now()
-    job = _normalise(
-        {
-            "id": job_id,
-            "toolkit": toolkit,
-            "module": toolkit,
-            "operation": operation,
-            "type": f"{toolkit}.{operation}",
-            "payload": payload,
-            "status": "queued",
-            "progress": 0,
-            "logs": [],
-            "created_at": now,
-            "updated_at": now,
-        }
-    )
-    redis = get_redis()
-    redis.hset(JOBS_KEY, job_id, _dump(job))
-    return job
+@_with_runtime_binding
+def save_job(job: dict, *, update_timestamp: bool = True) -> None:
+    return _runtime_jobs.save_job(job, update_timestamp=update_timestamp)
 
 
-def save_job(job: Dict[str, Any]) -> None:
-    job["updated_at"] = _now()
-    redis = get_redis()
-    redis.hset(JOBS_KEY, job["id"], _dump(job))
+@_with_runtime_binding
+def get_job(job_id: str) -> dict | None:
+    return _runtime_jobs.get_job(job_id)
 
 
-def get_job(job_id: str) -> Optional[Dict[str, Any]]:
-    redis = get_redis()
-    raw = redis.hget(JOBS_KEY, job_id)
-    if not raw:
-        return None
-    job = _normalise(_load(raw))
-    return job
-
-
+@_with_runtime_binding
 def list_jobs(
-    limit: Optional[int] = None,
-    toolkits: Optional[Iterable[str]] = None,
-    modules: Optional[Iterable[str]] = None,
-) -> List[Dict[str, Any]]:
-    redis = get_redis()
-    values = redis.hvals(JOBS_KEY)
-    jobs = [_normalise(_load(raw)) for raw in values]
-    toolkit_filters = {m.lower() for m in toolkits} if toolkits else None
-    module_filters = {m.lower() for m in modules} if modules else None
-    if toolkit_filters or module_filters:
-        filtered_jobs = []
-        for job in jobs:
-            if toolkit_filters:
-                toolkit_value = (job.get("toolkit") or "").lower()
-                if toolkit_value not in toolkit_filters:
-                    continue
-            if module_filters:
-                module_value = (job.get("module") or "").lower()
-                if module_value not in module_filters:
-                    continue
-            filtered_jobs.append(job)
-        jobs = filtered_jobs
-    jobs.sort(key=lambda job: job.get("created_at", ""), reverse=True)
-    if limit is not None:
-        return jobs[:limit]
-    return jobs
+    limit: int | None = None,
+    offset: int = 0,
+    toolkits: Any = None,
+    modules: Any = None,
+    statuses: Any = None,
+):
+    return _runtime_jobs.list_jobs(
+        limit=limit,
+        offset=offset,
+        toolkits=toolkits,
+        modules=modules,
+        statuses=statuses,
+    )
 
 
-def append_log(job: Dict[str, Any], message: str) -> Dict[str, Any]:
-    logs = job.setdefault("logs", [])
-    logs.append({"ts": _now(), "message": message})
-    save_job(job)
-    return job
-
-
+@_with_runtime_binding
 def delete_job(job_id: str) -> bool:
-    redis = get_redis()
-    return bool(redis.hdel(JOBS_KEY, job_id))
+    return _runtime_jobs.delete_job(job_id)
 
 
-def attach_celery_task(job: Dict[str, Any], task_id: str) -> Dict[str, Any]:
-    job["celery_task_id"] = task_id
-    save_job(job)
-    return job
+@_with_runtime_binding
+def append_log(job: dict, message: str) -> dict:
+    return _runtime_jobs.append_log(job, message)
 
 
-def mark_cancelled(job: Dict[str, Any], message: str | None = None) -> Dict[str, Any]:
-    job["status"] = "cancelled"
-    job.setdefault("progress", 0)
-    if message:
-        job = append_log(job, message)
-    else:
-        save_job(job)
-    return job
+@_with_runtime_binding
+def attach_celery_task(job: dict, task_id: str) -> dict:
+    return _runtime_jobs.attach_celery_task(job, task_id)
 
 
-def mark_cancelling(job: Dict[str, Any], message: str | None = None) -> Dict[str, Any]:
-    job["status"] = "cancelling"
-    if message:
-        job = append_log(job, message)
-    else:
-        save_job(job)
-    return job
+@_with_runtime_binding
+def mark_cancelled(job: dict, message: str | None = None) -> dict:
+    return _runtime_jobs.mark_cancelled(job, message)
+
+
+@_with_runtime_binding
+def mark_cancelling(job: dict, message: str | None = None) -> dict:
+    return _runtime_jobs.mark_cancelling(job, message)
+
+
+get_redis = _get_redis
+
+
+# Legacy helpers retained for tests/compatibility
+_dump = _runtime_jobs._dump
+_load = _runtime_jobs._load
+_normalise = _runtime_jobs._normalise
+
+__all__ = [
+    "JOBS_KEY",
+    "TERMINAL_STATUSES",
+    "append_log",
+    "attach_celery_task",
+    "create_job",
+    "delete_job",
+    "get_job",
+    "list_jobs",
+    "mark_cancelled",
+    "mark_cancelling",
+    "save_job",
+    "_dump",
+    "_load",
+    "_normalise",
+    "get_redis",
+]

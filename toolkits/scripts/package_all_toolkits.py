@@ -44,10 +44,14 @@ def package_all(toolkits_dir: pathlib.Path, destination: pathlib.Path, overwrite
         with manifest_path.open() as handle:
             manifest = json.load(handle)
 
-        ensure_frontend_bundle(toolkit_dir, manifest)
-
         slug = resolve_slug(manifest, toolkit_dir)
         output = destination / f"{slug}_toolkit.zip"
+
+        if not overwrite and output.exists():
+            print(f"Skipping {slug}: archive already exists at {output}")
+            continue
+
+        ensure_frontend_bundle(toolkit_dir, manifest)
 
         command = [
             sys.executable,
@@ -119,7 +123,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--destination",
         type=pathlib.Path,
-        default=pathlib.Path("/tmp/toolkits"),
+        default=pathlib.Path(f"/{DEFAULT_TOOLKIT_DIR}/packages"),
         help="Directory to write toolkit archives into.",
     )
     parser.add_argument(
@@ -131,7 +135,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Overwrite existing archives when present.",
+        default=True,
+        help="Overwrite existing archives when present (enabled by default).",
+    )
+    parser.add_argument(
+        "--no-force",
+        dest="force",
+        action="store_false",
+        help="Skip toolkits whose archives already exist instead of overwriting.",
     )
     return parser.parse_args(argv)
 

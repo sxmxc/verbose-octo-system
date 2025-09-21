@@ -30,9 +30,24 @@ def create_job(req: EnqueueJobRequest):
 def list_jobs(
     toolkit: Optional[List[str]] = Query(default=None),
     module: Optional[List[str]] = Query(default=None),
+    status: Optional[List[str]] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
 ):
-    jobs = list_job_status(toolkits=toolkit, modules=module)
-    return {"jobs": jobs}
+    offset = (page - 1) * page_size
+    jobs, total = list_job_status(
+        limit=page_size,
+        offset=offset,
+        toolkits=toolkit,
+        modules=module,
+        statuses=status,
+    )
+    return {
+        "jobs": jobs,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.get(

@@ -1,7 +1,11 @@
-import React from 'react'
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
-
 import RegexTesterPage from './pages/RegexTesterPage'
+import { getReactRouterRuntime, getReactRuntime } from './runtime'
+import type { CSSProperties } from 'react'
+
+
+const React = getReactRuntime()
+const Router = getReactRouterRuntime()
+const { NavLink, Navigate, Route, Routes } = Router
 
 
 const layoutStyles = {
@@ -29,7 +33,7 @@ const layoutStyles = {
   }),
 }
 
-const iconStyle: React.CSSProperties = {
+const iconStyle: CSSProperties = {
   fontSize: '1.15rem',
   lineHeight: 1,
   color: 'var(--color-link)',

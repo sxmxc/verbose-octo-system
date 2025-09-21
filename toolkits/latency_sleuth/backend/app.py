@@ -5,8 +5,8 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
-from app.services import jobs as job_store
-from app.worker_client import enqueue_job
+from toolkit_runtime import jobs as job_store
+from toolkit_runtime import enqueue_job
 
 from .models import (
     LatencyHeatmap,
@@ -129,7 +129,7 @@ def probe_templates_history(template_id: str, limit: int = 10) -> List[ProbeExec
 
 @router.get("/jobs")
 def list_jobs(template_id: Optional[str] = None) -> List[dict]:
-    jobs = job_store.list_jobs(toolkits=["latency-sleuth"])
+    jobs, _ = job_store.list_jobs(toolkits=["latency-sleuth"])
     if template_id:
         jobs = [job for job in jobs if job.get("payload", {}).get("template_id") == template_id]
     return jobs

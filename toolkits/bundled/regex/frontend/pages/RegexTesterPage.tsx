@@ -1,12 +1,15 @@
-import React, { FormEvent, useState } from 'react'
+import type { CSSProperties, FormEvent, ReactNode } from 'react'
 
-import { apiFetch } from '../runtime'
+import { apiFetch, getReactRuntime } from '../runtime'
 import type { RegexTestResponse, RegexMatch } from './types'
 
 
+const React = getReactRuntime()
+const { useState } = React
+
 const flagOptions = ['IGNORECASE', 'MULTILINE', 'DOTALL', 'VERBOSE', 'UNICODE', 'ASCII']
 
-const iconStyle: React.CSSProperties = {
+const iconStyle: CSSProperties = {
   fontSize: '1.1rem',
   lineHeight: 1,
   color: 'var(--color-link)',
@@ -25,7 +28,7 @@ export default function RegexTesterPage() {
     setFlags((prev) => (prev.includes(flag) ? prev.filter((item) => item !== flag) : [...prev, flag]))
   }
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
     setLoading(true)
@@ -195,7 +198,7 @@ function MatchCard({ match, index }: { match: RegexMatch; index: number }) {
 }
 
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="tk-label" style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
       {label}
@@ -205,7 +208,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 
-const sectionStyle: React.CSSProperties = {
+const sectionStyle: CSSProperties = {
   border: '1px solid var(--color-border)',
   borderRadius: 10,
   padding: '1.25rem',
@@ -214,7 +217,7 @@ const sectionStyle: React.CSSProperties = {
   gap: '0.75rem',
 }
 
-const matchCardStyle: React.CSSProperties = {
+const matchCardStyle: CSSProperties = {
   background: 'var(--color-surface)',
   borderRadius: 10,
   border: '1px solid var(--color-border)',

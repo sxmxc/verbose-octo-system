@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import uuid4
 
-from app.core.redis import get_redis, redis_key
+from toolkit_runtime.redis import get_redis, redis_key
 
 from .models import ConnectivityTarget, ConnectivityTargetCreate, ConnectivityTargetUpdate
 
