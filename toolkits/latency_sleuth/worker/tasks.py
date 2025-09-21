@@ -8,9 +8,9 @@ from typing import Any, Callable, Dict, Iterable, List, Sequence
 
 from app.services import jobs as job_store
 
-from backend.models import utcnow
-from backend.probes import execute_probe
-from backend.storage import (
+from ..backend.models import utcnow
+from ..backend.probes import execute_probe
+from ..backend.storage import (
     bootstrap_schedule,
     get_template,
     list_due_templates,
@@ -100,7 +100,8 @@ def _handle_run_probe(job: JobRecord) -> JobRecord:
 
 
 def _has_active_job(template_id: str) -> bool:
-    for candidate in job_store.list_jobs(limit=200, toolkits=["latency-sleuth"]):
+    candidates, _ = job_store.list_jobs(limit=200, toolkits=["latency-sleuth"])
+    for candidate in candidates:
         if candidate.get("type") != "latency-sleuth.run_probe":
             continue
         payload = candidate.get("payload") or {}
@@ -129,13 +130,19 @@ def _dispatch_due_probes(celery_app, *, now=None) -> None:
             },
         )
         job = job_store.append_log(job, "Scheduled run enqueued by Latency Sleuth interval")
-        queue = celery_app.conf.task_default_queue or "celery"
+        queue = getattr(getattr(celery_app, "conf", None), "task_default_queue", None) or "celery"
         try:
             task = celery_app.tasks.get("worker.tasks.run_job")
             if task is not None:
-                result = task.apply_async(args=[job["id"]], queue=queue)
+                try:
+                    result = task.apply_async(args=[job["id"]], queue=queue)
+                except TypeError:
+                    result = task.apply_async(args=[job["id"]])
             else:  # pragma: no cover - defensive
-                result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]], queue=queue)
+                try:
+                    result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]], queue=queue)
+                except TypeError:
+                    result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]])
         except Exception as exc:  # pragma: no cover - defensive guard
             job["status"] = "failed"
             job["error"] = str(exc)
@@ -161,7 +168,8 @@ def _parse_timestamp(value) -> datetime | None:
 
 def _resubmit_stale_jobs(celery_app, *, now=None) -> None:
     timestamp = now or utcnow()
-    for job in job_store.list_jobs(limit=200, toolkits=["latency-sleuth"]):
+    candidates, _ = job_store.list_jobs(limit=200, toolkits=["latency-sleuth"])
+    for job in candidates:
         if job.get("type") != "latency-sleuth.run_probe":
             continue
         if job.get("status") != "queued":
@@ -172,13 +180,19 @@ def _resubmit_stale_jobs(celery_app, *, now=None) -> None:
         if (timestamp - updated_at).total_seconds() < STALE_JOB_GRACE_SECONDS:
             continue
 
-        queue = celery_app.conf.task_default_queue or "celery"
+        queue = getattr(getattr(celery_app, "conf", None), "task_default_queue", None) or "celery"
         try:
             task = celery_app.tasks.get("worker.tasks.run_job")
             if task is not None:
-                result = task.apply_async(args=[job["id"]], queue=queue)
+                try:
+                    result = task.apply_async(args=[job["id"]], queue=queue)
+                except TypeError:
+                    result = task.apply_async(args=[job["id"]])
             else:  # pragma: no cover - defensive
-                result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]], queue=queue)
+                try:
+                    result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]], queue=queue)
+                except TypeError:
+                    result = celery_app.send_task("worker.tasks.run_job", args=[job["id"]])
         except Exception as exc:  # pragma: no cover - defensive guard
             job["status"] = "failed"
             job["error"] = str(exc)

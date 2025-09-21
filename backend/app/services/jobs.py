@@ -59,8 +59,9 @@ def create_job(toolkit: str, operation: str, payload: Dict[str, Any]) -> Dict[st
     return job
 
 
-def save_job(job: Dict[str, Any]) -> None:
-    job["updated_at"] = _now()
+def save_job(job: Dict[str, Any], *, update_timestamp: bool = True) -> None:
+    if update_timestamp:
+        job["updated_at"] = _now()
     redis = get_redis()
     redis.hset(JOBS_KEY, job["id"], _dump(job))
 

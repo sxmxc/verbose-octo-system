@@ -15,7 +15,7 @@ class FakeJobStore:
     def get_job(self, job_id):
         return self.job
 
-    def save_job(self, job):
+    def save_job(self, job, update_timestamp=True):
         self.saved.append(job.copy())
         self.job = job
 
