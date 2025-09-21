@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Use this guide when opening pull requests or triaging issues.
+> **Heads-up:** The canonical contribution process now lives at [`CONTRIBUTING.md`](../CONTRIBUTING.md). This file captures a quick reference for engineering teams who prefer docs under `docs/`.
 
 ## Branching
 - Fork or create feature branches from `main` (`feature/<short-description>`).
@@ -23,7 +23,7 @@ Use this guide when opening pull requests or triaging issues.
 
 ## Documentation
 - Update `frontend/documentation` for operator-facing changes that appear in the UI.
-- Update `docs/` for internal processes (prompt playbooks, standards, architecture decisions).
+- Update `docs/` for internal processes (standards, architecture decisions) and `ai/ops/` for Codex playbooks.
 
 ## Release Notes
 - Summarise user-visible changes in the PR description.

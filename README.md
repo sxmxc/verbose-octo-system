@@ -1,6 +1,6 @@
 # SRE Toolbox
 
-[![CI](https://github.com/sxmxc/verbose-octo-system/actions/workflows/ci.yml/badge.svg)](https://github.com/sxmxc/verbose-octo-system/actions/workflows/ci.yml) [![Docs](https://img.shields.io/badge/docs-quick%20start-0a0a0a?logo=readthedocs&logoColor=white)](docs/README.md) [![Compose](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml) [![Contribution Guide](https://img.shields.io/badge/contribute-guidelines-0366d6?logo=github)](docs/contributing.md)
+[![CI](https://github.com/sxmxc/verbose-octo-system/actions/workflows/ci.yml/badge.svg)](https://github.com/sxmxc/verbose-octo-system/actions/workflows/ci.yml) [![Docs](https://img.shields.io/badge/docs-quick%20start-0a0a0a?logo=readthedocs&logoColor=white)](docs/README.md) [![Compose](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml) [![Contribution Guide](https://img.shields.io/badge/contribute-guidelines-0366d6?logo=github)](CONTRIBUTING.md)
 
 SRE Toolbox is a modular operations cockpit for site reliability teams. The lightweight core exposes a FastAPI control plane, a Celery worker, and a React shell. Feature teams ship functionality as **toolkits** that bundle API routers, background jobs, documentation, and optional UI panels that operators can enable at runtime.
 
@@ -38,7 +38,8 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 - `toolkits/` – Bundled reference toolkits and packaging utilities (`scripts/package_toolkit.py`, `package_all_toolkits.py`).
 - `config/` – Vault configuration (`config/vault/local.hcl`) and sample auth provider manifests.
 - `docker/` – Container entrypoints, including the Vault init/unseal helper.
-- `docs/` – Engineering guides (prompt playbooks, coding standards, toolkit authoring, runtime architecture).
+- `docs/` – Engineering guides (coding standards, toolkit authoring, runtime architecture).
+- `ai/` – Codex playbooks and persistent state for long-running automation (`ai/ops/codex.md`, `ai/state/*`).
 - `docker-compose.yml` – Local orchestration for API, worker, Redis, Postgres, Vault, frontend, and data-init jobs.
 - `test-all.sh` – Convenience script to run backend and frontend unit tests.
 - `.env.example` – Baseline environment variables for local development.
