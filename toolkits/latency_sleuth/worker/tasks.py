@@ -8,15 +8,26 @@ from typing import Any, Callable, Dict, Iterable, List, Sequence
 
 from toolkit_runtime import jobs as job_store
 
-from ..backend.models import utcnow
-from ..backend.probes import execute_probe
-from ..backend.storage import (
-    bootstrap_schedule,
-    get_template,
-    list_due_templates,
-    record_probe_result,
-    reserve_template_for_run,
-)
+try:
+    from ..backend.models import utcnow
+    from ..backend.probes import execute_probe
+    from ..backend.storage import (
+        bootstrap_schedule,
+        get_template,
+        list_due_templates,
+        record_probe_result,
+        reserve_template_for_run,
+    )
+except ImportError:  # pragma: no cover - toolkit runtime import path
+    from backend.models import utcnow
+    from backend.probes import execute_probe
+    from backend.storage import (
+        bootstrap_schedule,
+        get_template,
+        list_due_templates,
+        record_probe_result,
+        reserve_template_for_run,
+    )
 
 JobPayload = Dict[str, Any]
 JobRecord = Dict[str, Any]

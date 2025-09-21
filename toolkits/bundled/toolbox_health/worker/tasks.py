@@ -6,7 +6,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, Optional
 
-from ..backend.health import build_health_summary_sync, get_cached_summary
+try:
+    from ..backend.health import build_health_summary_sync, get_cached_summary
+except ImportError:  # pragma: no cover - toolkit runtime import path
+    from backend.health import build_health_summary_sync, get_cached_summary
 
 
 LOGGER = logging.getLogger(__name__)
@@ -56,4 +59,3 @@ def register(
 
 
 __all__ = ["register"]
-
