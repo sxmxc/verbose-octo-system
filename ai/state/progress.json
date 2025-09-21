@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "last_updated": "2024-05-30T00:00:00Z",
+  "session_counter": 0,
+  "active_task": null,
+  "recent_updates": [],
+  "candidate_next_tasks": [
+    {
+      "task_id": "sandbox-build-validation",
+      "status": "backlog",
+      "reason": "Highest impact open item for containing untrusted toolkit archives."
+    },
+    {
+      "task_id": "jwt-secret-enforcement",
+      "status": "backlog",
+      "reason": "Security baseline requires forcing operators to rotate secrets."
+    },
+    {
+      "task_id": "remove-default-postgres-creds",
+      "status": "backlog",
+      "reason": "Default credentials linger in docker-compose and should be eliminated."
+    }
+  ],
+  "notes": "Initialised by Codex; update this file whenever focus or status changes."
+}

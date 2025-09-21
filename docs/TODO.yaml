@@ -1,0 +1,66 @@
+version: 1
+updated: 2024-05-30
+owners:
+  - team: sre-toolbox
+  - ai: codex
+workflow:
+  cadence: "Review at the start of each Codex session and after major merges."
+  notes:
+    - "Mark finished items with status: done and keep a short completion summary."
+    - "Document blockers directly on the task so future sessions can unblock them quickly."
+areas:
+  - id: toolkit-sandbox
+    title: Toolkit upload & execution
+    summary: Hardening the toolkit install pipeline and pre-flight checks.
+    tasks:
+      - id: sandbox-build-validation
+        title: Run toolkit build/test steps in an isolated workspace before activation.
+        status: backlog
+        priority: high
+        notes:
+          - "Explore disposable containers or ephemeral directories to contain untrusted archives."
+          - "Capture findings in the journal and propose automation in backend/toolkit installer if feasible."
+  - id: auth-hardening
+    title: Authentication & secrets
+    summary: Protect credentials and tighten auth flows.
+    tasks:
+      - id: jwt-secret-enforcement
+        title: Enforce non-default JWT secrets or require asymmetric keys at startup.
+        status: backlog
+        priority: high
+        notes:
+          - "Ensure docker-compose and documentation guide operators toward secure secrets."
+      - id: token-assertions
+        title: Add token_use / typ assertions when refreshing tokens to prevent replay.
+        status: backlog
+        priority: medium
+      - id: login-throttling
+        title: Implement login throttling / lockout for the local provider and emit audit logs.
+        status: backlog
+        priority: medium
+      - id: browser-storage-hardening
+        title: Keep access tokens out of localStorage; rely on httpOnly refresh cookies or in-memory storage.
+        status: backlog
+        priority: medium
+  - id: infra-tooling
+    title: Infrastructure & tooling
+    summary: Tighten local and production defaults.
+    tasks:
+      - id: remove-default-postgres-creds
+        title: Remove default Postgres credentials from docker-compose and require overrides.
+        status: backlog
+        priority: high
+        notes:
+          - "Consider interactive prompts or environment validation in tooling scripts."
+  - id: governance
+    title: Governance & planning
+    summary: Operational guardrails for community contributions and secret management.
+    tasks:
+      - id: toolkit-review-process
+        title: Define the review/approval process for community-submitted toolkits.
+        status: backlog
+        priority: medium
+      - id: vault-deployment-eval
+        title: Evaluate containerized Vault deployment options and integrate into orchestration docs.
+        status: backlog
+        priority: medium

@@ -23,5 +23,5 @@ These conventions keep the SRE Toolbox codebase consistent across the FastAPI ba
 
 ## Documentation & Prompts
 - Place operator-facing docs under `frontend/documentation` (rendered by the UI).
-- Store internal engineering guides—prompt playbooks, contribution notes, architecture decisions—under `docs/`.
+- Store internal engineering guides under `docs/` and Codex playbooks under `ai/ops/`.
 - Reference role gates (`toolkit.curator`, superuser) and toolkit lifecycle terminology consistently across documentation.
