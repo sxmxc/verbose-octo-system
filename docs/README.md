@@ -2,7 +2,7 @@
 
 This directory captures engineering-facing guides that complement the operator-facing content shipped in `frontend/documentation`.
 
-- Start with `docs/runtime-architecture.md` for a service-by-service breakdown (API, worker, Vault, Redis, Postgres, toolkit storage).
+- Start with `docs/toolbox-architecture.md` for the code-level component map and pair it with `docs/runtime-architecture.md` for infrastructure dependencies.
 - Use `ai/ops/codex.md` for Codex agent instructions, evaluation criteria, and conversational playbooks.
 - Explore `docs/toolkit-authoring` for backend, worker, and frontend integration workflows when shipping new toolkits.
 - Review `docs/authentication/providers.md` for Vault-backed OIDC/LDAP/AD configuration patterns.

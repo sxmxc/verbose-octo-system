@@ -1,6 +1,6 @@
 # Runtime Architecture
 
-This document describes how the SRE Toolbox services interact and which dependencies must be available for the platform to boot successfully in any environment (Docker Compose, Kubernetes, or local shells).
+This document describes how the SRE Toolbox services interact and which dependencies must be available for the platform to boot successfully in any environment (Docker Compose, Kubernetes, or local shells). For a code-level component map, see `docs/toolbox-architecture.md`.
 
 ## Core services
 

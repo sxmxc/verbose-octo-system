@@ -11,3 +11,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Closed TODO `improve-design` by implementing the two-column layout requested in `docs/TODO.yaml` notes (Context7 #1).
 - Added a collapsible history panel beneath the response area so history stays accessible without dominating the UI (Context7 #2).
 - Updated `ai/state/progress.json` and `docs/TODO.yaml` to record completion and ready the next session (Context7 #3).
+
+## 2025-09-21 Codex architecture docs refresh
+- Authored `docs/toolbox-architecture.md` to describe component responsibilities and cross-runtime flows, and paired it with the existing runtime infrastructure guide.
+- Captured database and payload relationships in `docs/toolbox-schema.md` so Codex prompts stay aligned with the persistent model.
+- Updated `ai/ops/codex.md`, `ai/context/context7.md`, `AGENTS.md`, `docs/README.md`, `docs/runtime-architecture.md`, and `CONTRIBUTING.md` to reference the new docs and removed obsolete scoring/correlation steps.
