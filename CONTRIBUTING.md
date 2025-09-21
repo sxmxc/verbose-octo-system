@@ -6,7 +6,7 @@ Thanks for helping us improve the SRE Toolbox. This guide applies to both humans
 
 1. Fork the repository or create a feature branch from `main` (`feature/<short-description>`).
 2. Keep your branch up to date by rebasing on `main` before opening a pull request.
-3. Familiarise yourself with the architecture via `README.md` and `docs/runtime-architecture.md`.
+3. Familiarise yourself with the architecture via `README.md`, `docs/toolbox-architecture.md`, and `docs/runtime-architecture.md`.
 4. Review the backlog in `docs/TODO.yaml` and update `ai/state/progress.json` when you pick up work.
 
 ## Development workflow

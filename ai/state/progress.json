@@ -1,22 +1,22 @@
 {
   "version": 1,
-  "last_updated": "2025-09-21T19:15:17Z",
-  "session_counter": 1,
+  "last_updated": "2025-09-21T20:45:00Z",
+  "session_counter": 2,
   "active_task": null,
-  "last_task_id": "improve-design",
+  "last_task_id": "codex-architecture-docs",
   "recent_updates": [
     {
       "task_id": "improve-design",
       "status": "done",
       "summary": "Moved the response viewer into a dedicated right column with a collapsible history panel and responsive fallback."
+    },
+    {
+      "task_id": "codex-architecture-docs",
+      "status": "done",
+      "summary": "Authored Toolbox architecture and schema references for Codex and updated prompts to consume them."
     }
   ],
   "candidate_next_tasks": [
-    {
-      "task_id": "sandbox-build-validation",
-      "status": "backlog",
-      "reason": "Highest impact open item for containing untrusted toolkit archives."
-    },
     {
       "task_id": "jwt-secret-enforcement",
       "status": "backlog",
@@ -28,5 +28,5 @@
       "reason": "Default credentials linger in docker-compose and should be eliminated."
     }
   ],
-  "notes": "Initialised by Codex; update this file whenever focus or status changes."
+  "notes": "Initialised by Codex; update this file whenever focus or status changes. Architecture/schema references refreshed in session 2."
 }

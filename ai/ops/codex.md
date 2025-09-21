@@ -22,11 +22,13 @@ Always prefer editing these files over relying on memory. If a task spans multip
 
 ## Operating principles
 
-1. **Prime with architecture** – remind yourself of FastAPI, Celery, Redis, Vault, and the React App Shell when crafting prompts or validating behaviours.
+1. **Prime with architecture** – review `docs/toolbox-architecture.md` for component responsibilities and pair it with `docs/runtime-architecture.md` when reasoning about deployment dependencies.
 2. **State outcomes clearly** – tie each change to observable metrics (API response, UI route, log entry) before moving on.
 3. **Respect guardrails** – honour role gates (`toolkit.curator`, superuser) and cancellation semantics across toolkits and jobs.
 4. **Surface context** – cite relevant routes or files (`AppShell.tsx`, toolkit manifests, `backend/app/toolkits/*`) in documentation updates and PRs.
 5. **Close the loop** – summarise what changed, reference dashboards, and link to supporting docs in every journal or PR entry.
+
+When planning data changes, consult `docs/toolbox-schema.md` so prompts stay aligned with the persistent model (users, roles, toolkits, audit logs, auth providers).
 
 ## Agent personas
 

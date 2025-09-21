@@ -1,5 +1,5 @@
 version: 1
-updated: 2024-05-30
+updated: 2025-09-21
 owners:
   - team: sre-toolbox
   - ai: codex
@@ -100,7 +100,7 @@ areas:
       - id: remove-default-postgres-creds
         title: Remove default Postgres credentials from docker-compose and require overrides.
         status: backlog
-        priority: high
+        priority: medium
         notes:
           - "Consider interactive prompts or environment validation in tooling scripts."
   - id: governance
@@ -115,3 +115,13 @@ areas:
         title: Evaluate containerized Vault deployment options and integrate into orchestration docs.
         status: backlog
         priority: medium
+  - id: codex-automation
+    title: Codex automation support
+    summary: Keep Codex prompts, playbooks, and reference docs accurate.
+    tasks:
+      - id: codex-architecture-docs
+        title: Document Toolbox architecture and schema for Codex agents.
+        status: done
+        priority: high
+        notes:
+          - "2025-09-21: Added `docs/toolbox-architecture.md` and `docs/toolbox-schema.md`; refreshed Codex prompts to reference them and removed obsolete scoring/correlation steps."
