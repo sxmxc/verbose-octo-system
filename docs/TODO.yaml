@@ -55,13 +55,14 @@ areas:
           - "Use existing javascript libraries for heatmap rendering if applicable."
       - id: improve-designer-tab
         title: Improve the Designer tab for better usability.
-        status: backlog
+        status: done
         priority: high
         notes:
           - "Enhance the layout and organization of elements within the Designer tab."
           - "Consider 2-column layout with probe designer on the left and template catalog on the right."
           - "Allow templates in the catalog to be filtered by tags and searched by name."
           - "Allow templates in the catalog to be edited or cloned directly from the catalog."
+          - "2025-09-21: Refactored Probe Designer into a responsive two-column layout with catalog filters, inline edit, and clone actions."
       - id: improve-navigation
         title: Improve navigation within the toolkit UI.
         status: backlog
@@ -132,6 +133,9 @@ areas:
           - "Ensure updates can be rolled back in case of issues."
           - "Consider version compatibility checks before applying updates."
           - "Document the update process for users."
+          - "Allow upload of updated toolkit zips via the UI or API."
+          - "Should validate the zip contents and version before applying."
+          - "Should also support updates from the community repository."
         blockers:
           - "Requires completion of the versioning scheme and update notifications tasks."
       - id: backport-toolkit-update-mechanism
