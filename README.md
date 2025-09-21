@@ -168,7 +168,7 @@ Core settings are read from environment variables (see `.env.example`). The tabl
 | `TOOLKIT_UPLOAD_MAX_BYTES` / `TOOLKIT_BUNDLE_MAX_BYTES` / `TOOLKIT_BUNDLE_MAX_FILE_BYTES` | Upload and extraction safeguards that block oversized bundles | `52428800` / `209715200` / `104857600` |
 | `FRONTEND_BASE_URL` / `CORS_ORIGINS` | UI origin (no trailing slash) and optional additional CORS hosts | `http://localhost:5173`, unset |
 | `VITE_API_BASE_URL` / `VITE_DEV_API_PROXY` / `VITE_API_PORT` | Frontend discovery of the API endpoint and dev proxy overrides | `http://localhost:8080`, unset, unset |
-| `AUTH_JWT_SECRET` / `AUTH_JWT_PUBLIC_KEY` / `AUTH_JWT_PRIVATE_KEY` / `AUTH_JWT_ALGORITHM` | Signing secret or key pair and algorithm for access tokens | `change-me`, unset, unset, `HS256` |
+| `AUTH_JWT_SECRET` / `AUTH_JWT_PUBLIC_KEY` / `AUTH_JWT_PRIVATE_KEY` / `AUTH_JWT_ALGORITHM` | Signing secret or key pair and algorithm for access tokens | `AUTH_JWT_SECRET`: required (≥32 chars) or use key pair; others unset / `HS256` |
 | `AUTH_ACCESS_TOKEN_TTL_SECONDS` / `AUTH_REFRESH_TOKEN_TTL_SECONDS` | Token lifetimes for access and refresh tokens | `900` / `1209600` |
 | `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_SAMESITE`, `AUTH_COOKIE_DOMAIN` | Refresh-token cookie attributes | `true`, `lax`, unset |
 | `AUTH_PROVIDERS_JSON` / `AUTH_PROVIDERS_FILE` | Bootstrap SSO providers via JSON payload or file path | unset |
@@ -179,6 +179,8 @@ Core settings are read from environment variables (see `.env.example`). The tabl
 | `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP` | Retry establishing the Celery broker connection on boot | `true` |
 
 The provided Docker Compose and `.env` defaults set `VAULT_TLS_SKIP_VERIFY=true` for local development convenience. In production, prefer TLS verification—set `VAULT_TLS_SKIP_VERIFY=false` (or unset it) and provide `VAULT_CA_CERT` when trusting a private CA.
+
+The API exits on startup if `AUTH_JWT_SECRET` is missing, shorter than 32 characters, or still set to the sample placeholder. Generate one with `openssl rand -hex 32` or configure an RSA/ECDSA key pair via `AUTH_JWT_PRIVATE_KEY` / `AUTH_JWT_PUBLIC_KEY`.
 
 Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_PROVIDERS_JSON` or added at runtime through the Admin → Auth settings screen.
 

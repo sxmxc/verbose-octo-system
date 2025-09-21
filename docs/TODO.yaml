@@ -86,10 +86,11 @@ areas:
     tasks:
       - id: jwt-secret-enforcement
         title: Enforce non-default JWT secrets or require asymmetric keys at startup.
-        status: backlog
+        status: done
         priority: high
         notes:
           - "Ensure docker-compose and documentation guide operators toward secure secrets."
+          - "2025-09-21: Added startup validation rejecting placeholder or short secrets and documented the requirement; asymmetric modes now require key pairs."
       - id: token-assertions
         title: Add token_use / typ assertions when refreshing tokens to prevent replay.
         status: backlog

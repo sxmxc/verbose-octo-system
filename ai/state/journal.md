@@ -16,3 +16,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Authored `docs/toolbox-architecture.md` to describe component responsibilities and cross-runtime flows, and paired it with the existing runtime infrastructure guide.
 - Captured database and payload relationships in `docs/toolbox-schema.md` so Codex prompts stay aligned with the persistent model.
 - Updated `ai/ops/codex.md`, `ai/context/context7.md`, `AGENTS.md`, `docs/README.md`, `docs/runtime-architecture.md`, and `CONTRIBUTING.md` to reference the new docs and removed obsolete scoring/correlation steps.
+
+## 2025-09-21 JWT secret enforcement
+- Implemented `Settings._validate_jwt_settings` to reject placeholder, short, or missing secrets while requiring key pairs for RS/ES algorithms (`backend/app/config.py`; Context7 #2, #5).
+- Added unit coverage that reloads settings with different env permutations to confirm the new validation paths (`backend/tests/test_config.py`; Context7 #6).
+- Updated operator docs and `.env.example` so the enforced requirements are explicit for future sessions (`README.md`, `docs/project-setup.md`, `docs/runtime-architecture.md`, `frontend/documentation/toolbox-auth-architecture.md`; Context7 #7).

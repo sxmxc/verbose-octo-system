@@ -22,7 +22,7 @@ The SRE Toolbox ships with a modular authentication stack that supports local lo
 ### Security utilities
 
 - Passwords are hashed with `passlib`'s `CryptContext` (bcrypt by default).
-- JWTs are issued with `PyJWT`. Supply `AUTH_JWT_SECRET` for symmetric signing or an `AUTH_JWT_PRIVATE_KEY`/`AUTH_JWT_PUBLIC_KEY` pair for asymmetric signing.
+- JWTs are issued with `PyJWT`. Supply `AUTH_JWT_SECRET` for symmetric signing or an `AUTH_JWT_PRIVATE_KEY`/`AUTH_JWT_PUBLIC_KEY` pair for asymmetric signing; the API now refuses to start if the secret is missing, shorter than 32 characters, or still set to the sample placeholder.
 - `AuthSession` records persist refresh-token hashes, client metadata, and revocation timestamps.
 - Signed SSO state/nonce payloads use `AUTH_STATE_SECRET` (or fall back to `AUTH_JWT_SECRET`) and expire according to `AUTH_SSO_STATE_TTL_SECONDS`.
 
@@ -64,7 +64,7 @@ The SRE Toolbox ships with a modular authentication stack that supports local lo
 
 ### Operations checklist
 
-1. Configure `AUTH_JWT_SECRET` (or upload signing keys) before exposing the Toolbox publicly.
+1. Configure `AUTH_JWT_SECRET` (or upload signing keys) before exposing the Toolbox publicly—the runtime enforces this requirement during startup.
 2. Set `FRONTEND_BASE_URL` so CORS origins match the deployed frontend and review cookie attributes for secure/production usage.
 3. Bootstrap an admin account via `BOOTSTRAP_ADMIN_*` or create one manually, then assign curator/system roles as needed.
 4. Add SSO providers either via environment variables at deploy time or through **Administration → Auth settings** once the platform is running.

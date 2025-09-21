@@ -36,7 +36,7 @@ Ensure PostgreSQL, Redis, and Vault are running (e.g. `docker compose up -d db r
 > while allowing the SPA to perform SSO hand-offs locally.
 
 ## Docker Compose (all services)
-1. Copy `.env.example` to `.env` and adjust secrets (JWT, bootstrap admin) while leaving the Vault settings in place.
+1. Copy `.env.example` to `.env`, then replace the JWT placeholder with a random ≥32 character secret (for example, run `openssl rand -hex 32`). Leave the Vault settings in place while you customise bootstrap admin credentials.
 2. Initialise and unseal Vault (see **Secrets Manager** below) so a valid token and unseal key exist before other services start.
 3. Run `docker compose up --build` from the repo root. The API performs migrations automatically on start-up.
 4. Visit:
