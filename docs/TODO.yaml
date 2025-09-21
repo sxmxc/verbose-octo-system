@@ -15,11 +15,12 @@ areas:
     tasks:
       - id: improve-design
         title: Move Response area to the right side for better visibility.
-        status: backlog
+        status: done
         priority: high
         notes:
           - "Consider a two-column layout with Request on the left and Response on the right."
           - "Ensure History panel is still easily accessible. Consider a collapsible sidebar."
+          - "2024-05-30: Response lives in a dedicated right column with a collapsible history panel and responsive single-column fallback."
       - id: enhance-error-messages
         title: Enhance error messages for better clarity.
         status: backlog
