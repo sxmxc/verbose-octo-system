@@ -10,6 +10,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .secrets import VaultSecretRef
 
+DEFAULT_JWT_SECRET = "change-me"
+BANNED_JWT_SECRETS = {DEFAULT_JWT_SECRET, "insecure-development-secret-change-me"}
+MIN_JWT_SECRET_LENGTH = 32
+
 
 class AuthProviderBase(BaseModel):
     name: str
@@ -192,6 +196,7 @@ class Settings(BaseSettings):
                 normalized.append(frontend_origin)
         settings.cors_origins = list(dict.fromkeys(normalized))
         settings.auth_providers = cls._build_auth_providers(settings)
+        cls._validate_jwt_settings(settings)
         return settings
 
     @classmethod
@@ -239,6 +244,32 @@ class Settings(BaseSettings):
             except ValidationError as exc:  # pragma: no cover - configuration phase
                 raise ValueError(f"Invalid configuration for provider {item.get('name')}: {exc}") from exc
         return providers
+
+    @classmethod
+    def _validate_jwt_settings(cls, settings: "Settings") -> None:
+        algorithm = settings.auth_jwt_algorithm.upper()
+        if algorithm.startswith(("RS", "ES")):
+            if not settings.auth_jwt_private_key or not settings.auth_jwt_public_key:
+                raise ValueError(
+                    "AUTH_JWT_PRIVATE_KEY and AUTH_JWT_PUBLIC_KEY are required when AUTH_JWT_ALGORITHM uses asymmetric signing."
+                )
+            return
+
+        secret_value = ""
+        if settings.auth_jwt_secret:
+            secret_value = settings.auth_jwt_secret.get_secret_value()
+
+        candidate = secret_value.strip()
+        if not candidate:
+            raise ValueError("AUTH_JWT_SECRET must be set to a non-empty value.")
+        if candidate.lower() in BANNED_JWT_SECRETS:
+            raise ValueError("AUTH_JWT_SECRET must be changed from the sample value in .env.example.")
+        if len(candidate) < MIN_JWT_SECRET_LENGTH:
+            raise ValueError(
+                f"AUTH_JWT_SECRET must be at least {MIN_JWT_SECRET_LENGTH} characters long; run `openssl rand -hex 32` to generate one."
+            )
+        if candidate != secret_value:
+            raise ValueError("AUTH_JWT_SECRET must not include leading or trailing whitespace.")
 
     @classmethod
     def _resolve_provider_secrets(

@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "last_updated": "2025-09-21T20:45:00Z",
-  "session_counter": 2,
+  "last_updated": "2025-09-21T21:30:00Z",
+  "session_counter": 3,
   "active_task": null,
-  "last_task_id": "codex-architecture-docs",
+  "last_task_id": "jwt-secret-enforcement",
   "recent_updates": [
     {
       "task_id": "improve-design",
@@ -14,14 +14,14 @@
       "task_id": "codex-architecture-docs",
       "status": "done",
       "summary": "Authored Toolbox architecture and schema references for Codex and updated prompts to consume them."
+    },
+    {
+      "task_id": "jwt-secret-enforcement",
+      "status": "done",
+      "summary": "Enforced non-default JWT secrets with startup validation and refreshed operator docs."
     }
   ],
   "candidate_next_tasks": [
-    {
-      "task_id": "jwt-secret-enforcement",
-      "status": "backlog",
-      "reason": "Security baseline requires forcing operators to rotate secrets."
-    },
     {
       "task_id": "remove-default-postgres-creds",
       "status": "backlog",
