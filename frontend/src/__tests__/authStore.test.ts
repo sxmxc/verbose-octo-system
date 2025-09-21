@@ -5,6 +5,7 @@ let setAccessToken: typeof import('../authStore').setAccessToken
 let clearAccessToken: typeof import('../authStore').clearAccessToken
 let subscribe: typeof import('../authStore').subscribe
 let refreshAccessToken: typeof import('../authStore').refreshAccessToken
+let warnSpy: ReturnType<typeof vi.spyOn> | undefined
 
 function createMockStorage(): Storage {
   const store = new Map<string, string>()
@@ -32,6 +33,7 @@ function createMockStorage(): Storage {
 
 beforeEach(async () => {
   vi.resetModules()
+  warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
   const storage = createMockStorage()
   vi.stubGlobal('localStorage', storage)
   vi.stubGlobal(
@@ -46,6 +48,8 @@ beforeEach(async () => {
 })
 
 afterEach(() => {
+  warnSpy?.mockRestore()
+  warnSpy = undefined
   vi.unstubAllGlobals()
 })
 
