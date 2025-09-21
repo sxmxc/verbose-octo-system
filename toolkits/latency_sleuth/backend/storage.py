@@ -6,6 +6,7 @@ from typing import Iterable, List, Optional
 from uuid import uuid4
 
 from app.core.redis import get_redis, redis_key
+from redis.exceptions import WatchError
 
 from .models import (
     HeatmapCell,
@@ -114,20 +115,35 @@ def _compute_next_run(template: ProbeTemplate, *, base_time=None) -> Optional[st
 
 
 def reserve_template_for_run(template_id: str, *, now=None) -> Optional[ProbeTemplate]:
-    template = get_template(template_id)
-    if not template:
-        return None
-
-    current_next = template.next_run_at or template.created_at
     timestamp = now or utcnow()
-    if current_next and current_next > timestamp:
-        return None
-
     redis = get_redis()
-    record = _template_to_record(template)
-    record["next_run_at"] = _compute_next_run(template, base_time=timestamp)
-    redis.hset(TEMPLATES_KEY, template_id, _dump(record))
-    return ProbeTemplate.model_validate(record)
+
+    while True:
+        with redis.pipeline() as pipe:
+            try:
+                pipe.watch(TEMPLATES_KEY)
+                raw = pipe.hget(TEMPLATES_KEY, template_id)
+                if not raw:
+                    pipe.unwatch()
+                    return None
+
+                record = _load(raw)
+                template = ProbeTemplate.model_validate(record)
+
+                current_next = template.next_run_at or template.created_at
+                if current_next and current_next > timestamp:
+                    pipe.unwatch()
+                    return None
+
+                record["next_run_at"] = _compute_next_run(template, base_time=timestamp)
+                record["updated_at"] = timestamp.isoformat()
+
+                pipe.multi()
+                pipe.hset(TEMPLATES_KEY, template_id, _dump(record))
+                pipe.execute()
+                return ProbeTemplate.model_validate(record)
+            except WatchError:
+                continue
 
 
 def list_due_templates(limit: Optional[int] = None, *, now=None) -> List[ProbeTemplate]:
