@@ -84,7 +84,7 @@ areas:
           - "Define contribution guidelines and a review process for submissions."
           - "Expose via github pages or similar for easy browsing."
           - "Provide zip of initial repository structure witha all defined elements"
-          - "Should be codex-friendly with all relevant"
+          - "Should be codex-friendly with all relevant docs and elements"
       - id: toolkit-discovery
         title: Implement a discovery mechanism within the Toolbox UI to browse and install community toolkits.
         status: backlog
