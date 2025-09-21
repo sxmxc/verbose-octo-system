@@ -16,6 +16,7 @@ function apiFetch(path, options) {
 }
 
 // ../toolkits/bundled/toolbox_health/frontend/components/StatusIndicator.tsx
+var React = getReactRuntime();
 var statusConfig = {
   healthy: {
     label: "Healthy",
@@ -50,7 +51,7 @@ function getStatusConfig(status) {
   return statusConfig[status] ?? statusConfig.unknown;
 }
 function StatusIndicator({ status }) {
-  const config = getStatusConfig(status);
+  const config = React.useMemo(() => getStatusConfig(status), [status]);
   return /* @__PURE__ */ React.createElement(
     "span",
     {

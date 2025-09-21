@@ -1,3 +1,4 @@
+import { getReactRuntime } from '../runtime'
 import type { ComponentStatus } from '../pages/types'
 
 const statusConfig: Record<
@@ -34,12 +35,14 @@ const statusConfig: Record<
   },
 }
 
+const React = getReactRuntime()
+
 export function getStatusConfig(status: ComponentStatus) {
   return statusConfig[status] ?? statusConfig.unknown
 }
 
 export default function StatusIndicator({ status }: { status: ComponentStatus }) {
-  const config = getStatusConfig(status)
+  const config = React.useMemo(() => getStatusConfig(status), [status])
   return (
     <span
       style={{
@@ -62,4 +65,3 @@ export default function StatusIndicator({ status }: { status: ComponentStatus })
     </span>
   )
 }
-
