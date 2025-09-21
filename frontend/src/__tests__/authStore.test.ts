@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest'
 
 let getAccessToken: typeof import('../authStore').getAccessToken
 let setAccessToken: typeof import('../authStore').setAccessToken
 let clearAccessToken: typeof import('../authStore').clearAccessToken
 let subscribe: typeof import('../authStore').subscribe
 let refreshAccessToken: typeof import('../authStore').refreshAccessToken
-let warnSpy: ReturnType<typeof vi.spyOn> | undefined
+let warnSpy: MockInstance<Parameters<typeof console.warn>, ReturnType<typeof console.warn>> | undefined
 let storage: Storage
 
 function createMockStorage(): Storage {
