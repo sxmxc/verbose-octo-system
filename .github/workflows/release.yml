@@ -105,10 +105,10 @@ jobs:
       matrix:
         image:
           - name: backend
-            context: backend
+            context: .
             dockerfile: backend/Dockerfile
           - name: frontend
-            context: frontend
+            context: .
             dockerfile: frontend/Dockerfile
     steps:
       - name: Checkout repository
