@@ -174,10 +174,10 @@ Core settings are read from environment variables (see `.env.example`). The tabl
 | `AUTH_SSO_STATE_TTL_SECONDS` | Lifetime for signed SSO state/nonce records | `600` |
 | `BOOTSTRAP_ADMIN_*` | Optional seed admin account (username, password, email) | unset |
 | `VAULT_ADDR` / `VAULT_HOST_PORT` / `VAULT_LISTEN_PORT` | Vault sidecar origin plus host/container port bindings | `http://vault:8200`, `8200`, `8200` |
-| `VAULT_TOKEN` / `VAULT_TOKEN_FILE` / `VAULT_KV_MOUNT` / `VAULT_TLS_SKIP_VERIFY` / `VAULT_CA_CERT` | Vault credentials, mount, and TLS behaviour | unset, unset, `sre`, `false`, unset |
+| `VAULT_TOKEN` / `VAULT_TOKEN_FILE` / `VAULT_KV_MOUNT` / `VAULT_TLS_SKIP_VERIFY` / `VAULT_CA_CERT` | Vault credentials, mount, and TLS behaviour | unset, unset, `sre`, `true`, unset |
 | `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP` | Retry establishing the Celery broker connection on boot | `true` |
 
-Vault verification defaults to TLS—leave `VAULT_TLS_SKIP_VERIFY` unset in production and provide `VAULT_CA_CERT` when trusting a private CA.
+The provided Docker Compose and `.env` defaults set `VAULT_TLS_SKIP_VERIFY=true` for local development convenience. In production, prefer TLS verification—set `VAULT_TLS_SKIP_VERIFY=false` (or unset it) and provide `VAULT_CA_CERT` when trusting a private CA.
 
 Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_PROVIDERS_JSON` or added at runtime through the Admin → Auth settings screen.
 
