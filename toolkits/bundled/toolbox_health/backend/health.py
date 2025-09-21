@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+
+import logging
 import textwrap
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 import httpx
+from redis.exceptions import RedisError
+
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -15,6 +19,11 @@ from backend.app.db.session import SessionLocal
 from backend.app.worker_client import celery_app
 
 from .models import ComponentHealth, ComponentName, HealthStatus, HealthSummary
+from .storage import load_components, load_summary, save_summary
+
+
+LOGGER = logging.getLogger(__name__)
+
 
 
 _COMPONENT_ORDER: tuple[ComponentName, ...] = ("frontend", "backend", "worker")
@@ -161,12 +170,22 @@ async def build_health_summary() -> HealthSummary:
     components = await gather_component_health()
     checked_at = max((component.checked_at for component in components), default=datetime.now(timezone.utc))
     overall = _overall_status(components)
-    return HealthSummary(
+    summary = HealthSummary(
+
         overall_status=overall,
         checked_at=checked_at,
         components=components,
         notes=_summary_notes(overall),
     )
+
+
+    try:
+        save_summary(summary)
+    except RedisError as exc:
+        LOGGER.warning("Failed to persist toolbox health summary: %s", exc)
+
+    return summary
+
 
 
 def build_health_summary_sync() -> HealthSummary:
@@ -181,4 +200,42 @@ def build_health_summary_sync() -> HealthSummary:
         raise RuntimeError("build_health_summary_sync must not run inside an active event loop")
 
     return asyncio.run(build_health_summary())
+
+
+def get_cached_summary() -> Optional[HealthSummary]:
+    try:
+        return load_summary()
+    except RedisError as exc:
+        LOGGER.warning("Unable to load cached toolbox health summary: %s", exc)
+        return None
+
+
+def get_cached_components() -> List[ComponentHealth]:
+    try:
+        return load_components()
+    except RedisError as exc:
+        LOGGER.warning("Unable to load cached component health data: %s", exc)
+        return []
+
+
+async def get_or_refresh_summary(force_refresh: bool = False) -> HealthSummary:
+    if force_refresh:
+        return await build_health_summary()
+
+    cached = get_cached_summary()
+    if cached:
+        return cached
+
+    return await build_health_summary()
+
+
+def get_or_refresh_summary_sync(force_refresh: bool = False) -> HealthSummary:
+    if force_refresh:
+        return build_health_summary_sync()
+
+    cached = get_cached_summary()
+    if cached:
+        return cached
+
+    return build_health_summary_sync()
 

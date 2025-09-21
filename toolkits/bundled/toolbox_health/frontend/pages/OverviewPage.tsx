@@ -4,6 +4,9 @@ import type { ComponentHealth, HealthSummary } from './types'
 
 const React = getReactRuntime()
 
+
+const AUTO_REFRESH_INTERVAL_MS = 60_000
+
 const componentDescriptions: Record<string, string> = {
   frontend: 'Renders the administrative UI and serves static assets.',
   backend: 'Provides the REST API, database access, and authentication.',
@@ -70,7 +73,8 @@ function ComponentGrid({ components }: { components: ComponentHealth[] }) {
           Component details
         </h4>
         <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
-          Click refresh to capture a new snapshot.
+          Refresh manually or wait for automatic updates every minute.
+
         </span>
       </header>
 
@@ -124,38 +128,65 @@ export default function OverviewPage() {
   const [summary, setSummary] = useState<HealthSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
-  const [refreshIndex, setRefreshIndex] = useState(0)
 
-  const fetchSummary = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await apiFetch<HealthSummary>('/toolkits/toolbox-health/health/summary', {
-        signal,
-        cache: 'no-store',
-      })
-      setSummary(response)
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        return
+
+  const fetchSummary = useCallback(
+    async ({ signal, forceRefresh = false, showSpinner = false }: {
+      signal?: AbortSignal
+      forceRefresh?: boolean
+      showSpinner?: boolean
+    } = {}) => {
+      if (showSpinner) {
+        setLoading(true)
       }
-      setError(err instanceof Error ? err.message : 'Failed to load health summary.')
-    } finally {
-      setLoading(false)
-    }
-  }, [setSummary])
+      try {
+        const query = forceRefresh ? '?force_refresh=true' : ''
+        const response = await apiFetch<HealthSummary>(
+          `/toolkits/toolbox-health/health/summary${query}`,
+          {
+            signal,
+            cache: 'no-store',
+          },
+        )
+        setSummary(response)
+        setError(null)
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Failed to load health summary.')
+      } finally {
+        if (showSpinner) {
+          setLoading(false)
+        }
+      }
+    },
+    [setSummary, setError, setLoading],
+  )
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchSummary(controller.signal).catch(() => {
+    fetchSummary({ signal: controller.signal, showSpinner: true }).catch(() => {
       setError('Failed to load health summary.')
     })
     return () => controller.abort()
-  }, [fetchSummary, refreshIndex])
+  }, [fetchSummary])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      fetchSummary().catch(() => {
+        setError('Failed to load health summary.')
+      })
+    }, AUTO_REFRESH_INTERVAL_MS)
+    return () => window.clearInterval(interval)
+  }, [fetchSummary])
 
   const refresh = useCallback(() => {
-    setRefreshIndex((index) => index + 1)
-  }, [])
+    fetchSummary({ forceRefresh: true, showSpinner: true }).catch(() => {
+      setError('Failed to load health summary.')
+    })
+  }, [fetchSummary])
+
 
   const components = useMemo(() => summary?.components ?? [], [summary])
 

@@ -74,6 +74,7 @@ function StatusIndicator({ status }) {
 
 // ../toolkits/bundled/toolbox_health/frontend/pages/OverviewPage.tsx
 var React2 = getReactRuntime();
+var AUTO_REFRESH_INTERVAL_MS = 6e4;
 var componentDescriptions = {
   frontend: "Renders the administrative UI and serves static assets.",
   backend: "Provides the REST API, database access, and authentication.",
@@ -116,7 +117,9 @@ function HealthCard({ summary }) {
   );
 }
 function ComponentGrid({ components }) {
-  return /* @__PURE__ */ React2.createElement("section", { className: "tk-card", style: { padding: "1.5rem", display: "grid", gap: "1rem" } }, /* @__PURE__ */ React2.createElement("header", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" } }, /* @__PURE__ */ React2.createElement("h4", { style: { margin: 0, display: "flex", alignItems: "center", gap: "0.4rem" } }, /* @__PURE__ */ React2.createElement("span", { className: "material-symbols-outlined", style: { fontSize: "1.1rem", color: "var(--color-link)" }, "aria-hidden": true }, "lan"), "Component details"), /* @__PURE__ */ React2.createElement("span", { style: { color: "var(--color-text-secondary)", fontSize: "0.85rem" } }, "Click refresh to capture a new snapshot.")), /* @__PURE__ */ React2.createElement("div", { style: { display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" } }, components.map((component) => {
+
+  return /* @__PURE__ */ React2.createElement("section", { className: "tk-card", style: { padding: "1.5rem", display: "grid", gap: "1rem" } }, /* @__PURE__ */ React2.createElement("header", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" } }, /* @__PURE__ */ React2.createElement("h4", { style: { margin: 0, display: "flex", alignItems: "center", gap: "0.4rem" } }, /* @__PURE__ */ React2.createElement("span", { className: "material-symbols-outlined", style: { fontSize: "1.1rem", color: "var(--color-link)" }, "aria-hidden": true }, "lan"), "Component details"), /* @__PURE__ */ React2.createElement("span", { style: { color: "var(--color-text-secondary)", fontSize: "0.85rem" } }, "Refresh manually or wait for automatic updates every minute.")), /* @__PURE__ */ React2.createElement("div", { style: { display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" } }, components.map((component) => {
+
     const description = componentDescriptions[component.component] ?? "Monitored service.";
     return /* @__PURE__ */ React2.createElement(
       "article",
@@ -141,35 +144,57 @@ function OverviewPage() {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [refreshIndex, setRefreshIndex] = useState(0);
-  const fetchSummary = useCallback(async (signal) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiFetch("/toolkits/toolbox-health/health/summary", {
-        signal,
-        cache: "no-store"
-      });
-      setSummary(response);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        return;
+
+  const fetchSummary = useCallback(
+    async ({ signal, forceRefresh = false, showSpinner = false } = {}) => {
+      if (showSpinner) {
+        setLoading(true);
       }
-      setError(err instanceof Error ? err.message : "Failed to load health summary.");
-    } finally {
-      setLoading(false);
-    }
-  }, [setSummary]);
+      try {
+        const query = forceRefresh ? "?force_refresh=true" : "";
+        const response = await apiFetch(
+          `/toolkits/toolbox-health/health/summary${query}`,
+          {
+            signal,
+            cache: "no-store"
+          }
+        );
+        setSummary(response);
+        setError(null);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Failed to load health summary.");
+      } finally {
+        if (showSpinner) {
+          setLoading(false);
+        }
+      }
+    },
+    [setSummary, setError, setLoading]
+  );
   useEffect(() => {
     const controller = new AbortController();
-    fetchSummary(controller.signal).catch(() => {
+    fetchSummary({ signal: controller.signal, showSpinner: true }).catch(() => {
       setError("Failed to load health summary.");
     });
     return () => controller.abort();
-  }, [fetchSummary, refreshIndex]);
+  }, [fetchSummary]);
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      fetchSummary().catch(() => {
+        setError("Failed to load health summary.");
+      });
+    }, AUTO_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [fetchSummary]);
   const refresh = useCallback(() => {
-    setRefreshIndex((index) => index + 1);
-  }, []);
+    fetchSummary({ forceRefresh: true, showSpinner: true }).catch(() => {
+      setError("Failed to load health summary.");
+    });
+  }, [fetchSummary]);
+
   const components = useMemo(() => summary?.components ?? [], [summary]);
   return /* @__PURE__ */ React2.createElement("div", { style: { display: "grid", gap: "1.5rem" } }, /* @__PURE__ */ React2.createElement("div", { style: { display: "flex", justifyContent: "flex-end" } }, /* @__PURE__ */ React2.createElement(
     "button",

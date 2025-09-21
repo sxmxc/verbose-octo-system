@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from .health import build_health_summary_sync
+
+from .health import get_or_refresh_summary_sync
+
 from .models import HealthStatus
 
 
@@ -27,7 +29,9 @@ def _format_component_metric(component) -> dict:
 
 
 def build_context() -> dict:
-    summary = build_health_summary_sync()
+
+    summary = get_or_refresh_summary_sync()
+
     metrics = [
         {
             "label": "Overall health",
