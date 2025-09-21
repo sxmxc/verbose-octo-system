@@ -249,9 +249,27 @@ class Settings(BaseSettings):
     def _validate_jwt_settings(cls, settings: "Settings") -> None:
         algorithm = settings.auth_jwt_algorithm.upper()
         if algorithm.startswith(("RS", "ES")):
-            if not settings.auth_jwt_private_key or not settings.auth_jwt_public_key:
+            private_key = (
+                settings.auth_jwt_private_key.get_secret_value()
+                if settings.auth_jwt_private_key
+                else ""
+            )
+            public_key = (
+                settings.auth_jwt_public_key.get_secret_value()
+                if settings.auth_jwt_public_key
+                else ""
+            )
+
+            private_candidate = private_key.strip()
+            public_candidate = public_key.strip()
+
+            if not private_candidate or not public_candidate:
                 raise ValueError(
                     "AUTH_JWT_PRIVATE_KEY and AUTH_JWT_PUBLIC_KEY are required when AUTH_JWT_ALGORITHM uses asymmetric signing."
+                )
+            if private_candidate != private_key or public_candidate != public_key:
+                raise ValueError(
+                    "AUTH_JWT_PRIVATE_KEY and AUTH_JWT_PUBLIC_KEY must not include leading or trailing whitespace."
                 )
             return
 

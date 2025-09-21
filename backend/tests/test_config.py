@@ -61,6 +61,37 @@ class JwtSettingsEnforcementTests(unittest.TestCase):
             module = importlib.reload(config)
             self.assertEqual(module.settings.auth_jwt_algorithm.upper(), "RS256")
 
+    def test_rejects_blank_or_whitespace_asymmetric_keys(self) -> None:
+        base_env = {"AUTH_JWT_ALGORITHM": "RS256", "AUTH_JWT_SECRET": _GOOD_TEST_SECRET}
+
+        with mock.patch.dict(
+            os.environ,
+            {**base_env, "AUTH_JWT_PRIVATE_KEY": "", "AUTH_JWT_PUBLIC_KEY": "value"},
+            clear=False,
+        ):
+            with self.assertRaises(ValidationError):
+                importlib.reload(config)
+
+        with mock.patch.dict(
+            os.environ,
+            {**base_env, "AUTH_JWT_PRIVATE_KEY": "value", "AUTH_JWT_PUBLIC_KEY": "   "},
+            clear=False,
+        ):
+            with self.assertRaises(ValidationError):
+                importlib.reload(config)
+
+        with mock.patch.dict(
+            os.environ,
+            {
+                **base_env,
+                "AUTH_JWT_PRIVATE_KEY": " value",
+                "AUTH_JWT_PUBLIC_KEY": "value ",
+            },
+            clear=False,
+        ):
+            with self.assertRaises(ValidationError):
+                importlib.reload(config)
+
 
 if __name__ == "__main__":
     unittest.main()
