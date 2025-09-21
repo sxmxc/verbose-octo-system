@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -43,12 +45,14 @@ def test_create_and_list_templates(fake_redis) -> None:
     assert created["name"] == "Checkout"
     assert created["sla_ms"] == 450
     assert created["notification_rules"][0]["channel"] == "slack"
+    assert created["next_run_at"] is not None
 
     listing = client.get("/probe-templates")
     assert listing.status_code == 200
     payload = listing.json()
     assert len(payload) == 1
     assert payload[0]["id"] == created["id"]
+    assert payload[0]["next_run_at"] is not None
 
 
 def test_preview_endpoint_returns_summary(fake_redis) -> None:
@@ -119,3 +123,20 @@ def test_job_endpoints(fake_redis) -> None:
     detail = client.get(f"/jobs/{job['id']}")
     assert detail.status_code == 200
     assert detail.json()["id"] == job["id"]
+
+
+def test_interval_update_resets_next_run(fake_redis) -> None:
+    client = create_client()
+    template = _create_template(client)
+
+    original_next = datetime.fromisoformat(template["next_run_at"])
+
+    response = client.put(
+        f"/probe-templates/{template['id']}",
+        json={"interval_seconds": template["interval_seconds"] // 2},
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["next_run_at"] is not None
+    refreshed_next = datetime.fromisoformat(updated["next_run_at"])
+    assert refreshed_next >= original_next

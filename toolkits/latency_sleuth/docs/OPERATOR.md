@@ -10,10 +10,14 @@ reference when onboarding a new service or adjusting SLAs after an incident.
    - **HTTP Method** – `GET`, `HEAD`, or `POST` depending on the cheapest call that exercises the dependency chain.
    - **Latency SLA (ms)** – breach threshold for a single attempt.
    - **Interval (seconds)** – cadence for scheduled runs. Keep values above 30 seconds to avoid overwhelming fragile hosts.
+     The worker automatically queues probes on this rhythm; the catalog lists the next dispatch time so you can confirm coverage.
    - **Notification Rules** – choose Slack, email, PagerDuty, or webhook targets. Rules fire on breaches by default; set the
      threshold to `always` to receive every sample or `recovery` to confirm when latency stabilises.
 3. Tag templates with service identifiers so heatmaps group logically in the overview.
 4. Save the template. The catalog lists creation/update times and serves as the source of truth for change reviews.
+
+The scheduler runs inside the worker process; templates begin dispatching immediately and continue at the chosen cadence even
+after restarts. Monitor upcoming executions in the **Scheduling** panel within the Job Logs tab.
 
 ## Tuning SLAs
 - Start with the 95th percentile of production latency plus a 10% buffer.
@@ -37,8 +41,8 @@ reference when onboarding a new service or adjusting SLAs after an incident.
     ]
   }
   ```
-- Use the **Job Log Viewer** to verify notifications after editing rules. The viewer streams live logs from the shared Redis
-  store so you can trace cancellations and worker retries.
+- Use the **Job Log Viewer** to verify notifications after editing rules. The viewer now lists recent scheduled and manual runs;
+  pick any entry to stream logs or jump into a live execution.
 
 ## Release Process
 1. Run the toolkit unit tests:

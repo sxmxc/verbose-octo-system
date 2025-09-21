@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+
 import logging
 import textwrap
 from datetime import datetime, timezone
@@ -9,6 +10,7 @@ from typing import Iterable, List, Optional
 
 import httpx
 from redis.exceptions import RedisError
+
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -21,6 +23,7 @@ from .storage import load_components, load_summary, save_summary
 
 
 LOGGER = logging.getLogger(__name__)
+
 
 
 _COMPONENT_ORDER: tuple[ComponentName, ...] = ("frontend", "backend", "worker")
@@ -168,11 +171,13 @@ async def build_health_summary() -> HealthSummary:
     checked_at = max((component.checked_at for component in components), default=datetime.now(timezone.utc))
     overall = _overall_status(components)
     summary = HealthSummary(
+
         overall_status=overall,
         checked_at=checked_at,
         components=components,
         notes=_summary_notes(overall),
     )
+
 
     try:
         save_summary(summary)
@@ -180,6 +185,7 @@ async def build_health_summary() -> HealthSummary:
         LOGGER.warning("Failed to persist toolbox health summary: %s", exc)
 
     return summary
+
 
 
 def build_health_summary_sync() -> HealthSummary:

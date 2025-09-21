@@ -4,6 +4,7 @@ import type { ComponentHealth, HealthSummary } from './types'
 
 const React = getReactRuntime()
 
+
 const AUTO_REFRESH_INTERVAL_MS = 60_000
 
 const componentDescriptions: Record<string, string> = {
@@ -73,6 +74,7 @@ function ComponentGrid({ components }: { components: ComponentHealth[] }) {
         </h4>
         <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
           Refresh manually or wait for automatic updates every minute.
+
         </span>
       </header>
 
@@ -126,6 +128,7 @@ export default function OverviewPage() {
   const [summary, setSummary] = useState<HealthSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
+
 
   const fetchSummary = useCallback(
     async ({ signal, forceRefresh = false, showSpinner = false }: {
@@ -183,6 +186,7 @@ export default function OverviewPage() {
       setError('Failed to load health summary.')
     })
   }, [fetchSummary])
+
 
   const components = useMemo(() => summary?.components ?? [], [summary])
 

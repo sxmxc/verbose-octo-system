@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+
 from fastapi import APIRouter, Query
 
 from .health import get_or_refresh_summary
+
 from .models import ComponentHealth, HealthSummary
 
 
 router = APIRouter(prefix="/health")
+
 
 
 @router.get(
@@ -26,4 +29,5 @@ async def health_summary(force_refresh: bool = Query(False, alias="force_refresh
     """Aggregate component health into a single status payload."""
 
     return await get_or_refresh_summary(force_refresh=force_refresh)
+
 

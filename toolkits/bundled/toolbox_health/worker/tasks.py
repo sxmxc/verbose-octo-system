@@ -1,3 +1,4 @@
+
 """Worker integration for the Toolbox Health toolkit."""
 
 from __future__ import annotations
@@ -55,3 +56,4 @@ def register(
 
 
 __all__ = ["register"]
+

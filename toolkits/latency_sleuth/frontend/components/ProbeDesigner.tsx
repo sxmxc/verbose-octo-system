@@ -20,7 +20,7 @@ const formDefaults: ProbeTemplateCreate = {
 }
 
 export default function ProbeDesigner() {
-  const { templates, createTemplate, removeTemplate, loading, error } = useProbeTemplates()
+  const { templates, createTemplate, removeTemplate, loading, error, refresh } = useProbeTemplates()
   const [formState, setFormState] = useState(formDefaults)
   const [status, setStatus] = useState<string | null>(null)
 
@@ -243,8 +243,11 @@ export default function ProbeDesigner() {
       </section>
 
       <section className="tk-card" style={{ padding: '1.25rem' }}>
-        <header style={{ marginBottom: '0.75rem' }}>
+        <header style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
           <h3 style={{ margin: 0 }}>Template Catalog</h3>
+          <button className="tk-button" type="button" onClick={() => refresh()} disabled={loading}>
+            Refresh
+          </button>
         </header>
         <div style={{ overflowX: 'auto' }}>
           <table className="tk-table">
@@ -255,6 +258,7 @@ export default function ProbeDesigner() {
                 <th>SLA (ms)</th>
                 <th>Interval</th>
                 <th>Tags</th>
+                <th>Next run</th>
                 <th>Updated</th>
                 <th />
               </tr>
@@ -267,6 +271,11 @@ export default function ProbeDesigner() {
                   <td>{template.sla_ms}</td>
                   <td>{template.interval_seconds}s</td>
                   <td>{template.tags.join(', ')}</td>
+                  <td>
+                    {template.next_run_at
+                      ? new Date(template.next_run_at).toLocaleString()
+                      : 'Pending'}
+                  </td>
                   <td>{new Date(template.updated_at).toLocaleString()}</td>
                   <td>
                     <button className="tk-button" type="button" onClick={() => removeTemplate(template.id)}>
@@ -277,7 +286,7 @@ export default function ProbeDesigner() {
               ))}
               {sortedTemplates.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '1rem' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '1rem' }}>
                     {loading ? 'Loading templates…' : 'No templates captured yet.'}
                   </td>
                 </tr>
