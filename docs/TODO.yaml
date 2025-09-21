@@ -69,6 +69,77 @@ areas:
         title: Add user guides and tooltips for new users.
         status: backlog
         priority: low
+  - id: toolkit-repository
+    title: Community toolkit repository
+    status: backlog
+    priority: high
+    summary: Establish a public repository for sharing and discovering toolkits.
+    tasks:
+      - id: public-repo-setup
+        title: Set up a public GitHub repository for community-contributed toolkits.
+        status: backlog
+        priority: high
+        notes:
+          - "Create dedicated repository for this"
+          - "Define contribution guidelines and a review process for submissions."
+          - "Expose via github pages or similar for easy browsing."
+          - "Provide zip of initial repository structure"
+      - id: toolkit-discovery
+        title: Implement a discovery mechanism within the Toolbox UI to browse and install community toolkits.
+        status: backlog
+        priority: medium
+        notes:
+          - "Consider a marketplace-style interface for browsing available toolkits."
+          - "Allow users to search, filter, and view details about each toolkit."
+          - "Implement installation and update mechanisms that integrate with existing toolbox workflows."
+        blockers:
+          - "Requires completion of the public repo setup task."
+  - id: toolkit-updates
+    title: Toolkit updates & versioning
+    status: backlog
+    priority: high
+    summary: Manage toolkit versions and provide update notifications.
+    blockers:
+      - "Requires completion of the toolkit repository setup task."
+    tasks:
+      - id: versioning-scheme
+        title: Define a versioning scheme for toolkits (e.g., semantic versioning).
+        status: backlog
+        priority: medium
+        notes:
+          - "Establish guidelines for version increments based on changes (major, minor, patch)."
+          - "Document the versioning scheme in the toolkit repository."
+        blockers:
+          - "Requires toolkit repository setup."
+      - id: update-notifications
+        title: Implement a notification system within the Toolbox UI to alert users of available toolkit updates.
+        status: backlog
+        priority: medium
+        notes:
+          - "Consider in-app notifications or a dedicated updates section."
+          - "Provide details about the update, including changelog and impact."
+          - "Allow users to easily initiate updates from the notification."
+        blockers:
+          - "Requires completion of the versioning scheme task."
+      - id: update-mechanism
+        title: Develop a mechanism to safely update installed toolkits.
+        status: backlog
+        priority: medium
+        notes:
+          - "Ensure updates can be rolled back in case of issues."
+          - "Consider version compatibility checks before applying updates."
+          - "Document the update process for users."
+        blockers:
+          - "Requires completion of the versioning scheme and update notifications tasks."
+      - id: backport-toolkit-update-mechanism
+        title: Backport the update mechanism to existing installations.
+        status: backlog
+        priority: low
+        notes:
+          - "Assess the feasibility of integrating the update mechanism into current versions of the toolkits."
+          - "Plan for a phased rollout to minimize disruption for existing users."
+        blockers:
+          - "Requires completion of the update mechanism task."
   - id: toolkit-sandbox
     title: Toolkit upload & execution
     summary: Hardening the toolkit install pipeline and pre-flight checks.
