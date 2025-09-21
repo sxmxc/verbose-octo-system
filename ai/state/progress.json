@@ -1,9 +1,16 @@
 {
   "version": 1,
-  "last_updated": "2024-05-30T00:00:00Z",
-  "session_counter": 0,
+  "last_updated": "2025-09-21T19:15:17Z",
+  "session_counter": 1,
   "active_task": null,
-  "recent_updates": [],
+  "last_task_id": "improve-design",
+  "recent_updates": [
+    {
+      "task_id": "improve-design",
+      "status": "done",
+      "summary": "Moved the response viewer into a dedicated right column with a collapsible history panel and responsive fallback."
+    }
+  ],
   "candidate_next_tasks": [
     {
       "task_id": "sandbox-build-validation",

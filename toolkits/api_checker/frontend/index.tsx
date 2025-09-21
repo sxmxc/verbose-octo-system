@@ -76,7 +76,7 @@ type HistoryEntry = {
 }
 
 const React = getReactRuntime()
-const { useCallback, useEffect, useMemo, useState } = React
+const { useCallback, useEffect, useMemo, useRef, useState } = React
 
 const HTTP_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
 const RAW_CONTENT_TYPES = [
@@ -112,7 +112,12 @@ const layoutStyles: Record<string, CSSProperties> = {
     display: 'grid',
     gap: '1.5rem',
     alignItems: 'flex-start',
-    gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 340px)',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 420px)',
+  },
+  rightColumn: {
+    display: 'grid',
+    gap: '1.5rem',
+    alignItems: 'flex-start',
   },
   section: {
     background: 'var(--color-surface-alt)',
@@ -305,6 +310,9 @@ export default function ApiCheckerApp() {
       return []
     }
   })
+  const [historyExpanded, setHistoryExpanded] = useState(() => history.length > 0)
+  const previousHistoryCount = useRef(history.length)
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 0 : window.innerWidth))
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -465,18 +473,48 @@ export default function ApiCheckerApp() {
   const clearHistory = useCallback(() => {
     setHistory([])
     setActiveHistoryId(null)
+    setHistoryExpanded(false)
   }, [])
 
   const requestSummary = useMemo(() => {
     return `${method} ${url || '—'}`
   }, [method, url])
 
-  const requestBuilderSplitStyle = useMemo(() => {
+  useEffect(() => {
+    const previousCount = previousHistoryCount.current
     if (history.length === 0) {
+      setHistoryExpanded(false)
+    } else if (previousCount === 0 && history.length > 0) {
+      setHistoryExpanded(true)
+    }
+    previousHistoryCount.current = history.length
+  }, [history.length])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  const isCompactLayout = useMemo(() => {
+    if (viewportWidth === 0) {
+      return false
+    }
+    return viewportWidth < 1080
+  }, [viewportWidth])
+
+  const requestBuilderSplitStyle = useMemo(() => {
+    if (isCompactLayout) {
       return layoutStyles.split
     }
     return layoutStyles.splitWide
-  }, [history.length])
+  }, [isCompactLayout])
 
   return (
     <div className="tk-card" style={layoutStyles.wrapper}>
@@ -762,24 +800,45 @@ export default function ApiCheckerApp() {
             </div>
           </section>
 
-          <ResponsePanel response={response} sending={sending} error={error} />
         </div>
 
-        {history.length > 0 && (
-          <aside style={{ display: 'grid', gap: '1rem' }}>
-            <section style={layoutStyles.section}>
-              <div style={layoutStyles.sectionHeader}>
-                <h4 style={layoutStyles.sectionTitle}>
-                  <span className="material-symbols-outlined" style={layoutStyles.icon} aria-hidden>
-                    history
-                  </span>
-                  History
-                </h4>
-                <button type="button" className="tk-button tk-button--ghost" onClick={clearHistory}>
+        <div style={layoutStyles.rightColumn}>
+          <ResponsePanel response={response} sending={sending} error={error} />
+
+          <section style={layoutStyles.section}>
+            <div style={layoutStyles.sectionHeader}>
+              <h4 style={layoutStyles.sectionTitle}>
+                <span className="material-symbols-outlined" style={layoutStyles.icon} aria-hidden>
+                  history
+                </span>
+                History
+              </h4>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="tk-button tk-button--ghost"
+                  onClick={() => setHistoryExpanded((expanded) => !expanded)}
+                  disabled={history.length === 0}
+                >
+                  {historyExpanded ? 'Hide' : 'Show'}
+                </button>
+                <button
+                  type="button"
+                  className="tk-button tk-button--ghost"
+                  onClick={clearHistory}
+                  disabled={history.length === 0}
+                >
                   Clear
                 </button>
               </div>
-              <div style={{ display: 'grid', gap: '0.5rem' }}>
+            </div>
+            {history.length === 0 && (
+              <p style={{ ...layoutStyles.mutedText, margin: 0 }}>
+                Requests you send will appear here.
+              </p>
+            )}
+            {history.length > 0 && historyExpanded && (
+              <div style={{ display: 'grid', gap: '0.5rem', maxHeight: 360, overflow: 'auto', paddingRight: '0.25rem' }}>
                 {history.map((entry) => (
                   <button
                     key={entry.id}
@@ -822,9 +881,14 @@ export default function ApiCheckerApp() {
                   </button>
                 ))}
               </div>
-            </section>
-          </aside>
-        )}
+            )}
+            {history.length > 0 && !historyExpanded && (
+              <p style={{ ...layoutStyles.mutedText, margin: 0 }}>
+                History hidden. Select "Show" to browse previous requests.
+              </p>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   )
