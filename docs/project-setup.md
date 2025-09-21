@@ -9,7 +9,7 @@ Follow this guide when cloning the repo or preparing a new development environme
 - HashiCorp Vault 1.14+ (required)
 - Redis 7+ and PostgreSQL 15+ (both provided through Docker Compose)
 
-Ensure PostgreSQL, Redis, and Vault are running (e.g. `docker compose up -d db redis vault`) before launching the processes below. Update `.env` so connection strings point at `127.0.0.1` if you run them outside Docker.
+Ensure PostgreSQL, Redis, and Vault are running (e.g. by executing `./bootstrap-stack.sh`, which also handles Vault initialisation) before launching the processes below. Update `.env` so connection strings point at `127.0.0.1` if you run them outside Docker.
 
 ## Backend API
 1. `cd backend`
@@ -37,7 +37,7 @@ Ensure PostgreSQL, Redis, and Vault are running (e.g. `docker compose up -d db r
 
 ## Docker Compose (all services)
 1. Copy `.env.example` to `.env`, then replace the JWT placeholder with a random ≥32 character secret (for example, run `openssl rand -hex 32`). Leave the Vault settings in place while you customise bootstrap admin credentials.
-2. Initialise and unseal Vault (see **Secrets Manager** below) so a valid token and unseal key exist before other services start.
+2. Run `./bootstrap-stack.sh` (see **Secrets Manager** below) so Vault is initialised, unsealed, and seeded before other services start.
 3. Run `docker compose up --build` from the repo root. The API performs migrations automatically on start-up.
 4. Visit:
    - UI → http://localhost:5173
@@ -54,24 +54,8 @@ Ensure PostgreSQL, Redis, and Vault are running (e.g. `docker compose up -d db r
 ## Secrets Manager (HashiCorp Vault)
 - Vault is a hard requirement: the API and worker refuse to start if they cannot read secrets. The `vault` service in `docker-compose.yml` uses the official HashiCorp image, persists data under the `vault-data` volume, and is fronted by `docker/vault/entrypoint.sh` to auto-unseal with a stored key.
 - Listener and storage defaults live in `config/vault/local.hcl`. If you change ports, update **both** `VAULT_LISTEN_PORT` and `VAULT_HOST_PORT` in `.env` and adjust `VAULT_ADDR` so the containers and your host stay aligned.
-- First-run bootstrap (execute once per environment):
-  ```bash
-  docker compose up -d vault
-  docker compose exec --user root vault sh -c 'chown -R vault:vault /vault/data'
-  docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
-    vault operator init -key-shares=1 -key-threshold=1
-  docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
-    vault operator unseal <unseal-key>
-  ```
-  Save the unseal key in a safe place and copy it into `config/vault/unseal.key` (gitignored) so subsequent restarts unseal automatically. Store the generated root token somewhere secure; for local development it is acceptable to reuse it via `VAULT_TOKEN` or `VAULT_TOKEN_FILE`.
-- Enable the KV engine and seed credentials (skip the `vault secrets enable` line if the mount already exists):
-  ```bash
-  docker compose exec vault vault login <root-or-approle-token>
-  docker compose exec vault vault secrets enable -path=${VAULT_KV_MOUNT:-sre} kv-v2
-  docker compose exec vault vault kv put ${VAULT_KV_MOUNT:-sre}/auth/oidc client_secret=replace-me
-  docker compose exec vault vault kv put ${VAULT_KV_MOUNT:-sre}/auth/ldap bind_password=replace-me
-  ```
-  Create additional secrets under paths your toolkits reference.
+- First-run bootstrap is automated via `./bootstrap-stack.sh`. The helper initialises Vault when required, writes the generated unseal key to `config/vault/unseal.key`, and persists the root token to `.vault-token` (or the path referenced by `VAULT_TOKEN_FILE`) without overwriting existing material. It also enables the `${VAULT_KV_MOUNT:-sre}` kv-v2 engine and seeds placeholder secrets under `/auth/oidc` and `/auth/ldap` when they are missing. Replace the placeholder values with real credentials before wiring toolkits to them.
+- Create additional secrets under paths your toolkits reference as needed.
 - Populate the Vault environment variables in `.env` so the API and worker can authenticate:
   ```dotenv
   VAULT_ADDR=http://vault:8200

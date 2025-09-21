@@ -1,10 +1,15 @@
 {
   "version": 1,
-  "last_updated": "2025-09-21T21:30:00Z",
-  "session_counter": 3,
+  "last_updated": "2025-09-21T22:30:00Z",
+  "session_counter": 4,
   "active_task": null,
-  "last_task_id": "jwt-secret-enforcement",
+  "last_task_id": "bootstrap-stack-helper",
   "recent_updates": [
+    {
+      "task_id": "bootstrap-stack-helper",
+      "status": "done",
+      "summary": "Automated docker-compose and Vault bootstrap with bootstrap-stack.sh and refreshed operator docs."
+    },
     {
       "task_id": "improve-design",
       "status": "done",

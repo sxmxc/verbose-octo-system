@@ -67,29 +67,15 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 ## Quick start (Docker Compose)
 
 1. Copy `.env.example` to `.env` and adjust values (set fresh JWT secrets, choose an admin bootstrap password, and leave the Vault settings in place). The services read this file automatically during startup.
-2. Bootstrap Vault on first run (required):
+2. Run the bootstrap helper to start core services (Postgres, Redis, Vault) and perform the one-time Vault initialisation. The script will skip work that has already been completed and will never overwrite existing unseal keys or secrets:
 
    ```bash
-   docker compose up -d vault
-   docker compose exec --user root vault sh -c 'chown -R vault:vault /vault/data'
-   docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
-     vault operator init -key-shares=1 -key-threshold=1
-   docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
-     vault operator unseal <unseal-key>
-   docker compose exec vault vault login <root-or-approle-token>
-   # Run once per environment (skip if the path already exists)
-   docker compose exec vault vault secrets enable -path=${VAULT_KV_MOUNT:-sre} kv-v2
+   ./bootstrap-stack.sh
    ```
 
-   Store the unseal key securely and copy it into `config/vault/unseal.key` (gitignored) so the container can auto-unseal. Add the generated token to `.env` via `VAULT_TOKEN=<token>` or write it to the path referenced by `VAULT_TOKEN_FILE`.
+   On first run the helper writes the generated unseal key to `config/vault/unseal.key` (gitignored) and persists the root token to `.vault-token` (or the path referenced by `VAULT_TOKEN_FILE`) so future sessions can auto-unseal. Update the placeholder Vault secrets it seeds (`${VAULT_KV_MOUNT:-sre}/auth/oidc` and `/auth/ldap`) with real credentials before wiring toolkits to them.
 
-3. Seed any credentials your toolkits need (for example an OIDC client secret):
-
-   ```bash
-   docker compose exec vault vault kv put ${VAULT_KV_MOUNT:-sre}/auth/oidc client_secret=replace-me
-   ```
-
-4. Bring up the full stack once Vault is unsealed and `.env` is populated:
+3. Bring up the full stack once Vault is unsealed and `.env` is populated:
 
    ```bash
    docker compose up --build
@@ -108,13 +94,11 @@ See `docs/project-setup.md` for a deeper walkthrough and production hardening ch
 
 Run shared infrastructure in containers and execute the application processes locally for faster iteration.
 
-1. Start dependencies (Postgres, Redis, Vault) and ensure Vault remains unsealed:
+1. Start dependencies (Postgres, Redis, Vault) with the bootstrap helper so Vault is initialised and unsealed automatically:
 
    ```bash
-   docker compose up -d db redis vault
+   ./bootstrap-stack.sh
    ```
-
-   If this is the first run, follow the Vault bootstrap steps in the quick start section before proceeding.
 
 2. Override connection strings in `.env` for localhost access (example values):
 
