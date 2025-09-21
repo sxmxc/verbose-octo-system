@@ -39,11 +39,12 @@ areas:
     tasks:
       - id: recent-runs-pagination
         title: Add pagination or infinite scroll to Recent Runs panel in the Job Logs tab when a template is selected.
-        status: backlog
+        status: done
         priority: high
         notes:
           - "Implement pagination controls or infinite scroll to manage long lists of runs."
           - "Ensure performance remains optimal with large datasets."
+          - "2025-09-21: Added client-side pagination with load-more control and hook-level tests for Job Logs."
       - id: improve-heatmap
         title: Improve heatmap visualization for better clarity.
         status: backlog

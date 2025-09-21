@@ -9,13 +9,14 @@
 - Journal: `ai/state/journal.md`
 
 **Agents**
-- **codex (work orchestrator):** Reads Context7, selects next task from `docs/TODO.yaml`, updates state + journal each session.
+- **codex (work orchestrator):** Reads context, uses context7 mcp, selects next task from `docs/TODO.yaml`, updates state + journal each session.
 
 **Run Loop (every session)**
-1. Read: `docs/toolbox-architecture.md`, `docs/runtime-architecture.md`, `docs/toolbox-schema.md`, `ai/context/context7.md`, `docs/TODO.yaml`, `ai/state/progress.json`, `ai/state/journal.md`.  
+1. Read: `docs/toolbox-architecture.md`, `docs/runtime-architecture.md`, `docs/toolbox-schema.md`, `ai/context/context.md`, `docs/TODO.yaml`, `ai/state/progress.json`, `ai/state/journal.md`.  
 2. Pick highest-priority task with no unmet deps.  
 3. Plan ≤500-line PR, test-first.  
 4. Implement.
 5. Update `docs/TODO.yaml`, `ai/state/progress.json`, `ai/state/journal.md`; open PR.
+6. Provide branch name. Commit message. And the PR details following contribution and pr standards. Provide PR details in copyable MD form.
 
 > Canonical content lives in `ai/ops/codex.md`. Update that file only; this page is a directory.
