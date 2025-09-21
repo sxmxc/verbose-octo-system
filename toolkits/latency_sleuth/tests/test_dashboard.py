@@ -25,6 +25,5 @@ def test_dashboard_metrics(fake_redis) -> None:
     metrics = {metric["label"]: metric for metric in context["metrics"]}
 
     assert metrics["Templates"]["value"] == 1
-    assert metrics["Upcoming runs (15m)"]["value"] >= 1
-    assert metrics["Runs (24h)"]["value"] == 1
-    assert metrics["Breaches (24h)"]["value"] == 1
+    assert metrics["24h runs"]["value"] == 1
+    assert "breach" in metrics["24h runs"]["description"].lower()

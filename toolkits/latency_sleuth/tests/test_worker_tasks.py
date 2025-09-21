@@ -8,6 +8,9 @@ from toolkits.latency_sleuth.backend.storage import (
     get_template,
     list_history,
 )
+from datetime import timedelta
+
+from toolkits.latency_sleuth.backend.models import utcnow
 from toolkits.latency_sleuth.worker import tasks
 
 
@@ -82,11 +85,23 @@ class _DummyCelery:
     def __init__(self) -> None:
         self.sent = []
         self._counter = 0
+        self.tasks = {}
 
     def send_task(self, name: str, args=None, kwargs=None):
         self._counter += 1
         task_id = f"task-{self._counter}"
         self.sent.append((name, args, kwargs))
+        return _DummyAsyncResult(task_id)
+
+
+class _DummyApplyTask:
+    def __init__(self, celery: _DummyCelery) -> None:
+        self._celery = celery
+
+    def apply_async(self, args=None, kwargs=None):
+        self._celery._counter += 1
+        task_id = f"task-{self._celery._counter}"
+        self._celery.sent.append(("apply_async", args, kwargs))
         return _DummyAsyncResult(task_id)
 
 
@@ -136,3 +151,25 @@ def test_scheduler_skips_when_job_active(fake_redis) -> None:
     after = get_template(template_id)
     assert after is not None
     assert after.next_run_at == prior_next_run
+
+
+def test_scheduler_resubmits_stale_job(fake_redis) -> None:
+    template_id = _make_template()
+    job = job_store.create_job(
+        "latency-sleuth",
+        "run_probe",
+        {"template_id": template_id},
+    )
+    job["status"] = "queued"
+    job["updated_at"] = (utcnow() - timedelta(minutes=5)).isoformat()
+    job_store.save_job(job)
+
+    celery = _DummyCelery()
+    celery.tasks["worker.tasks.run_job"] = _DummyApplyTask(celery)
+
+    tasks._resubmit_stale_jobs(celery, now=utcnow())
+
+    reloaded = job_store.get_job(job["id"])
+    assert reloaded is not None
+    assert reloaded.get("celery_task_id") == "task-1"
+    assert any("Resubmitted" in entry["message"] for entry in reloaded.get("logs", []))

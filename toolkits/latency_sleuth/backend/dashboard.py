@@ -47,19 +47,12 @@ def build_context() -> dict:
                 "description": templates_description,
             },
             {
-                "label": "Upcoming runs (15m)",
-                "value": upcoming_runs,
-                "description": "Scheduled probes due within the next 15 minutes.",
-            },
-            {
-                "label": "Runs (24h)",
+                "label": "24h runs",
                 "value": runs_last_day,
-                "description": "Synthetic probe executions completed in the last 24 hours.",
-            },
-            {
-                "label": "Breaches (24h)",
-                "value": breaches_last_day,
-                "description": "SLA breaches detected across the last 24 hours of runs.",
+                "description": (
+                    f"{breaches_last_day} breach(es) in the last 24 hours. "
+                    f"Upcoming runs (15m): {upcoming_runs}."
+                ),
             },
         ]
     }
