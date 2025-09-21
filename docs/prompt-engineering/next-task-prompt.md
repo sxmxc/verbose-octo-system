@@ -19,7 +19,7 @@ Output filenames and discription of change.
 5) After proposal, output the updates you will make to: 
 - docs/TODO.yaml (move task to in_progress or done),
 - ai/state/progress.json (increment step, set last_task_id, update coverage placeholders),
-- ai/state/journal.md (append a dated entry with Context7 references).
+- ai/state/journal.md (append a dated entry with Context references).
 
 6) Stop and wait for me to give approval to apply changes. Do not proceed to another task until I confirm. 
 
