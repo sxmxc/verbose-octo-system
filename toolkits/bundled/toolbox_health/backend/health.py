@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import textwrap
 from datetime import datetime, timezone
 from time import perf_counter
 from typing import Iterable, List, Optional
 
 import httpx
+from redis.exceptions import RedisError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -16,6 +18,9 @@ from backend.app.worker_client import celery_app
 
 from .models import ComponentHealth, ComponentName, HealthStatus, HealthSummary
 from .storage import load_components, load_summary, save_summary
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 _COMPONENT_ORDER: tuple[ComponentName, ...] = ("frontend", "backend", "worker")
@@ -169,7 +174,11 @@ async def build_health_summary() -> HealthSummary:
         notes=_summary_notes(overall),
     )
 
-    save_summary(summary)
+    try:
+        save_summary(summary)
+    except RedisError as exc:
+        LOGGER.warning("Failed to persist toolbox health summary: %s", exc)
+
     return summary
 
 
@@ -188,11 +197,19 @@ def build_health_summary_sync() -> HealthSummary:
 
 
 def get_cached_summary() -> Optional[HealthSummary]:
-    return load_summary()
+    try:
+        return load_summary()
+    except RedisError as exc:
+        LOGGER.warning("Unable to load cached toolbox health summary: %s", exc)
+        return None
 
 
 def get_cached_components() -> List[ComponentHealth]:
-    return load_components()
+    try:
+        return load_components()
+    except RedisError as exc:
+        LOGGER.warning("Unable to load cached component health data: %s", exc)
+        return []
 
 
 async def get_or_refresh_summary(force_refresh: bool = False) -> HealthSummary:
