@@ -6,7 +6,7 @@ Toolkit UIs render inside the SRE Toolbox shell alongside core Toolbox pages. Us
 
 - `frontend/index.tsx`: registers routes beneath `/toolkits/<slug>`.
 - `frontend/runtime.ts`: bridges the host shell runtime helpers (`React`, `react-router-dom`, `apiFetch`).
-- `toolkit.json`: set `frontend_entry` or `frontend_source_entry` so the shell knows where to load your UI.
+- `toolkit.json`: configure `frontend.entry` (built asset) and `frontend.source_entry` (TypeScript source) so the shell knows where to load your UI.
 
 ## Layout & Navigation
 
@@ -35,7 +35,7 @@ Toolkit UIs render inside the SRE Toolbox shell alongside core Toolbox pages. Us
 
 ## Local Development
 
-- During `npm run dev`, point `frontend_source_entry` to the TypeScript entry so Vite loads your code with hot reload.
+- During `npm run dev`, point `frontend.source_entry` to the TypeScript entry so Vite loads your code with hot reload.
 - Keep styles encapsulated—prefer component-level style objects or CSS Modules to avoid clashing with the host shell.
 - Use [`ThemeContext`](../src/ThemeContext.tsx) helpers or CSS variables to test light and dark palettes locally.
 

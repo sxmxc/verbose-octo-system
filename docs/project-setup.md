@@ -5,8 +5,11 @@ Follow this guide when cloning the repo or preparing a new development environme
 ## Prerequisites
 - Python 3.11+
 - Node.js 18+
-- Redis 6+ (Docker Compose manages this automatically)
-- PostgreSQL (optional for local dev; SQLite works out of the box)
+- Docker 24+ / Docker Compose plugin
+- HashiCorp Vault 1.14+ (required)
+- Redis 7+ and PostgreSQL 15+ (both provided through Docker Compose)
+
+Ensure PostgreSQL, Redis, and Vault are running (e.g. `docker compose up -d db redis vault`) before launching the processes below. Update `.env` so connection strings point at `127.0.0.1` if you run them outside Docker.
 
 ## Backend API
 1. `cd backend`
@@ -33,57 +36,54 @@ Follow this guide when cloning the repo or preparing a new development environme
 > while allowing the SPA to perform SSO hand-offs locally.
 
 ## Docker Compose (all services)
-1. Copy `.env.example` to `.env` and adjust values.
-2. (Optional) Initialize HashiCorp Vault before bringing up the rest of the stack (see **Secrets Manager** below).
-3. Run `docker compose up --build` from the repo root.
+1. Copy `.env.example` to `.env` and adjust secrets (JWT, bootstrap admin) while leaving the Vault settings in place.
+2. Initialise and unseal Vault (see **Secrets Manager** below) so a valid token and unseal key exist before other services start.
+3. Run `docker compose up --build` from the repo root. The API performs migrations automatically on start-up.
 4. Visit:
    - UI → http://localhost:5173
    - API docs → http://localhost:8080/docs
+   - Vault UI → http://localhost:${VAULT_HOST_PORT:-8200}
 
 ## Toolkit Storage
-- Bundled toolkits install on first boot under `TOOLKIT_STORAGE_DIR` (defaults to `./data/toolkits`).
-- Upload additional bundles from Admin → Toolkits or via `POST /toolkits/install`.
-- Toolkit uploads are capped by `TOOLKIT_UPLOAD_MAX_BYTES` (compressed size) and unpacking safeguards `TOOLKIT_BUNDLE_MAX_BYTES` / `TOOLKIT_BUNDLE_MAX_FILE_BYTES` to block zip bombs; tweak these in `.env` when needed.
-- Uploaded bundle filenames are normalised—directory segments are stripped and collisions gain a random suffix before the artefact is persisted.
+- Toolkit bundles unpack into `TOOLKIT_STORAGE_DIR` (defaults to `/app/data/toolkits` inside the containers). The directory is backed by the named Docker volume `toolbox-data`, so uploads survive image rebuilds.
+- The `toolbox-data-init` service in `docker-compose.yml` sets ownership on the volume during startup. Rerun `docker compose up toolbox-data-init` if you change the UID/GID in `.env`.
+- Inspect stored bundles with `docker compose exec api ls /app/data/toolkits`. Remove a toolkit by uninstalling it from the UI or deleting the corresponding directory before restarting the API/worker.
+- To start with a clean slate, stop the stack and run `docker volume rm $(docker volume ls -q --filter name=toolbox-data)` (this wipes bundled and uploaded toolkits).
+- When developing outside Docker, set `TOOLKIT_STORAGE_DIR` to an absolute path that your local user can read/write.
 
 ## Secrets Manager (HashiCorp Vault)
-- Compose now starts a `vault` container alongside the API, worker, Redis, and Postgres. The instance uses file storage under `./vault-data` and exposes the UI and API on `http://localhost:<VAULT_HOST_PORT>` (defaults to `8200`). If the port conflicts locally, set **both** `VAULT_LISTEN_PORT` and `VAULT_HOST_PORT` (and adjust `VAULT_ADDR` / `VAULT_API_ADDR`) so the container and host stay in sync.
-- Vault configuration now lives in `config/vault/local.hcl`. Tweak listener/storage settings there if you need to bind to a different port or enable TLS.
-- One-time initialization:
+- Vault is a hard requirement: the API and worker refuse to start if they cannot read secrets. The `vault` service in `docker-compose.yml` uses the official HashiCorp image, persists data under the `vault-data` volume, and is fronted by `docker/vault/entrypoint.sh` to auto-unseal with a stored key.
+- Listener and storage defaults live in `config/vault/local.hcl`. If you change ports, update **both** `VAULT_LISTEN_PORT` and `VAULT_HOST_PORT` in `.env` and adjust `VAULT_ADDR` so the containers and your host stay aligned.
+- First-run bootstrap (execute once per environment):
   ```bash
   docker compose up -d vault
-  # Ensure the data directory is writable (only needed the first time you create the volume).
   docker compose exec --user root vault sh -c 'chown -R vault:vault /vault/data'
-  # Inside the container the API is served over HTTP; point the CLI at that address.
   docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
     vault operator init -key-shares=1 -key-threshold=1
   docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
     vault operator unseal <unseal-key>
   ```
-  Store the generated recovery key and root token securely; the commands above output them once.
-  Save the unseal key (and optionally the root token) into `config/vault/unseal.key`. The Vault container reads it
-  via `/vault/config/unseal.key` (set through `VAULT_UNSEAL_KEY_FILE`) and will auto-unseal on subsequent restarts.
-  Keep the file out of version control and restrict permissions.
-  > **Why manual?** Vault protects the master key with Shamir secret sharing. Automating `init` / `unseal`
-  > would require baking the unseal keys or a KMS integration into the image, which defeats the purpose
-  > for anything other than local development. If you need a zero-touch dev workflow, run Vault in `-dev`
-  > mode (`VAULT_DEV_ROOT_TOKEN_ID`, `VAULT_DEV_LISTEN_ADDRESS`) or integrate an auto-unseal backend
-  > such as AWS KMS / GCP Cloud KMS.
-- Enable a KV v2 secrets engine and seed credentials (adjust the mount and paths to match your org):
+  Save the unseal key in a safe place and copy it into `config/vault/unseal.key` (gitignored) so subsequent restarts unseal automatically. Store the generated root token somewhere secure; for local development it is acceptable to reuse it via `VAULT_TOKEN` or `VAULT_TOKEN_FILE`.
+- Enable the KV engine and seed credentials (skip the `vault secrets enable` line if the mount already exists):
   ```bash
   docker compose exec vault vault login <root-or-approle-token>
-  docker compose exec vault vault secrets enable -path=sre kv-v2
-  docker compose exec vault vault kv put sre/auth/okta client_secret=replace-me
-  docker compose exec vault vault kv put sre/auth/ldap bind_password=replace-me
+  docker compose exec vault vault secrets enable -path=${VAULT_KV_MOUNT:-sre} kv-v2
+  docker compose exec vault vault kv put ${VAULT_KV_MOUNT:-sre}/auth/oidc client_secret=replace-me
+  docker compose exec vault vault kv put ${VAULT_KV_MOUNT:-sre}/auth/ldap bind_password=replace-me
   ```
-- Add Vault environment variables to `.env` so the API/worker containers can retrieve secrets:
+  Create additional secrets under paths your toolkits reference.
+- Populate the Vault environment variables in `.env` so the API and worker can authenticate:
   ```dotenv
   VAULT_ADDR=http://vault:8200
-  VAULT_TOKEN=<short-lived-token-or-use-VAULT_TOKEN_FILE>
+  VAULT_TOKEN=<token-with-access-to-${VAULT_KV_MOUNT:-sre}>
   VAULT_KV_MOUNT=sre
-  VAULT_TLS_SKIP_VERIFY=true  # dev only; prefer TLS in production
+  VAULT_TLS_SKIP_VERIFY=true  # dev only; prefer TLS or a custom CA bundle in production
+  # VAULT_TOKEN_FILE=./.vault-token
+  # VAULT_CA_CERT=/etc/ssl/certs/your-ca.pem
+  # VAULT_AUTH_METHOD=token  # switch to approle for production
   ```
-- Point the backend at an auth provider configuration file (see `config/auth-providers.example.json`) or manage providers from **Administration → Auth settings**. When using the file approach, set `AUTH_PROVIDERS_FILE=./config/auth-providers.json` and mount the directory in production deployments.
+  For AppRole-based auth, populate `VAULT_AUTH_METHOD=approle` and supply `VAULT_APPROLE_ROLE_ID` / `VAULT_APPROLE_SECRET_ID` instead of `VAULT_TOKEN`.
+- Use **Administration → Auth settings** (or `AUTH_PROVIDERS_FILE`) to reference Vault secrets via `*_vault` fields, keeping credentials out of JSON documents and environment variables.
 
 ## Audit Logging
 - Set `AUDIT_LOG_RETENTION_DAYS` (default `90`) to control how long audit entries persist before automatic cleanup.

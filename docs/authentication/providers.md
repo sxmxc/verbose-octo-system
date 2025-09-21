@@ -1,6 +1,6 @@
 # Authentication Providers
 
-This guide explains how to configure OpenID Connect (OIDC), LDAP, and Active Directory providers with HashiCorp Vault-backed secrets so administrators can deliver plug-and-play single sign-on.
+This guide explains how to configure OpenID Connect (OIDC), LDAP, and Active Directory providers with HashiCorp Vault-backed secrets so administrators can deliver plug-and-play single sign-on. The Toolbox runtime refuses to start without Vault, so treat the steps below as mandatory for every environment.
 
 ## Configuration Sources
 

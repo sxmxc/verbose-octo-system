@@ -21,7 +21,7 @@ toolkit/
 
 1. **Routes** – Register FastAPI routers in `backend/routes.py`. Use dependency injection to share authentication and clients.
 2. **Services** – Place shared helpers in `backend/services/` so tasks and routes import the same business logic.
-3. **Configuration** – Expose settings in `toolkit.json` under `config_schema` so administrators can surface environment controls.
+3. **Dashboard hooks** – Populate `toolkit.json → dashboard_cards` and the optional `dashboard` block so the shell surfaces high-value summaries.
 
 ## Worker Integration
 

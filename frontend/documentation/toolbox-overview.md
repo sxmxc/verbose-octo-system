@@ -4,8 +4,9 @@ Welcome to the SRE Toolbox documentation hub. These guides explain how the Toolb
 
 ## What To Read First
 
-- [Toolbox Administration](toolbox-administration): enable, disable, and manage toolkit lifecycles from the host shell.
+- [Toolbox Administration](toolbox-administration): manage toolkits, audit activity, and keep dependencies healthy.
 - [Toolbox Job Monitoring](toolbox-job-monitoring): understand how background work flows through the shared queue and dashboards.
+- [Toolbox Authentication Architecture](toolbox-auth-architecture): plan secure deployments and connect identity providers.
 - [Toolkit Overview](toolkit): build distributable bundles that stitch together backend routes, workers, and UI experiences.
 - [Toolkit Build Workflow](toolkit-build): package toolkits consistently for distribution.
 

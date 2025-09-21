@@ -26,18 +26,22 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 - **Persistent state** – SQLAlchemy models backed by PostgreSQL (or SQLite for local development) handle users, roles, sessions, and provider configuration.
 - **Adaptive app shell** – the React sidebar renders toolkit navigation dynamically and injects shared UI primitives (`tk-*` components) so micro-frontends inherit Toolbox theming without custom CSS.
 - **Hardened access control** – JWT-backed authentication with local, OIDC, LDAP, or Active Directory providers that can be configured at runtime.
-- **Vault-backed secrets** – optional HashiCorp Vault sidecar keeps OIDC/LDAP credentials out of config files via secret references.
+- **Vault-backed secrets** – HashiCorp Vault sidecar is required and keeps OIDC/LDAP credentials out of config files via secret references resolved at runtime.
 - **Security audit trail** – centralized logging of authentication, permission, and toolkit lifecycle events with configurable retention and administrator-only viewing tools.
-- **Container ready** – `docker compose up --build` brings up the API, worker, Redis, and Vite dev server in one command.
+- **Container ready** – `docker compose up --build` brings up the API, worker, Redis, DB, Vault and Vite dev server in one command.
 
 ## Repository layout
 
-- `backend/` – FastAPI service, Celery worker entrypoints, SQLAlchemy models, Redis helpers, and toolkit loader.
-- `frontend/` – React + Vite SPA; `src/AppShell.tsx` hosts global navigation and lazy-loads toolkit micro-frontends.
-- `toolkits/bundled/` – example toolkits (Regex playground, Zabbix helpers) packaged the same way third-party toolkits are distributed.
-- `docs/` – internal engineering guides (prompt engineering playbooks, coding standards, contribution notes, toolkit authoring).
-- `docker-compose.yml` – local orchestration for API, worker, Redis, and frontend.
-- `.env.example` – default environment variables for local development.
+- `backend/` – FastAPI API, Celery worker entrypoints, Alembic migrations, and the toolkit loader.
+- `frontend/` – React + Vite shell and operator docs under `frontend/documentation/`.
+- `toolkit_runtime/` – Shared runtime helpers injected into toolkit bundles (Redis, Celery, API client primitives).
+- `toolkits/` – Bundled reference toolkits and packaging utilities (`scripts/package_toolkit.py`, `package_all_toolkits.py`).
+- `config/` – Vault configuration (`config/vault/local.hcl`) and sample auth provider manifests.
+- `docker/` – Container entrypoints, including the Vault init/unseal helper.
+- `docs/` – Engineering guides (prompt playbooks, coding standards, toolkit authoring, runtime architecture).
+- `docker-compose.yml` – Local orchestration for API, worker, Redis, Postgres, Vault, frontend, and data-init jobs.
+- `test-all.sh` – Convenience script to run backend and frontend unit tests.
+- `.env.example` – Baseline environment variables for local development.
 
 ## Built with
 
@@ -54,25 +58,73 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 
 - Python 3.11+
 - Node.js 18+
-- Redis 6+ (managed automatically when using Docker Compose)
-- (Optional) PostgreSQL when running the FastAPI API against a production-grade database
+- Docker 24+ / Docker Compose plugin (for the default workflow)
+- HashiCorp Vault 1.14+ (required; provided as `vault` in `docker-compose.yml`)
+- Redis 7+ (bundled via Docker Compose)
+- PostgreSQL 15+ or SQLite 3.39+ depending on your deployment target
 
 ## Quick start (Docker Compose)
 
-1. Copy `.env.example` to `.env` and adjust values for your environment.
-2. Start the stack:
+1. Copy `.env.example` to `.env` and adjust values (set fresh JWT secrets, choose an admin bootstrap password, and leave the Vault settings in place). The services read this file automatically during startup.
+2. Bootstrap Vault on first run (required):
+
+   ```bash
+   docker compose up -d vault
+   docker compose exec --user root vault sh -c 'chown -R vault:vault /vault/data'
+   docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
+     vault operator init -key-shares=1 -key-threshold=1
+   docker compose exec vault env VAULT_ADDR=http://127.0.0.1:${VAULT_LISTEN_PORT:-8200} \
+     vault operator unseal <unseal-key>
+   docker compose exec vault vault login <root-or-approle-token>
+   # Run once per environment (skip if the path already exists)
+   docker compose exec vault vault secrets enable -path=${VAULT_KV_MOUNT:-sre} kv-v2
+   ```
+
+   Store the unseal key securely and copy it into `config/vault/unseal.key` (gitignored) so the container can auto-unseal. Add the generated token to `.env` via `VAULT_TOKEN=<token>` or write it to the path referenced by `VAULT_TOKEN_FILE`.
+
+3. Seed any credentials your toolkits need (for example an OIDC client secret):
+
+   ```bash
+   docker compose exec vault vault kv put ${VAULT_KV_MOUNT:-sre}/auth/oidc client_secret=replace-me
+   ```
+
+4. Bring up the full stack once Vault is unsealed and `.env` is populated:
 
    ```bash
    docker compose up --build
    ```
 
-3. Default endpoints:
+5. Default endpoints:
    - UI → <http://localhost:5173>
    - API docs → <http://localhost:8080/docs>
+   - Vault UI → <http://localhost:${VAULT_HOST_PORT:-8200}>
 
-Bundled toolkits install themselves on first boot and are cached under `TOOLKIT_STORAGE_DIR` (defaults to `./data/toolkits`).
+Toolkit bundles and persistent data live on the `toolbox-data` Docker volume (mounted at `/app/data`). Bundled toolkits install themselves on first boot; uploaded archives share the same location. Inspect the volume with `docker volume inspect verbose-octo-system_toolbox-data` or `docker compose exec api ls /app/data/toolkits`.
+
+See `docs/project-setup.md` for a deeper walkthrough and production hardening checklist.
 
 ## Manual development workflow
+
+Run shared infrastructure in containers and execute the application processes locally for faster iteration.
+
+1. Start dependencies (Postgres, Redis, Vault) and ensure Vault remains unsealed:
+
+   ```bash
+   docker compose up -d db redis vault
+   ```
+
+   If this is the first run, follow the Vault bootstrap steps in the quick start section before proceeding.
+
+2. Override connection strings in `.env` for localhost access (example values):
+
+   ```dotenv
+   DATABASE_URL=postgresql+asyncpg://sretoolbox:sretoolbox@127.0.0.1:5432/sretoolbox
+   REDIS_URL=redis://127.0.0.1:6379/0
+   VAULT_ADDR=http://127.0.0.1:8200
+   FRONTEND_BASE_URL=http://localhost:5173
+   ```
+
+   Keep `VAULT_TOKEN` (or `VAULT_TOKEN_FILE`) present so the API and worker can resolve secrets. `TOOLKIT_STORAGE_DIR` defaults to `./data/toolkits`; ensure the directory exists for local installs.
 
 ### Backend API
 
@@ -100,9 +152,7 @@ npm install
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-The Vite dev server only allows files from `frontend/` and checked-in bundled toolkits (`toolkits/bundled`) to be served. When
-iterating on a bundled toolkit locally, keep its source within that directory so hot module reloading continues to work without
-exposing additional host paths.
+The Vite dev server only serves files under `frontend/` and bundled toolkits (`toolkits/bundled`). Keep toolkit source there to retain hot reloading without broadening the filesystem allowlist.
 
 ## Configuration
 
@@ -115,14 +165,19 @@ Core settings are read from environment variables (see `.env.example`). The tabl
 | `REDIS_URL` / `REDIS_PREFIX` | Redis connection string and key prefix | `redis://redis:6379/0`, `sretoolbox` |
 | `TOOLKIT_STORAGE_DIR` | Filesystem directory for toolkit bundles | `./data/toolkits` |
 | `TOOLKIT_UPLOAD_MAX_BYTES` / `TOOLKIT_BUNDLE_MAX_BYTES` / `TOOLKIT_BUNDLE_MAX_FILE_BYTES` | Upload and extraction safeguards that block oversized bundles | `52428800` / `209715200` / `104857600` |
-| `FRONTEND_BASE_URL` | UI origin (no trailing slash) for automatic CORS configuration | `http://localhost:5173` |
-| `VITE_API_BASE_URL` | Frontend discovery of the API endpoint | `http://localhost:8080` |
+| `FRONTEND_BASE_URL` / `CORS_ORIGINS` | UI origin (no trailing slash) and optional additional CORS hosts | `http://localhost:5173`, unset |
+| `VITE_API_BASE_URL` / `VITE_DEV_API_PROXY` / `VITE_API_PORT` | Frontend discovery of the API endpoint and dev proxy overrides | `http://localhost:8080`, unset, unset |
 | `AUTH_JWT_SECRET` / `AUTH_JWT_PUBLIC_KEY` / `AUTH_JWT_PRIVATE_KEY` / `AUTH_JWT_ALGORITHM` | Signing secret or key pair and algorithm for access tokens | `change-me`, unset, unset, `HS256` |
 | `AUTH_ACCESS_TOKEN_TTL_SECONDS` / `AUTH_REFRESH_TOKEN_TTL_SECONDS` | Token lifetimes for access and refresh tokens | `900` / `1209600` |
 | `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_SAMESITE`, `AUTH_COOKIE_DOMAIN` | Refresh-token cookie attributes | `true`, `lax`, unset |
 | `AUTH_PROVIDERS_JSON` / `AUTH_PROVIDERS_FILE` | Bootstrap SSO providers via JSON payload or file path | unset |
 | `AUTH_SSO_STATE_TTL_SECONDS` | Lifetime for signed SSO state/nonce records | `600` |
 | `BOOTSTRAP_ADMIN_*` | Optional seed admin account (username, password, email) | unset |
+| `VAULT_ADDR` / `VAULT_HOST_PORT` / `VAULT_LISTEN_PORT` | Vault sidecar origin plus host/container port bindings | `http://vault:8200`, `8200`, `8200` |
+| `VAULT_TOKEN` / `VAULT_TOKEN_FILE` / `VAULT_KV_MOUNT` / `VAULT_TLS_SKIP_VERIFY` / `VAULT_CA_CERT` | Vault credentials, mount, and TLS behaviour | unset, unset, `sre`, `false`, unset |
+| `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP` | Retry establishing the Celery broker connection on boot | `true` |
+
+Vault verification defaults to TLS—leave `VAULT_TLS_SKIP_VERIFY` unset in production and provide `VAULT_CA_CERT` when trusting a private CA.
 
 Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_PROVIDERS_JSON` or added at runtime through the Admin → Auth settings screen.
 
