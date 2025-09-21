@@ -13,6 +13,10 @@
     "module": "worker.tasks",
     "register_attr": "register"
   },
+  "dashboard": {
+    "module": "backend.dashboard",
+    "callable": "build_context"
+  },
   "frontend": {
     "entry": "frontend/dist/index.js",
     "source_entry": "frontend/index.tsx"
