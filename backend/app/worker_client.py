@@ -25,10 +25,18 @@ def get_job_status(job_id: str) -> dict:
 
 def list_job_status(
     limit: Optional[int] = None,
+    offset: int = 0,
     toolkits: Optional[Iterable[str]] = None,
     modules: Optional[Iterable[str]] = None,
-) -> list[dict]:
-    return job_store.list_jobs(limit=limit, toolkits=toolkits, modules=modules)
+    statuses: Optional[Iterable[str]] = None,
+) -> tuple[list[dict], int]:
+    return job_store.list_jobs(
+        limit=limit,
+        offset=offset,
+        toolkits=toolkits,
+        modules=modules,
+        statuses=statuses,
+    )
 
 
 def cancel_job(job_id: str) -> Optional[Dict[str, Any]]:

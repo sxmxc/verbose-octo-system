@@ -24,7 +24,7 @@ ToolkitContext = Dict[str, Any]
     dependencies=[Depends(require_roles([ROLE_TOOLKIT_USER]))],
 )
 def dashboard_overview():
-    recent_jobs = list_jobs(limit=50)
+    recent_jobs, total_jobs = list_jobs(limit=50)
     status_counts = Counter(job.get("status", "unknown") for job in recent_jobs)
     toolkits = list_toolkits()
     cards = []
@@ -81,7 +81,7 @@ def dashboard_overview():
         "jobs": {
             "recent": recent_jobs[:5],
             "totals": {
-                "count": len(recent_jobs),
+                "count": total_jobs,
                 "by_status": dict(status_counts),
             },
         },

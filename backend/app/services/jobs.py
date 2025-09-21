@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 from uuid import uuid4
 
 from ..core.redis import get_redis, redis_key
@@ -76,15 +76,19 @@ def get_job(job_id: str) -> Optional[Dict[str, Any]]:
 
 def list_jobs(
     limit: Optional[int] = None,
+    offset: int = 0,
     toolkits: Optional[Iterable[str]] = None,
     modules: Optional[Iterable[str]] = None,
-) -> List[Dict[str, Any]]:
+    statuses: Optional[Iterable[str]] = None,
+) -> Tuple[List[Dict[str, Any]], int]:
     redis = get_redis()
     values = redis.hvals(JOBS_KEY)
     jobs = [_normalise(_load(raw)) for raw in values]
     toolkit_filters = {m.lower() for m in toolkits} if toolkits else None
     module_filters = {m.lower() for m in modules} if modules else None
-    if toolkit_filters or module_filters:
+    status_filters = {s.lower() for s in statuses} if statuses else None
+
+    if toolkit_filters or module_filters or status_filters:
         filtered_jobs = []
         for job in jobs:
             if toolkit_filters:
@@ -95,12 +99,22 @@ def list_jobs(
                 module_value = (job.get("module") or "").lower()
                 if module_value not in module_filters:
                     continue
+            if status_filters:
+                status_value = (job.get("status") or "").lower()
+                if status_value not in status_filters:
+                    continue
             filtered_jobs.append(job)
         jobs = filtered_jobs
+
     jobs.sort(key=lambda job: job.get("created_at", ""), reverse=True)
+
+    total = len(jobs)
+    start = max(offset, 0)
+    if start:
+        jobs = jobs[start:]
     if limit is not None:
-        return jobs[:limit]
-    return jobs
+        jobs = jobs[: max(limit, 0)]
+    return jobs, total
 
 
 def append_log(job: Dict[str, Any], message: str) -> Dict[str, Any]:
