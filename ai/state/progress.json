@@ -1,10 +1,15 @@
 {
   "version": 1,
-  "last_updated": "2025-09-22T05:30:00Z",
-  "session_counter": 11,
+  "last_updated": "2025-09-22T19:55:00Z",
+  "session_counter": 12,
   "active_task": null,
-  "last_task_id": "toolkit-discovery",
+  "last_task_id": "community-bundle-resolution",
   "recent_updates": [
+    {
+      "task_id": "community-bundle-resolution",
+      "status": "done",
+      "summary": "Treat GitHub raw manifests as catalog descriptors, prefer github.io bundle URLs, auto-try '.zip' variants, guard against HTML responses with zip signature checks, fall back to manifest paths, and harden bundle writes against cross-device rename errors with regression coverage."
+    },
     {
       "task_id": "toolkit-discovery",
       "status": "done",

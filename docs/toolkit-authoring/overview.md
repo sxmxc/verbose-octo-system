@@ -20,7 +20,7 @@ Use this guide as the starting point for building SRE Toolbox toolkits. It conne
 - The slug becomes the directory name under `TOOLKIT_STORAGE_DIR` and the namespace for dynamic imports. Invalid characters cause packaging and installation to fail before any files are written.
 
 ## Deliverables Checklist
-- [ ] `toolkit.json` with backend, worker, and optional frontend metadata.
+- [ ] `toolkit.json` with backend, worker, catalog, and optional frontend metadata.
 - [ ] FastAPI router exposing your public API surface.
 - [ ] Celery registration for background jobs and job telemetry.
 - [ ] Optional React bundle built as ESM and tested in both light/dark modes.

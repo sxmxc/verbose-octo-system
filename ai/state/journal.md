@@ -64,3 +64,9 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Reworked Admin → Toolkits into a multi-tab layout (Overview, Community Catalog, Upload) so discovery/install workflows live on dedicated routes, updating styles, docs, and tests to match (`frontend/src/pages/admin/toolkits/*`, `frontend/src/AppShell.tsx`, `README.md`).
 - Introduced Administration → Toolbox settings with Catalog/Auth tabs, moved catalog override + auth settings behind the new hub, and added backend/system tests for the corresponding APIs.
 - Refined UX with catalog grid (badges, pagination, skeleton loaders) and added loading skeletons across Jobs, Users, auth setup, and toolkit overview to smooth perceived performance.
+
+## 2025-09-22 Community bundle resolution
+- Logged TODO `community-bundle-resolution` to track high-priority failures downloading bundles from GitHub Pages endpoints (`toolkits/<slug>/bundle`) that currently return HTTP 400 during install.
+- Updated bundle resolution to treat GitHub raw manifests as catalog descriptors, prefer `github.io` bundle URLs, and degrade to the manifest directory when needed (`backend/app/routes/toolkits.py`) with regression coverage for both success and fallback flows (`backend/tests/test_toolkits_catalog.py`).
+- Hardened bundle writes to tolerate cross-device rename errors encountered in Docker deployments by copying temp files when needed, taught the resolver to try `.zip` variants for extensionless bundle paths, and added coverage (including zip signature detection) to ensure HTML responses from WSGI apps fall through to zip bundles (`backend/app/routes/toolkits.py`, `backend/tests/test_toolkits_catalog.py`).
+- Documented the published-site preference for curators (`docs/toolbox-architecture.md`) and attempted the targeted pytest run, which still fails locally because `httpx` is missing from the harness environment.
