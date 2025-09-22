@@ -207,6 +207,13 @@ Example manifest:
 {
   "slug": "incident-bots",
   "name": "Incident Bots",
+  "version": "0.1.0",
+  "catalog": {
+      "categories": ["Diagnostics"],
+      "maintainers": ["steven.mcneely@live.com"],
+      "tags": ["dashboards", "slo"],
+      "description": "A toolkit for testing and debugging regular expressions with real-time feedback."
+    },
   "description": "ChatOps responders",
   "backend": { "module": "backend.app", "router_attr": "router" },
   "worker": { "module": "worker.tasks", "register_attr": "register" },
