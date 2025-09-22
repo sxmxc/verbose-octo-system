@@ -24,11 +24,13 @@ Use this guide as the starting point for building SRE Toolbox toolkits. It conne
 - [ ] FastAPI router exposing your public API surface.
 - [ ] Celery registration for background jobs and job telemetry.
 - [ ] Optional React bundle built as ESM and tested in both light/dark modes.
-- [ ] Operator documentation and release notes.
+- [ ] Operator documentation, release notes, and a `docs/README.md` (or equivalent) summary file.
 - [ ] Automated tests for backend (`pytest`/`unittest`), worker tasks, and frontend (`vitest`).
 
 ## Roles & Permissions
 - Declare expected roles in your design doc. The shell recognises `toolkit.curator` for toolkit admin tasks and `user.is_superuser` for auth changes (see `frontend/src/AppShell.tsx`).
 - Toolkits should enforce additional RBAC inside their APIs when necessary; the shell provides only coarse routing guards.
+
+The community repository ingests each toolkit's `docs/README.md` to generate catalog cards and quickstart links, so keeping that summary current ensures operators see accurate guidance wherever the toolkit is surfaced.
 
 Continue with the more detailed backend, frontend, and distribution guides in this folder.
