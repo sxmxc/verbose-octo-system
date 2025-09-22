@@ -255,14 +255,6 @@ export default function AppShell() {
             </Route>
             <Route path="/admin/settings/auth" element={<Navigate to="/admin/settings/toolbox/auth" replace />} />
             <Route
-              path="/admin/settings/toolbox"
-              element={
-                <RequireSuperuser>
-                  <AdminToolboxSettingsPage />
-                </RequireSuperuser>
-              }
-            />
-            <Route
               path="/admin/security/audit"
               element={
                 <RequireRole role="system.admin">
