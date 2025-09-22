@@ -76,6 +76,9 @@ def _build_bundle_url_candidates(
         if trimmed and not PurePosixPath(trimmed).suffix:
             variants.append(f"{trimmed}.zip")
 
+        deferred_raw: list[str] = []
+        trailing_raw: list[str] = []
+
         for variant in variants:
             if variant.startswith(("http://", "https://")):
                 raw_candidates.append(variant)
@@ -86,7 +89,17 @@ def _build_bundle_url_candidates(
 
             root_base = _catalog_site_root_url(catalog_url)
             raw_candidates.append(urljoin(root_base, variant))
-            raw_candidates.append(urljoin(str(catalog_url), variant))
+
+            raw_variant = urljoin(str(catalog_url), variant)
+            if variant == bundle_url and len(variants) > 1:
+                deferred_raw.append(raw_variant)
+            elif variant != bundle_url and variant.endswith(".zip"):
+                trailing_raw.append(raw_variant)
+            else:
+                raw_candidates.append(raw_variant)
+
+        raw_candidates.extend(deferred_raw)
+        raw_candidates.extend(trailing_raw)
 
     candidates: list[str] = []
     for candidate in raw_candidates:
