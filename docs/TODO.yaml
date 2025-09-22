@@ -106,7 +106,10 @@ areas:
         notes:
           - "2025-09-22: Catalog bundles served from toolkits/<slug>/bundle on https://sxmxc.github.io/ideal-octo-engine/ return HTTP 400 because resolution preserves the catalog/ prefix."
           - "Ensure installs support bundles generated at repository roots without requiring catalog manifest changes."
-          - "2025-09-22: Updated resolver to treat GitHub raw manifests as catalog definitions and prefer github.io bundle URLs, with fallbacks to manifest directory." 
+          - "2025-09-22: Updated resolver to treat GitHub raw manifests as catalog definitions and prefer github.io bundle URLs, with fallbacks to manifest directory."
+          - "2025-09-22: Hardened bundle writes to handle cross-device rename errors in containerised deployments."
+          - "2025-09-22: Added automatic `.zip` variant resolution for bundle URLs published without an extension."
+          - "2025-09-22: Detect non-zip responses from bundle endpoints and continue trying fallbacks to avoid 400 errors when WSGI apps return HTML."
   - id: toolkit-updates
     title: Toolkit updates & versioning
     status: backlog

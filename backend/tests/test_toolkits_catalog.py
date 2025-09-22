@@ -1,4 +1,6 @@
+import errno
 import io
+import pathlib
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -229,20 +231,27 @@ async def test_toolkits_install_from_catalog_falls_back_to_manifest_when_catalog
         zf.writestr("toolkit.json", "{\"slug\": \"demo\"}")
     bundle.seek(0)
 
-    def primary_response(url):
+    def first_response(url):
         return httpx.Response(
             status_code=404,
             request=httpx.Request("GET", url),
         )
 
-    def fallback_response(url):
+    def second_response(url):
+        return httpx.Response(
+            status_code=200,
+            request=httpx.Request("GET", url),
+            content=b"<html>not a zip</html>",
+        )
+
+    def final_response(url):
         return httpx.Response(
             status_code=200,
             request=httpx.Request("GET", url),
             content=bundle.getvalue(),
         )
 
-    dummy_client = DummyAsyncClient([primary_response, fallback_response])
+    dummy_client = DummyAsyncClient([first_response, second_response, final_response])
     monkeypatch.setattr(toolkits.httpx, "AsyncClient", lambda *a, **kw: dummy_client)
 
     record = SimpleNamespace(slug="demo", name="Demo Toolkit", origin="community", enabled=False)
@@ -261,8 +270,42 @@ async def test_toolkits_install_from_catalog_falls_back_to_manifest_when_catalog
     assert result.slug == "demo"
     assert dummy_client._calls == [
         "https://sxmxc.github.io/ideal-octo-engine/toolkits/demo/bundle",
+        "https://sxmxc.github.io/ideal-octo-engine/toolkits/demo/bundle.zip",
         "https://sxmxc.github.io/ideal-octo-engine/catalog/toolkits/demo/bundle",
     ]
+
+
+def test_write_remote_bundle_handles_cross_device(tmp_path, monkeypatch):
+    storage_dir = tmp_path / "store"
+    storage_dir.mkdir()
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
+
+    content = b"sample"
+    slug = "demo"
+
+    def raise_exdev(self, target):
+        raise OSError(errno.EXDEV, "Invalid cross-device link")
+
+    monkeypatch.setattr(pathlib.Path, "replace", raise_exdev, raising=False)
+
+    bundle_path = toolkits._write_remote_bundle(content, slug)
+
+    assert bundle_path.read_bytes() == content
+    assert bundle_path.parent == storage_dir
+
+
+@pytest.mark.parametrize(
+    "payload,expected",
+    [
+        (b"", False),
+        (b"PK\x03\x04rest", True),
+        (b"PK\x05\x06tail", True),
+        (b"PK\x07\x08tail", True),
+        (b"GK\x03\x04", False),
+    ],
+)
+def test_looks_like_zip(payload, expected):
+    assert toolkits._looks_like_zip(payload) is expected
 
 
 @pytest.mark.anyio("asyncio")

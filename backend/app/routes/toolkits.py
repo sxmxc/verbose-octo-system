@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import json
 import ntpath
 import secrets
@@ -70,14 +71,22 @@ def _build_bundle_url_candidates(
 
     bundle_url = (entry.bundle_url or "").strip()
     if bundle_url:
-        if bundle_url.startswith(("http://", "https://")):
-            raw_candidates.append(bundle_url)
-        else:
+        variants = [bundle_url]
+        trimmed = bundle_url.rstrip("/")
+        if trimmed and not PurePosixPath(trimmed).suffix:
+            variants.append(f"{trimmed}.zip")
+
+        for variant in variants:
+            if variant.startswith(("http://", "https://")):
+                raw_candidates.append(variant)
+                continue
+
             if entry.homepage:
-                raw_candidates.append(urljoin(str(entry.homepage), bundle_url))
+                raw_candidates.append(urljoin(str(entry.homepage), variant))
+
             root_base = _catalog_site_root_url(catalog_url)
-            raw_candidates.append(urljoin(root_base, bundle_url))
-            raw_candidates.append(urljoin(str(catalog_url), bundle_url))
+            raw_candidates.append(urljoin(root_base, variant))
+            raw_candidates.append(urljoin(str(catalog_url), variant))
 
     candidates: list[str] = []
     for candidate in raw_candidates:
@@ -270,13 +279,27 @@ def _write_remote_bundle(content: bytes, slug: str) -> Path:
     storage_dir = Path(settings.toolkit_storage_dir)
     storage_dir.mkdir(parents=True, exist_ok=True)
     bundle_path = storage_dir / f"{slug}.zip"
-    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+    with tempfile.NamedTemporaryFile(delete=False, dir=storage_dir) as tmp_file:
         tmp_file.write(content)
         tmp_source = Path(tmp_file.name)
     if bundle_path.exists():
         bundle_path.unlink()
-    tmp_source.replace(bundle_path)
+    try:
+        tmp_source.replace(bundle_path)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            tmp_source.unlink(missing_ok=True)
+            raise
+        shutil.copy2(tmp_source, bundle_path)
+        tmp_source.unlink(missing_ok=True)
     return bundle_path
+
+
+def _looks_like_zip(content: bytes) -> bool:
+    if len(content) < 4:
+        return False
+    signature = content[:4]
+    return signature in {b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"}
 
 
 def _extract_zip_bundle(bundle_path: Path, extraction_dirname: str) -> Path:
@@ -478,13 +501,23 @@ async def toolkits_install_from_catalog(
             last_error: str | None = None
             for candidate in candidate_urls:
                 try:
-                    response = await client.get(candidate, follow_redirects=True)
+                    response = await client.get(
+                        candidate,
+                        follow_redirects=True,
+                        headers={"accept": "application/zip, application/octet-stream"},
+                    )
                 except httpx.HTTPError as exc:
                     last_error = f"Failed to download bundle from {candidate}: {exc}"
                     continue
 
                 if response.status_code == status.HTTP_200_OK:
-                    download_content = response.content
+                    candidate_content = response.content
+                    if not _looks_like_zip(candidate_content):
+                        last_error = (
+                            f"Bundle download from {candidate} did not return a zip file"
+                        )
+                        continue
+                    download_content = candidate_content
                     break
 
                 last_error = (

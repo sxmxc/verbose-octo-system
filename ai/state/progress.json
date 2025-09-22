@@ -8,7 +8,7 @@
     {
       "task_id": "community-bundle-resolution",
       "status": "done",
-      "summary": "Treat GitHub raw manifests as catalog descriptors, prefer github.io bundle URLs, and fall back to manifest paths with regression coverage for relative bundles."
+      "summary": "Treat GitHub raw manifests as catalog descriptors, prefer github.io bundle URLs, auto-try '.zip' variants, guard against HTML responses with zip signature checks, fall back to manifest paths, and harden bundle writes against cross-device rename errors with regression coverage."
     },
     {
       "task_id": "toolkit-discovery",
