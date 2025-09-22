@@ -17,11 +17,7 @@
      --loader:.tsx=tsx
    ```
 
-2. **Package the toolkit** once the bundle is generated:
+2. **Trigger packaging via CI**:
 
-   ```bash
-   cd ../toolkits/scripts
-   python package_toolkit.py ../api_checker
-   ```
-
-   A distributable archive named `api-checker_toolkit.zip` will be created alongside the toolkit directory.
+   - Commit the updated bundle to a branch, open a pull request, and merge into `main`.
+   - The Release workflow packages the toolkit automatically. Download the `toolkit-api-checker` artifact (which contains `api-checker_toolkit.zip`) from the workflow run or fetch it via `gh run download --repo <org>/<repo> --name toolkit-api-checker`.

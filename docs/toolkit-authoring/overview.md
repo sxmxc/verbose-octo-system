@@ -7,7 +7,7 @@ Use this guide as the starting point for building SRE Toolbox toolkits. It conne
 - **Scaffold** – follow the baseline directory structure (`toolkit.json`, `backend/`, `worker/`, `frontend/`).
 - **Develop** – iterate locally with the Toolbox stack (`npm run dev`, `uvicorn`, `celery`) so your toolkit interacts with live APIs.
 - **Document** – add guides to `frontend/documentation` so the in-app knowledge base reflects new capabilities.
-- **Package & Release** – bundle with `toolkits/scripts/package_toolkit.py` and publish the resulting `<slug>_toolkit.zip` via Admin → Toolkits.
+- **Build & Release** – compile toolkit assets (for example, `frontend/dist/index.js`) and push the changes through the repository release workflow. CI packages the bundle automatically—no manual zip step required.
 
 ## Key Runtime Contracts
 - `AppShell.tsx` injects `React`, `react-router-dom`, and `apiFetch` into `window.__SRE_TOOLKIT_RUNTIME`; avoid bundling those dependencies yourself.

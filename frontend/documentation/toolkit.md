@@ -43,10 +43,11 @@ See the [UI](ui) reference for a full tour. Highlights:
 
 Follow the [Toolkit Build Workflow](toolkit-build) for a detailed walkthrough. In short:
 
-1. Build the frontend bundle (if applicable) so it matches `toolkit.json → frontend.entry`.
-2. Run `python toolkits/scripts/package_toolkit.py <path>` to validate required files—including the lowercase slug allowlist—and generate a release archive.
-3. Upload the resulting `.zip` via `/toolkits/install` or the Admin → Toolkits UI.
-4. Enable the toolkit to register routes, worker tasks, and frontend contributions.
+1. Build the frontend bundle (if applicable) so it matches `toolkit.json → frontend.entry`—for example, ensure `frontend/dist/index.js` exists.
+2. Commit the generated assets alongside your code changes and merge into `main`.
+3. Watch the **Release** workflow under GitHub Actions. It packages each toolkit automatically and publishes a `toolkit-<slug>` artifact containing `<slug>_toolkit.zip`.
+4. Download the artifact from the workflow run (or via `gh run download`) and install it through `/toolkits/install` or the Admin → Toolkits UI.
+5. Enable the toolkit to register routes, worker tasks, and frontend contributions once the new bundle is uploaded.
 
 ## Suggested Workflow
 

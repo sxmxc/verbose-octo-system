@@ -35,7 +35,7 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 - `backend/` – FastAPI API, Celery worker entrypoints, Alembic migrations, and the toolkit loader.
 - `frontend/` – React + Vite shell and operator docs under `frontend/documentation/`.
 - `toolkit_runtime/` – Shared runtime helpers injected into toolkit bundles (Redis, Celery, API client primitives).
-- `toolkits/` – Bundled reference toolkits and packaging utilities (`scripts/package_toolkit.py`, `package_all_toolkits.py`).
+- `toolkits/` – Bundled reference toolkits plus the packaging utilities CI uses (`scripts/package_toolkit.py`, `package_all_toolkits.py`).
 - `config/` – Vault configuration (`config/vault/local.hcl`) and sample auth provider manifests.
 - `docker/` – Container entrypoints, including the Vault init/unseal helper.
 - `docs/` – Engineering guides (coding standards, toolkit authoring, runtime architecture).
@@ -174,7 +174,7 @@ Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_
 - **Jobs** – pollable list with inline log streaming and cancellation that propagates to Celery.
 - **Toolkits index** – view metadata, enable/disable toolkits, and open toolkit documentation.
 - **Toolkit routes** – `/toolkits/:slug/*` renders toolkit-provided React layouts or a friendly placeholder when no UI bundle ships.
-- **Administration → Toolkits** – browse the Overview (getting started guidance + installed toolkit controls), review the Community Catalog of <https://sxmxc.github.io/ideal-octo-engine>, or upload bundles from the Upload page. Installs stream from <https://raw.githubusercontent.com/sxmxc/ideal-octo-engine/main/catalog/toolkits.json>; override it via `TOOLKIT_CATALOG_URL` or the catalog URL form (superuser only).
+- **Administration → Toolkits** – browse the Overview (getting started guidance + installed toolkit controls), review the Community Catalog of <https://sxmxc.github.io/ideal-octo-engine>, or upload bundles from the Upload page. Installers typically use the artifacts emitted by the Release workflow. Installs stream from <https://raw.githubusercontent.com/sxmxc/ideal-octo-engine/main/catalog/toolkits.json>; override it via `TOOLKIT_CATALOG_URL` or the catalog URL form (superuser only).
 - **Administration → Toolbox settings** – adjust framework-specific options such as the community catalog override used for discovery installs.
 - **Administration → Users** – invite local users, assign roles, or import external identities.
 - **Administration → Toolbox settings → Auth** – configure local, OIDC, LDAP, or Active Directory providers without redeploying.
@@ -199,7 +199,7 @@ These bundles mirror the format expected by the runtime, so you can use them as 
 2. **Backend module** – expose a FastAPI `APIRouter` (default attribute `router`) that is mounted under `/toolkits/<slug>`.
 3. **Worker module** – export a callable (default `register`) to register Celery tasks like `<slug>.<operation>`. The runtime injects the shared Celery app and a `register_handler` helper when requested.
 4. **Frontend bundle (optional)** – ship an ESM entry at `frontend/dist/index.js`. During development, toolkits can point to `frontend/index.tsx` so Vite provides hot reloads. At runtime the App Shell injects `React`, `React Router`, and `apiFetch` through `window.__SRE_TOOLKIT_RUNTIME`.
-5. **Package** – run `python toolkits/scripts/package_toolkit.py <path>` to validate the manifest and emit `<slug>_toolkit.zip`. Upload the archive from Admin → Toolkits or via `POST /toolkits/install`. The installer rejects archives containing absolute paths, drive letters, parent-directory segments, or symlinks and, once validated, unpacks bundles into `TOOLKIT_STORAGE_DIR/<slug>/` while serving static assets from `/toolkit-assets/<slug>/…`.
+5. **Package** – merge your changes (including fresh build artifacts) into `main`. The Release workflow packages each toolkit and uploads a `toolkit-<slug>` artifact containing `<slug>_toolkit.zip`. Download it from the workflow run (or via `gh run download`) before installing through Admin → Toolkits or `POST /toolkits/install`. The installer rejects archives containing absolute paths, drive letters, parent-directory segments, or symlinks and, once validated, unpacks bundles into `TOOLKIT_STORAGE_DIR/<slug>/` while serving static assets from `/toolkit-assets/<slug>/…`.
 
 Example manifest:
 

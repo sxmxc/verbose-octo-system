@@ -23,22 +23,22 @@ my-toolkit/
 
 If your toolkit ships a UI, generate an ESM bundle at the path referenced by `toolkit.json → frontend.entry` (default: `frontend/dist/index.js`). Toolkits can use any build tool as long as the output targets modern browsers and keeps `react`, `react-dom`, and `react-router-dom` external—the shell provides them at runtime.
 
-## 3. Validate and package
+## 3. Trigger automated packaging
 
-Use the packaging utility checked into this repo to ensure required files exist before you distribute the bundle:
+The repository's **Release** workflow runs on every push to `main` and packages toolkits for you—no local zip step is required.
 
-```bash
-python toolkits/scripts/package_toolkit.py /path/to/my-toolkit
-```
+1. Commit the toolkit changes (including built assets such as `frontend/dist/index.js`) and open a pull request.
+2. After approval, merge into `main`. The Release workflow detects every `toolkit.json` and runs `toolkits/scripts/package_all_toolkits.py` to build `<slug>_toolkit.zip` archives.
+3. Monitor the run under **GitHub → Actions → Release**. Each toolkit appears as a `Package Toolkit (<slug>)` job.
+4. Download the resulting artifact named `toolkit-<slug>` from the workflow summary, or fetch it via the CLI:
 
-The script performs the following checks:
+   ```bash
+   gh run download --repo <org>/<repo> --name toolkit-<slug> --dir dist
+   ```
 
-- `toolkit.json` is present and valid JSON.
-- Files referenced by `frontend.entry` and `frontend.source_entry` exist.
-- The default `frontend/dist/index.js` is present when no `frontend.entry` is declared.
-- Ignores development build artefacts such as `node_modules/` and `.DS_Store`.
+5. Share the downloaded archive with operators or upload it through **Administration → Toolkits** once you're ready to deploy.
 
-On success it creates `<slug>_toolkit.zip` alongside the toolkit directory (override with `--output`). Distribute that archive to operators or upload it through **Administration → Toolkits**.
+The workflow enforces the same validations as the historical helper script: manifest syntax, slug allowlists, required frontend entries, and filesystem safety guards.
 
 ## 4. Ship documentation
 
@@ -48,6 +48,6 @@ Include markdown in `frontend/documentation` that references your toolkit so it 
 
 - Keep frontend bundles small: lazy-load heavy pages or embed them behind feature flags inside your toolkit.
 - Version the toolkit directory with Git so you can reproduce releases and build deterministic archives.
-- Automate packaging as part of CI by invoking the Python helper and uploading the resulting zip to your artifact store.
+- Use the Release workflow artifacts as your source of truth—archive them in your artifact store if you need longer retention than GitHub Actions provides.
 
 Return to the [Toolkit](toolkit) overview for more information about runtime expectations.

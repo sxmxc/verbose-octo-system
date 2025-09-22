@@ -15,11 +15,11 @@ Use this guide to run the SRE Toolbox day to day. It covers the management scree
 3. Toggle the switch to enable or disable it. The change propagates immediately to the API and worker. If a toolkit fails to load, the UI displays the error surfaced by the worker import hook.
 4. Use the "Open documentation" link to verify that operator guidance exists in `frontend/documentation`.
 
-## Uploading a new toolkit
+## Deploying a new toolkit build
 
-1. Package the bundle using `toolkits/scripts/package_toolkit.py` (see [Toolkit Build Workflow](toolkit-build)).
-2. Open **Administration → Toolkits → Upload bundle**.
-3. Provide the `.zip` file. The backend validates the slug, manifest, and file shapes before extracting the archive to `TOOLKIT_STORAGE_DIR`.
+1. Confirm the author merged their changes and that the **Release** workflow produced a fresh `toolkit-<slug>` artifact (see [Toolkit Build Workflow](toolkit-build) for authoring guidance).
+2. Download `<slug>_toolkit.zip` from the workflow run or via `gh run download --repo <org>/<repo> --name toolkit-<slug>`.
+3. Open **Administration → Toolkits → Upload bundle** and provide the downloaded archive. The backend validates the slug, manifest, and file shapes before extracting the toolkit to `TOOLKIT_STORAGE_DIR`.
 4. Enable the toolkit and confirm it registers a dashboard card or UI entry. If the worker reports an import error, check the worker logs and ensure the bundle paths match the manifest.
 
 ## Monitoring jobs
