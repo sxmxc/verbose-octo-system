@@ -10,9 +10,14 @@ import toolkitPrimitivesStyles from './toolkitPrimitives.css?inline'
 import { useAuth } from './AuthContext'
 import './AppShell.css'
 import AdminToolkitsPage from './pages/AdminToolkitsPage'
+import AdminToolkitsCatalogPage from './pages/admin/toolkits/AdminToolkitsCatalogPage'
+import AdminToolkitsOverviewPage from './pages/admin/toolkits/AdminToolkitsOverviewPage'
+import AdminToolkitsUploadPage from './pages/admin/toolkits/AdminToolkitsUploadPage'
+import AdminToolboxSettingsPage from './pages/admin/toolbox/AdminToolboxSettingsPage'
+import AdminToolboxCatalogPage from './pages/admin/toolbox/AdminToolboxCatalogPage'
+import AdminToolboxAuthPage from './pages/admin/toolbox/AdminToolboxAuthPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 import AdminSecurityPage from './pages/AdminSecurityPage'
-import AuthSettingsPage from './pages/AuthSettingsPage'
 import DashboardPage from './pages/DashboardPage'
 import DocumentationPage from './pages/DocumentationPage'
 import JobsPage from './pages/JobsPage'
@@ -177,8 +182,8 @@ export default function AppShell() {
               description="Configuration and access controls"
             >
               {canAdminToolkits && <SidebarLink to="/admin/toolkits" label="Toolkits" icon="tune" />}
+              {canManageAuth && <SidebarLink to="/admin/settings/toolbox" label="Toolbox settings" icon="settings" />}
               {canManageUsers && <SidebarLink to="/admin/users" label="Users" icon="group" />}
-              {canManageAuth && <SidebarLink to="/admin/settings/auth" label="Auth settings" icon="security" />}
               {canViewSecurity && <SidebarLink to="/admin/security/audit" label="Security" icon="shield_lock" />}
             </SidebarSection>
           )}
@@ -218,13 +223,17 @@ export default function AppShell() {
             <Route path="/toolkits" element={<ToolkitIndexPage />} />
             <Route path="/toolkits/:slug/*" element={<DynamicToolkitRouter />} />
             <Route
-              path="/admin/toolkits"
+              path="/admin/toolkits/*"
               element={
                 <RequireRole role="toolkit.curator">
                   <AdminToolkitsPage />
                 </RequireRole>
               }
-            />
+            >
+              <Route index element={<AdminToolkitsOverviewPage />} />
+              <Route path="community" element={<AdminToolkitsCatalogPage />} />
+              <Route path="upload" element={<AdminToolkitsUploadPage />} />
+            </Route>
             <Route
               path="/admin/users"
               element={
@@ -234,13 +243,17 @@ export default function AppShell() {
               }
             />
             <Route
-              path="/admin/settings/auth"
+              path="/admin/settings/toolbox/*"
               element={
                 <RequireSuperuser>
-                  <AuthSettingsPage />
+                  <AdminToolboxSettingsPage />
                 </RequireSuperuser>
               }
-            />
+            >
+              <Route index element={<AdminToolboxCatalogPage />} />
+              <Route path="auth" element={<AdminToolboxAuthPage />} />
+            </Route>
+            <Route path="/admin/settings/auth" element={<Navigate to="/admin/settings/toolbox/auth" replace />} />
             <Route
               path="/admin/security/audit"
               element={
@@ -469,4 +482,3 @@ function ToolkitLoadingOverlay({ name }: { name: string }) {
     </div>
   )
 }
-

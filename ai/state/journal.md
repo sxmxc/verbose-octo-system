@@ -56,3 +56,11 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Tackled TODO `enhance-error-messages` by introducing a dedicated `formatApiError` helper with Vitest coverage so toolkit UIs surface backend detail and network guidance (`toolkits/api_checker/frontend/errorUtils.ts`, `toolkits/api_checker/frontend/__tests__/errorUtils.test.ts`; Context: docs/TODO.yaml).
 - Updated the API Checker request flow to reuse the helper for request failures and history entries, ensuring operators see concise status-aware copy (`toolkits/api_checker/frontend/index.tsx`; Context: SRE Toolbox frontend runtime).
 - Added a toolkit-local Vitest config to make the new tests repeatable via the shared React dependencies (`toolkits/api_checker/frontend/vitest.config.mts`; Context: toolkit testing guidance).
+
+## 2025-09-22 Community catalog discovery
+- Closed TODO `toolkit-discovery` by exposing `/toolkits/community` + `/toolkits/community/install` with catalog override support and tests (`backend/app/routes/toolkits.py`, `backend/tests/test_toolkits_catalog.py`, `docs/TODO.yaml`).
+- Extended Admin → Toolkits with a discovery panel, catalog URL controls, and Vitest coverage for install/override flows (`frontend/src/pages/AdminToolkitsPage.tsx`, `frontend/src/pages/__tests__/AdminToolkitsPage.test.tsx`, `frontend/package.json`).
+- Documented the default catalog endpoint and environment override across operator docs and samples (`.env.example`, `README.md`, `docs/runtime-architecture.md`, `docs/toolbox-architecture.md`).
+- Reworked Admin → Toolkits into a multi-tab layout (Overview, Community Catalog, Upload) so discovery/install workflows live on dedicated routes, updating styles, docs, and tests to match (`frontend/src/pages/admin/toolkits/*`, `frontend/src/AppShell.tsx`, `README.md`).
+- Introduced Administration → Toolbox settings with Catalog/Auth tabs, moved catalog override + auth settings behind the new hub, and added backend/system tests for the corresponding APIs.
+- Refined UX with catalog grid (badges, pagination, skeleton loaders) and added loading skeletons across Jobs, Users, auth setup, and toolkit overview to smooth perceived performance.

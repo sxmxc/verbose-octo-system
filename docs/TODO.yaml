@@ -92,14 +92,13 @@ areas:
           - "2025-09-21: Bootstrapped community repo scaffold and delivered toolkit-community-repo.zip for import."
       - id: toolkit-discovery
         title: Implement a discovery mechanism within the Toolbox UI to browse and install community toolkits.
-        status: backlog
+        status: done
         priority: medium
         notes:
           - "Consider a marketplace-style interface for browsing available toolkits."
           - "Allow users to search, filter, and view details about each toolkit."
           - "Implement installation and update mechanisms that integrate with existing toolbox workflows."
-        blockers:
-          - "Requires completion of the public repo setup task."
+          - "2025-09-22: Added community catalog endpoints, Admin → Toolkits discovery UI, env override, and docs for the sxmxc/ideal-octo-engine repository."
   - id: toolkit-updates
     title: Toolkit updates & versioning
     status: backlog

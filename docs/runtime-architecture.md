@@ -37,6 +37,7 @@ Inspect volumes with `docker volume inspect <name>` and clean them with `docker 
 
 - `DATABASE_URL`, `REDIS_URL`, `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_KV_MOUNT`, `FRONTEND_BASE_URL`, `VITE_API_BASE_URL` - minimal set required for a healthy stack.
 - `TOOLKIT_STORAGE_DIR`, `TOOLKIT_UPLOAD_MAX_BYTES`, `TOOLKIT_BUNDLE_MAX_BYTES`, `TOOLKIT_BUNDLE_MAX_FILE_BYTES` - govern where toolkits live and how uploads are validated.
+- `TOOLKIT_CATALOG_URL` - optional manifest URL for the community discovery catalog surfaced in Admin → Toolkits; overrides the default <https://raw.githubusercontent.com/sxmxc/ideal-octo-engine/main/catalog/toolkits.json> when set.
 - `AUTH_JWT_SECRET` / `AUTH_JWT_PRIVATE_KEY` / `AUTH_JWT_PUBLIC_KEY` - signing material for access/refresh tokens; the API refuses to start unless the secret is ≥32 characters or an asymmetric key pair is supplied.
 - `BOOTSTRAP_ADMIN_*` - optional first-run administrative account seeded during API startup.
 
@@ -47,6 +48,7 @@ Keep `.env` authoritative for local development. Production orchestration should
 - Monitor the `toolbox-data` volume size to ensure toolkit bundles do not exhaust disk space.
 - Rotate Vault tokens regularly; use `VAULT_TOKEN_FILE` when running in CI/CD so credentials are not committed.
 - After uploading or uninstalling toolkits manually, reload the API or use the Admin → Toolkits UI to sync the registry.
+- Use Administration → Toolbox settings to override the community catalog manifest when pointing at another repository; the override persists via `TOOLKIT_CATALOG_URL`.
 - When debugging toolkit load issues, confirm the bundle exists on the shared volume and that the worker successfully imported the module (logs appear on the worker container/stdout).
 
 Refer to `docs/project-setup.md` for hands-on bootstrap steps and `docs/toolkit-authoring` for authoring guidelines.

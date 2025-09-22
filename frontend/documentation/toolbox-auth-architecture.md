@@ -29,7 +29,7 @@ The SRE Toolbox ships with a modular authentication stack that supports local lo
 ### Provider registry and configuration
 
 - Providers are declared through `settings.auth_providers` and can be bootstrapped via `AUTH_PROVIDERS_JSON` or `AUTH_PROVIDERS_FILE`.
-- Runtime edits are stored in the `auth_provider_configs` table and are exposed through **Administration → Auth settings**. Performing these actions requires the `system.admin` role.
+- Runtime edits are stored in the `auth_provider_configs` table and are exposed through **Administration → Toolbox settings → Auth**. Performing these actions requires the `system.admin` role.
 - The `ProviderConfigService` persists provider definitions, reloads the registry, and immediately activates new or updated providers without a restart.
 
 ### Provider types
@@ -67,7 +67,7 @@ The SRE Toolbox ships with a modular authentication stack that supports local lo
 1. Configure `AUTH_JWT_SECRET` (or upload signing keys) before exposing the Toolbox publicly—the runtime enforces this requirement during startup.
 2. Set `FRONTEND_BASE_URL` so CORS origins match the deployed frontend and review cookie attributes for secure/production usage.
 3. Bootstrap an admin account via `BOOTSTRAP_ADMIN_*` or create one manually, then assign curator/system roles as needed.
-4. Add SSO providers either via environment variables at deploy time or through **Administration → Auth settings** once the platform is running.
+4. Add SSO providers either via environment variables at deploy time or through **Administration → Toolbox settings → Auth** once the platform is running.
 5. Periodically audit `auth_sessions` and `audit_logs` to ensure refresh tokens are rotated and administrative actions are tracked.
 
 ## Security considerations

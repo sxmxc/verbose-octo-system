@@ -14,6 +14,7 @@ from .routes.auth import router as auth_router
 from .routes.dashboard import router as dashboard_router
 from .routes.jobs import router as jobs_router
 from .routes.toolkits import router as toolkits_router
+from .routes.toolbox_settings import router as toolbox_settings_router
 from .routes.toolkit_docs import router as toolkit_docs_router
 from .security.registry import load_providers
 from .toolkit_loader import load_toolkit_backends, register_app
@@ -48,6 +49,7 @@ app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
 app.include_router(toolkits_router, prefix="/toolkits", tags=["toolkits"])
 app.include_router(toolkit_docs_router, prefix="/toolkits/docs", tags=["toolkits"])
+app.include_router(toolbox_settings_router)
 app.include_router(auth_router)
 app.include_router(admin_users_router)
 app.include_router(admin_settings_router)

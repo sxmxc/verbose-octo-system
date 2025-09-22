@@ -40,6 +40,8 @@ All three share a common domain model (PostgreSQL or SQLite), a Redis-backed eve
 3. **Activation** – On startup (or after an install event) the loader imports backend routers and worker registration hooks, then advertises dashboard cards and frontends to the App Shell.
 4. **Execution** – API endpoints enqueue jobs to Celery, which pulls runtime dependencies (database, Redis, external APIs) defined by the toolkit.
 
+Community distribution: the Admin → Toolkits → Community Catalog view queries <https://raw.githubusercontent.com/sxmxc/ideal-octo-engine/main/catalog/toolkits.json> (overridable via `TOOLKIT_CATALOG_URL` or Administration → Toolbox settings) so curators can review community-contributed toolkits and, once bundles are published, request installations directly from the catalog.
+
 ## Request and job lifecycles
 
 - *API request*: HTTP request enters FastAPI → dependency stack validates auth and roles → service layer executes business logic → responses serialise through Pydantic schemas in `backend/app/schemas/`.

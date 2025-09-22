@@ -67,7 +67,7 @@ Ensure PostgreSQL, Redis, and Vault are running (e.g. by executing `./bootstrap-
   # VAULT_AUTH_METHOD=token  # switch to approle for production
   ```
   For AppRole-based auth, populate `VAULT_AUTH_METHOD=approle` and supply `VAULT_APPROLE_ROLE_ID` / `VAULT_APPROLE_SECRET_ID` instead of `VAULT_TOKEN`.
-- Use **Administration → Auth settings** (or `AUTH_PROVIDERS_FILE`) to reference Vault secrets via `*_vault` fields, keeping credentials out of JSON documents and environment variables.
+- Use **Administration → Toolbox settings → Auth** (or `AUTH_PROVIDERS_FILE`) to reference Vault secrets via `*_vault` fields, keeping credentials out of JSON documents and environment variables.
 
 ## Audit Logging
 - Set `AUDIT_LOG_RETENTION_DAYS` (default `90`) to control how long audit entries persist before automatic cleanup.

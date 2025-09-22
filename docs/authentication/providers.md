@@ -9,7 +9,7 @@ The backend resolves providers in this order:
 1. Objects provided directly to `settings.auth_providers` (mostly for tests).
 2. JSON from the `AUTH_PROVIDERS_JSON` environment variable.
 3. A JSON file referenced by `AUTH_PROVIDERS_FILE`.
-4. Records saved through **Administration → Auth settings** in the UI (stored in the `auth_provider_configs` table).
+4. Records saved through **Administration → Toolbox settings → Auth** in the UI (stored in the `auth_provider_configs` table).
 
 For day-to-day operations we recommend using the UI—the configuration is editable without redeploying and lives in the database. The admin screen now offers provider-aware forms (OIDC, LDAP, Active Directory) so you only supply the relevant fields; Vault references for secrets are handled inline and you can create new KV entries on the fly without leaving the console. The JSON / env hooks exist purely for bootstrap automation or GitOps workflows. If you do not set `AUTH_PROVIDERS_JSON` or `AUTH_PROVIDERS_FILE`, the UI becomes the source of truth.
 
@@ -112,7 +112,7 @@ The UI exposes a **Load metadata** button in the OIDC form—paste the discovery
    ```
    Active Directory only needs `"type": "active_directory"`, a `default_domain`, and optionally AD-specific attribute overrides. `config/auth-providers.example.json` shows a starter template.
 4. **TLS considerations** – prefer LDAPS. If the directory uses a private CA, add the certificate bundle to the container and reference it via `REQUESTS_CA_BUNDLE` or system trust store. Vault itself can use `VAULT_CA_CERT` for custom roots.
-5. **Test connectivity** from **Administration → Auth settings → Test connection** after saving changes.
+5. **Test connectivity** from **Administration → Toolbox settings → Auth → Test connection** after saving changes.
 
 ## Operational Checklist
 
