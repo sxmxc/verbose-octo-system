@@ -66,8 +66,8 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 
 ## Quick start (Docker Compose)
 
-1. Copy `.env.example` to `.env` and adjust values (set fresh JWT secrets, choose an admin bootstrap password, and leave the Vault settings in place). The services read this file automatically during startup.
-2. Run the bootstrap helper to start core services (Postgres, Redis, Vault) and perform the one-time Vault initialisation. The script will skip work that has already been completed and will never overwrite existing unseal keys or secrets:
+1. Copy `.env.example` to `.env` and replace **all** Postgres placeholders with unique values. Ensure the discrete variables (`POSTGRES_*`) and `DATABASE_URL` stay in sync, then set fresh JWT secrets and an admin bootstrap password. The services read this file automatically during startup.
+2. Run the bootstrap helper to start core services (Postgres, Redis, Vault) and perform the one-time Vault initialisation. The helper now validates your Postgres credentials up front and exits with actionable guidance if placeholders remain:
 
    ```bash
    ./bootstrap-stack.sh
@@ -94,7 +94,7 @@ See `docs/project-setup.md` for a deeper walkthrough and production hardening ch
 
 Run shared infrastructure in containers and execute the application processes locally for faster iteration.
 
-1. Start dependencies (Postgres, Redis, Vault) with the bootstrap helper so Vault is initialised and unsealed automatically:
+1. Start dependencies (Postgres, Redis, Vault) with the bootstrap helper so Vault is initialised and unsealed automatically. The helper refuses to proceed if `POSTGRES_*` variables or `DATABASE_URL` still use placeholders:
 
    ```bash
    ./bootstrap-stack.sh
