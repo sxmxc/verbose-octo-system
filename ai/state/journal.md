@@ -46,3 +46,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Moved TODO `remove-default-postgres-creds` to in_progress and stripped docker-compose defaults so Postgres credentials must be supplied explicitly (`docs/TODO.yaml`, `docker-compose.yml`).
 - Refreshed `.env.example`, the manual dev workflow, and the Docker Compose checklist so operators generate their own secrets before booting the stack (`.env.example`, `README.md`, `docs/project-setup.md`).
 - Rendered the compose config with the updated `.env` to confirm required variables behave as expected (`docker compose config`; `docker-compose.yml`).
+
+## 2025-09-21 Postgres bootstrap validation
+- Closed TODO `remove-default-postgres-creds` by wiring a new env preflight into `bootstrap-stack.sh` that rejects placeholder Postgres credentials before Docker services launch (`backend/app/core/postgres_env.py`, `bootstrap-stack.sh`; Context: docs/TODO.yaml).
+- Added pytest coverage to lock the validator’s behaviour around placeholders, mismatched `DATABASE_URL` values, and minimum password length (`backend/tests/test_postgres_env.py`; Context: backend tests).
+- Refreshed onboarding docs and `.env.example` so operators have to replace every Postgres placeholder before running the helper (`README.md`, `docs/project-setup.md`, `.env.example`; Context: onboarding docs).

@@ -1,10 +1,15 @@
 {
   "version": 1,
-  "last_updated": "2025-09-21T19:05:00Z",
-  "session_counter": 8,
-  "active_task": "remove-default-postgres-creds",
+  "last_updated": "2025-09-22T02:09:31Z",
+  "session_counter": 9,
+  "active_task": null,
   "last_task_id": "remove-default-postgres-creds",
   "recent_updates": [
+    {
+      "task_id": "remove-default-postgres-creds",
+      "status": "done",
+      "summary": "Added a bootstrap preflight that validates Postgres credentials and refreshed onboarding docs to require unique values."
+    },
     {
       "task_id": "improve-designer-tab",
       "status": "done",

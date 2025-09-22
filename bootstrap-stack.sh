@@ -76,6 +76,12 @@ resolve_host_path() {
   fi
 }
 
+validate_postgres_env() {
+  info "Validating Postgres credentials"
+  PYTHONPATH="$ROOT_DIR/backend${PYTHONPATH:+:$PYTHONPATH}" python3 -m app.core.postgres_env \
+    || fatal "Postgres credential validation failed"
+}
+
 start_infrastructure() {
   info "Starting Docker services (db, redis, vault)"
   "${DOCKER_COMPOSE[@]}" up -d db redis vault
@@ -305,6 +311,7 @@ main() {
   require_command python3
   configure_docker_compose
   load_env_file
+  validate_postgres_env
   start_infrastructure
   ensure_vault_data_permissions
   bootstrap_vault
