@@ -193,10 +193,11 @@ areas:
           - "2025-09-21: Added bootstrap-stack.sh to start core containers, initialise Vault once, and seed placeholder secrets without overwriting existing data."
       - id: remove-default-postgres-creds
         title: Remove default Postgres credentials from docker-compose and require overrides.
-        status: backlog
+        status: in_progress
         priority: medium
         notes:
           - "Consider interactive prompts or environment validation in tooling scripts."
+          - "2025-09-21: Removing docker-compose defaults and updating docs to require operator-supplied credentials."
   - id: governance
     title: Governance & planning
     summary: Operational guardrails for community contributions and secret management.
