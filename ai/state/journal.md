@@ -67,5 +67,5 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 
 ## 2025-09-22 Community bundle resolution
 - Logged TODO `community-bundle-resolution` to track high-priority failures downloading bundles from GitHub Pages endpoints (`toolkits/<slug>/bundle`) that currently return HTTP 400 during install.
-- Implemented bundle URL fallbacks covering homepage, catalog directory, and repository-root guesses so installs succeed without manifest rewrites (`backend/app/routes/toolkits.py`) and added regression coverage for the GitHub Pages layout (`backend/tests/test_toolkits_catalog.py`).
-- Documented the fallback behaviour for community curators (`docs/toolbox-architecture.md`) and attempted the targeted pytest run, which failed locally because `httpx` is missing from the harness environment.
+- Updated bundle resolution to treat GitHub raw manifests as catalog descriptors, prefer `github.io` bundle URLs, and degrade to the manifest directory when needed (`backend/app/routes/toolkits.py`) with regression coverage for both success and fallback flows (`backend/tests/test_toolkits_catalog.py`).
+- Documented the published-site preference for curators (`docs/toolbox-architecture.md`) and attempted the targeted pytest run, which still fails locally because `httpx` is missing from the harness environment.

@@ -45,12 +45,18 @@ CATALOG_URL_SETTING_KEY = "toolkit.catalog.url"
 
 def _catalog_site_root_url(catalog_url: AnyHttpUrl) -> str:
     parsed = urlparse(str(catalog_url))
-    parts = [segment for segment in parsed.path.split("/") if segment]
-    if parts:
-        root_path = f"/{parts[0]}/"
-    else:
-        root_path = "/"
-    return urlunparse(parsed._replace(path=root_path, params="", query="", fragment=""))
+    host = parsed.netloc.lower()
+    segments = [segment for segment in parsed.path.split("/") if segment]
+
+    if host in {"raw.githubusercontent.com", "raw.github.com"} and len(segments) >= 2:
+        owner, repo = segments[:2]
+        return f"https://{owner}.github.io/{repo}/"
+
+    if host.endswith(".github.io") and segments:
+        root_path = f"/{segments[0]}/"
+        return urlunparse(parsed._replace(path=root_path, params="", query="", fragment=""))
+
+    return urlunparse(parsed._replace(path="/", params="", query="", fragment=""))
 
 
 def _build_bundle_url_candidates(
@@ -69,9 +75,9 @@ def _build_bundle_url_candidates(
         else:
             if entry.homepage:
                 raw_candidates.append(urljoin(str(entry.homepage), bundle_url))
-            raw_candidates.append(urljoin(str(catalog_url), bundle_url))
             root_base = _catalog_site_root_url(catalog_url)
             raw_candidates.append(urljoin(root_base, bundle_url))
+            raw_candidates.append(urljoin(str(catalog_url), bundle_url))
 
     candidates: list[str] = []
     for candidate in raw_candidates:

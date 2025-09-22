@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "last_updated": "2025-09-22T19:20:00Z",
+  "last_updated": "2025-09-22T19:55:00Z",
   "session_counter": 12,
   "active_task": null,
   "last_task_id": "community-bundle-resolution",
@@ -8,7 +8,7 @@
     {
       "task_id": "community-bundle-resolution",
       "status": "done",
-      "summary": "Added bundle URL fallbacks (homepage, catalog directory, repository root) so community installs succeed for GitHub Pages endpoints and captured regression tests."
+      "summary": "Treat GitHub raw manifests as catalog descriptors, prefer github.io bundle URLs, and fall back to manifest paths with regression coverage for relative bundles."
     },
     {
       "task_id": "toolkit-discovery",
