@@ -19,6 +19,7 @@
 ## Testing Matrix
 - `npm test` for frontend unit tests.
 - `pytest` (or the appropriate backend test runner) for FastAPI and worker coverage.
+- `.\test-all.sh` for e2e tests.
 - Optional: run `docker compose up --build` to validate end-to-end interactions before merging.
 
 ## Documentation

@@ -1,5 +1,6 @@
 import type { ChangeEvent, CSSProperties } from 'react'
 
+import { formatApiError } from './errorUtils'
 import { apiFetch, getReactRuntime } from './runtime'
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
@@ -415,7 +416,7 @@ export default function ApiCheckerApp() {
         prev.map((entry) => (entry.id === historyId ? { ...entry, response: cloneResponse(result) } : entry)),
       )
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Request failed.'
+      const message = formatApiError(err)
       setResponse(null)
       setError(message)
       setHistory((prev) =>

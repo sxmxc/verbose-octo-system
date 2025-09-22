@@ -23,8 +23,10 @@ areas:
           - "2024-05-30: Response lives in a dedicated right column with a collapsible history panel and responsive single-column fallback."
       - id: enhance-error-messages
         title: Enhance error messages for better clarity.
-        status: backlog
+        status: done
         priority: medium
+        notes:
+          - "2025-09-22: Added formatApiError helper with Vitest coverage so API Checker surfaces backend detail and network guidance in failure messages."
       - id: improve-navigation
         title: Improve navigation within the toolkit UI.
         status: backlog

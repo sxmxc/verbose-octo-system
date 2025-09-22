@@ -51,3 +51,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Closed TODO `remove-default-postgres-creds` by wiring a new env preflight into `bootstrap-stack.sh` that rejects placeholder Postgres credentials before Docker services launch (`backend/app/core/postgres_env.py`, `bootstrap-stack.sh`; Context: docs/TODO.yaml).
 - Added pytest coverage to lock the validator’s behaviour around placeholders, mismatched `DATABASE_URL` values, and minimum password length (`backend/tests/test_postgres_env.py`; Context: backend tests).
 - Refreshed onboarding docs and `.env.example` so operators have to replace every Postgres placeholder before running the helper (`README.md`, `docs/project-setup.md`, `.env.example`; Context: onboarding docs).
+
+## 2025-09-22 API Checker error messaging refresh
+- Tackled TODO `enhance-error-messages` by introducing a dedicated `formatApiError` helper with Vitest coverage so toolkit UIs surface backend detail and network guidance (`toolkits/api_checker/frontend/errorUtils.ts`, `toolkits/api_checker/frontend/__tests__/errorUtils.test.ts`; Context: docs/TODO.yaml).
+- Updated the API Checker request flow to reuse the helper for request failures and history entries, ensuring operators see concise status-aware copy (`toolkits/api_checker/frontend/index.tsx`; Context: SRE Toolbox frontend runtime).
+- Added a toolkit-local Vitest config to make the new tests repeatable via the shared React dependencies (`toolkits/api_checker/frontend/vitest.config.mts`; Context: toolkit testing guidance).
