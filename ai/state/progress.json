@@ -1,10 +1,15 @@
 {
   "version": 1,
-  "last_updated": "2025-09-22T02:09:31Z",
-  "session_counter": 9,
+  "last_updated": "2025-09-22T03:08:03Z",
+  "session_counter": 10,
   "active_task": null,
-  "last_task_id": "remove-default-postgres-creds",
+  "last_task_id": "enhance-error-messages",
   "recent_updates": [
+    {
+      "task_id": "enhance-error-messages",
+      "status": "done",
+      "summary": "Implemented formatApiError helper with Vitest coverage and updated the API Checker UI to surface clearer failure messaging."
+    },
     {
       "task_id": "remove-default-postgres-creds",
       "status": "done",
