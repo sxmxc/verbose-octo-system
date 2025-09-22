@@ -166,7 +166,7 @@ The provided Docker Compose and `.env` defaults set `VAULT_TLS_SKIP_VERIFY=true`
 
 The API exits on startup if `AUTH_JWT_SECRET` is missing, shorter than 32 characters, or still set to the sample placeholder. Generate one with `openssl rand -hex 32` or configure an RSA/ECDSA key pair via `AUTH_JWT_PRIVATE_KEY` / `AUTH_JWT_PUBLIC_KEY`.
 
-Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_PROVIDERS_JSON` or added at runtime through the Admin → Auth settings screen.
+Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_PROVIDERS_JSON` or added at runtime from Administration → Toolbox settings → Auth.
 
 ## Using the platform
 
@@ -174,14 +174,15 @@ Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_
 - **Jobs** – pollable list with inline log streaming and cancellation that propagates to Celery.
 - **Toolkits index** – view metadata, enable/disable toolkits, and open toolkit documentation.
 - **Toolkit routes** – `/toolkits/:slug/*` renders toolkit-provided React layouts or a friendly placeholder when no UI bundle ships.
-- **Administration → Toolkits** – upload `.zip` bundles, toggle visibility, uninstall toolkits, and inspect metadata derived from `toolkit.json`. The Community Catalog panel lists toolkits published at <https://sxmxc.github.io/ideal-octo-engine>; installs stream from the manifest at <https://raw.githubusercontent.com/sxmxc/ideal-octo-engine/main/catalog/toolkits.json>. Override the manifest by setting `TOOLKIT_CATALOG_URL` in `.env` or saving a new URL from the catalog form (superuser only).
+- **Administration → Toolkits** – browse the Overview (getting started guidance + installed toolkit controls), review the Community Catalog of <https://sxmxc.github.io/ideal-octo-engine>, or upload bundles from the Upload page. Installs stream from <https://raw.githubusercontent.com/sxmxc/ideal-octo-engine/main/catalog/toolkits.json>; override it via `TOOLKIT_CATALOG_URL` or the catalog URL form (superuser only).
+- **Administration → Toolbox settings** – adjust framework-specific options such as the community catalog override used for discovery installs.
 - **Administration → Users** – invite local users, assign roles, or import external identities.
-- **Administration → Auth settings** – configure local, OIDC, LDAP, or Active Directory providers without redeploying.
+- **Administration → Toolbox settings → Auth** – configure local, OIDC, LDAP, or Active Directory providers without redeploying.
 
 ## Authentication & role-based access control
 
 - **Roles** – every account receives `toolkit.user` for day-to-day operations. Grant `toolkit.curator` to manage toolkit enablement and `system.admin` for security-sensitive settings (auth providers, user management, audit exports). All FastAPI routes and in-app controls honor these roles.
-- **Providers** – configure local username/password auth or plug in OpenID Connect, LDAP, and Active Directory providers. Define providers inline via `AUTH_PROVIDERS_JSON`, point at a JSON file with `AUTH_PROVIDERS_FILE`, or manage them at runtime from **Administration → Auth settings**. Changes reload instantly—no restart required.
+- **Providers** – configure local username/password auth or plug in OpenID Connect, LDAP, and Active Directory providers. Define providers inline via `AUTH_PROVIDERS_JSON`, point at a JSON file with `AUTH_PROVIDERS_FILE`, or manage them at runtime from **Administration → Toolbox settings → Auth**. Changes reload instantly—no restart required.
 - **Session hygiene** – access tokens default to 15 minutes, refresh tokens to 14 days, and the API rotates refresh-token IDs on each renewal while persisting session metadata for revocation and auditing. Set `AUTH_COOKIE_SECURE`, `AUTH_COOKIE_SAMESITE`, and `AUTH_COOKIE_DOMAIN` to harden browser usage.
 - **SSO state** – requests are protected by signed state/nonce values with a configurable TTL (`AUTH_SSO_STATE_TTL_SECONDS`); pair this with HTTPS so cookies stay protected in transit.
 

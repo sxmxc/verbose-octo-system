@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { apiFetch } from '../api'
 import { MaterialIcon } from '../components/MaterialIcon'
+import { Skeleton } from '../components/Skeleton'
 
 type ProviderType = 'local' | 'oidc' | 'ldap' | 'active_directory' | string
 type VaultSecretMode = 'value' | 'vault-existing' | 'vault-new'
@@ -700,7 +701,24 @@ export default function AuthSettingsPage() {
       <div style={contentStyle}>
         <aside style={listPanelStyle}>
           {loading ? (
-            <p style={{ color: 'var(--color-text-secondary)' }}>Loading provider configurations…</p>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={`auth-skeleton-${index}`}
+                  style={{
+                    ...listButtonStyle,
+                    display: 'grid',
+                    gap: '0.5rem',
+                    background: 'var(--color-sidebar-button-bg)',
+                    border: '1px dashed var(--color-border)',
+                    alignItems: 'start',
+                  }}
+                >
+                  <Skeleton height="0.9rem" width="50%" />
+                  <Skeleton height="0.7rem" width="70%" />
+                </div>
+              ))}
+            </div>
           ) : configs.length === 0 ? (
             <p style={{ color: 'var(--color-text-secondary)' }}>No providers stored yet. Add one to get started.</p>
           ) : (

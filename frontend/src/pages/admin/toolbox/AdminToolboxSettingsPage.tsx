@@ -1,29 +1,26 @@
 import React from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
-import { MaterialIcon } from '../components/MaterialIcon'
-import './AdminToolkitsPage.css'
+import { MaterialIcon } from '../../../components/MaterialIcon'
+import '../../AdminToolkitsPage.css'
 
 const tabs = [
-  { to: '/admin/toolkits', label: 'Overview', icon: 'dashboard', end: true },
-  { to: '/admin/toolkits/community', label: 'Community catalog', icon: 'public' },
-  { to: '/admin/toolkits/upload', label: 'Upload bundle', icon: 'cloud_upload' },
+  { to: '/admin/settings/toolbox', label: 'Catalog', icon: 'public', end: true },
+  { to: '/admin/settings/toolbox/auth', label: 'Auth settings', icon: 'security' },
 ]
 
-export default function AdminToolkitsPage() {
+export default function AdminToolboxSettingsPage() {
   return (
     <div className="admin-toolkits admin-toolkits--layout">
       <header className="admin-toolkits__layout-header">
         <h3>
-          <MaterialIcon name="engineering" style={{ color: 'var(--color-link)' }} />
-          Toolkit administration
+          <MaterialIcon name="settings" style={{ color: 'var(--color-link)' }} />
+          Toolbox settings
         </h3>
-        <p>
-          Browse installed toolkits, review community contributions, or upload new bundles for the SRE Toolbox runtime.
-        </p>
+        <p>Manage framework-wide configuration for the SRE Toolbox platform.</p>
       </header>
 
-      <nav className="admin-toolkits__tabs" aria-label="Toolkit administration sections">
+      <nav className="admin-toolkits__tabs" aria-label="Toolbox settings sections">
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}

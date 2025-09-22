@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { apiFetch } from '../api'
+import { Skeleton } from '../components/Skeleton'
 import { Job, JobLog } from '../types'
 import { useToolkits } from '../ToolkitContext'
 
@@ -394,6 +395,7 @@ export default function JobsPage() {
             value={selectedToolkit}
             onChange={handleToolkitChange}
             style={filterSelectStyle}
+            disabled={loading}
           >
             <option value="all">All toolkits</option>
             {selectOptions.map((option) => (
@@ -405,7 +407,7 @@ export default function JobsPage() {
         </label>
         <label style={filterLabelStyle}>
           <span style={{ fontWeight: 600 }}>Status filter</span>
-          <select value={selectedStatus} onChange={handleStatusChange} style={filterSelectStyle}>
+          <select value={selectedStatus} onChange={handleStatusChange} style={filterSelectStyle} disabled={loading}>
             <option value="all">All statuses</option>
             {statusOptions.map((status) => (
               <option key={status} value={status}>
@@ -428,52 +430,73 @@ export default function JobsPage() {
             </tr>
           </thead>
           <tbody>
-            {jobs.map((job) => (
-              <React.Fragment key={job.id}>
-                <tr style={jobRowStyle}>
-                  <td style={jobLabelCellStyle}>
-                    <strong>
-                      {job.toolkit ? toolkitNameLookup.get(job.toolkit) ?? job.toolkit : job.module || 'unknown'}
-                    </strong>
-                    <div style={jobOperationStyle}>{job.operation}</div>
-                  </td>
-                  <td style={jobStatusCellStyle}>{formatStatusLabel(job.status)}</td>
-                  <td>{job.progress}%</td>
-                  <td>{job.updated_at ? new Date(job.updated_at).toLocaleString() : '—'}</td>
-                  <td style={jobActionsCellStyle}>
-                    <button onClick={() => toggleExpand(job.id)}>
-                      {expandedJobId === job.id ? 'Hide' : 'Inspect'}
-                    </button>
-                    <button
-                      onClick={() => cancelJob(job)}
-                      disabled={!canCancel(job) || canceling[job.id]}
-                      style={getCancelButtonStyle(canCancel(job), Boolean(canceling[job.id]))}
-                    >
-                      {canceling[job.id] ? 'Cancelling…' : 'Cancel'}
-                    </button>
-                  </td>
-                </tr>
-                {expandedJobId === job.id && (
-                  <tr>
-                    <td colSpan={5} style={expandedRowStyle}>
-                      <section style={jobDetailsSectionStyle}>
-                        <JobLogViewer logs={job.logs ?? []} />
-                        <div>
-                          <strong>Result</strong>
-                          <pre style={preStyle}>{JSON.stringify(job.result ?? {}, null, 2)}</pre>
-                        </div>
-                        {job.error && (
-                          <div>
-                            <strong style={errorTextStyle}>Error</strong>
-                            <pre style={preStyle}>{job.error}</pre>
-                          </div>
-                        )}
-                      </section>
+            {loading
+              ? Array.from({ length: PAGE_SIZE }).map((_, index) => (
+                  <tr key={`job-skeleton-${index}`} style={jobRowStyle}>
+                    <td style={jobLabelCellStyle}>
+                      <Skeleton height="1rem" width="55%" />
+                      <Skeleton height="0.8rem" width="40%" style={{ marginTop: '0.4rem' }} />
+                    </td>
+                    <td style={jobStatusCellStyle}>
+                      <Skeleton height="0.9rem" width="70%" />
+                    </td>
+                    <td>
+                      <Skeleton height="0.9rem" width="45%" />
+                    </td>
+                    <td>
+                      <Skeleton height="0.9rem" width="80%" />
+                    </td>
+                    <td style={jobActionsCellStyle}>
+                      <Skeleton height="2rem" width="4.5rem" />
                     </td>
                   </tr>
-                )}
-              </React.Fragment>
-            ))}
+                ))
+              : jobs.map((job) => (
+                  <React.Fragment key={job.id}>
+                    <tr style={jobRowStyle}>
+                      <td style={jobLabelCellStyle}>
+                        <strong>
+                          {job.toolkit ? toolkitNameLookup.get(job.toolkit) ?? job.toolkit : job.module || 'unknown'}
+                        </strong>
+                        <div style={jobOperationStyle}>{job.operation}</div>
+                      </td>
+                      <td style={jobStatusCellStyle}>{formatStatusLabel(job.status)}</td>
+                      <td>{job.progress}%</td>
+                      <td>{job.updated_at ? new Date(job.updated_at).toLocaleString() : '—'}</td>
+                      <td style={jobActionsCellStyle}>
+                        <button onClick={() => toggleExpand(job.id)}>
+                          {expandedJobId === job.id ? 'Hide' : 'Inspect'}
+                        </button>
+                        <button
+                          onClick={() => cancelJob(job)}
+                          disabled={!canCancel(job) || canceling[job.id]}
+                          style={getCancelButtonStyle(canCancel(job), Boolean(canceling[job.id]))}
+                        >
+                          {canceling[job.id] ? 'Cancelling…' : 'Cancel'}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedJobId === job.id && (
+                      <tr>
+                        <td colSpan={5} style={expandedRowStyle}>
+                          <section style={jobDetailsSectionStyle}>
+                            <JobLogViewer logs={job.logs ?? []} />
+                            <div>
+                              <strong>Result</strong>
+                              <pre style={preStyle}>{JSON.stringify(job.result ?? {}, null, 2)}</pre>
+                            </div>
+                            {job.error && (
+                              <div>
+                                <strong style={errorTextStyle}>Error</strong>
+                                <pre style={preStyle}>{job.error}</pre>
+                              </div>
+                            )}
+                          </section>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
           </tbody>
         </table>
       </div>

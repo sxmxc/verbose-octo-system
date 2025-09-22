@@ -4,8 +4,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+from pydantic import AnyHttpUrl
 
-from app.routes import toolkits
+from app.routes import toolkits, toolbox_settings
 
 
 class DummyAsyncClient:
@@ -48,6 +49,12 @@ class UserServiceStub:
 async def test_toolkits_community_catalog_returns_entries(monkeypatch):
     session = make_session_stub()
 
+    monkeypatch.setattr(
+        toolkits,
+        "_resolve_catalog_url",
+        AsyncMock(return_value=(AnyHttpUrl("https://catalog.example/catalog.json"), None)),
+    )
+
     def response_factory(url):
         return httpx.Response(
             status_code=200,
@@ -58,7 +65,7 @@ async def test_toolkits_community_catalog_returns_entries(monkeypatch):
                         "slug": "demo",
                         "name": "Demo Toolkit",
                         "description": "Example entry",
-                        "bundle_url": "https://example.com/demo.zip",
+                        "bundle_url": "toolkits/demo.zip",
                         "tags": ["sample"],
                     }
                 ]
@@ -71,8 +78,10 @@ async def test_toolkits_community_catalog_returns_entries(monkeypatch):
     result = await toolkits.toolkits_community_catalog(session=session)
 
     assert result.catalog_url is not None
+    assert result.configured_url is None
     assert len(result.toolkits) == 1
     assert result.toolkits[0].slug == "demo"
+    assert str(result.toolkits[0].resolved_bundle_url) == "https://catalog.example/toolkits/demo.zip"
 
 
 @pytest.mark.anyio("asyncio")
@@ -83,12 +92,18 @@ async def test_toolkits_install_from_catalog_downloads_bundle(tmp_path, monkeypa
     entry = toolkits.CommunityToolkitEntry(
         slug="demo",
         name="Demo Toolkit",
-        bundle_url="https://example.com/demo.zip",
+        bundle_url="toolkits/demo/bundle.zip",
+        resolved_bundle_url="https://example.com/demo.zip",
     )
     monkeypatch.setattr(
         toolkits,
         "_fetch_community_catalog",
         AsyncMock(return_value=[entry]),
+    )
+    monkeypatch.setattr(
+        toolkits,
+        "_resolve_catalog_url",
+        AsyncMock(return_value=(AnyHttpUrl("https://catalog.example/catalog.json"), None)),
     )
 
     bundle = io.BytesIO()
@@ -136,6 +151,11 @@ async def test_toolkits_install_from_catalog_rejects_missing_bundle(monkeypatch)
         "_fetch_community_catalog",
         AsyncMock(return_value=[entry]),
     )
+    monkeypatch.setattr(
+        toolkits,
+        "_resolve_catalog_url",
+        AsyncMock(return_value=(AnyHttpUrl("https://catalog.example/catalog.json"), None)),
+    )
 
     monkeypatch.setattr(toolkits, "httpx", SimpleNamespace(AsyncClient=lambda *a, **kw: None))
 
@@ -151,3 +171,54 @@ async def test_toolkits_install_from_catalog_rejects_missing_bundle(monkeypatch)
 
     assert exc_info.value.status_code == 400
     assert "not yet available" in exc_info.value.detail
+
+
+@pytest.mark.anyio("asyncio")
+async def test_toolbox_settings_get_catalog(monkeypatch):
+    session = make_session_stub()
+    monkeypatch.setattr(
+        toolbox_settings,
+        "_resolve_catalog_url",
+        AsyncMock(return_value=(AnyHttpUrl("https://catalog.example/catalog.json"), None)),
+    )
+
+    result = await toolbox_settings.get_catalog_settings(session=session, _=object())
+
+    assert str(result.effective_url) == "https://catalog.example/catalog.json"
+    assert result.configured_url is None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_toolbox_settings_update_catalog(monkeypatch):
+    class SystemSettingServiceStub:
+        def __init__(self, session):
+            self.session = session
+            self.saved = None
+            self.deleted = False
+            session.toolbox_service_stub = self
+
+        async def set_json(self, key, value):
+            self.saved = (key, value)
+
+        async def delete(self, key):
+            self.deleted = True
+
+    session = make_session_stub()
+    session.commit = AsyncMock()
+
+    monkeypatch.setattr(toolbox_settings, "SystemSettingService", SystemSettingServiceStub)
+    monkeypatch.setattr(
+        toolbox_settings,
+        "_resolve_catalog_url",
+        AsyncMock(return_value=(AnyHttpUrl("https://catalog.example/catalog.json"), AnyHttpUrl("https://catalog.example/catalog.json"))),
+    )
+
+    result = await toolbox_settings.update_catalog_settings(
+        payload=toolbox_settings.CatalogSettingsRequest(url="https://catalog.example/catalog.json"),
+        session=session,
+        _=object(),
+    )
+
+    assert str(result.effective_url) == "https://catalog.example/catalog.json"
+    assert str(result.configured_url) == "https://catalog.example/catalog.json"
+    assert session.toolbox_service_stub.saved == (toolkits.CATALOG_URL_SETTING_KEY, "https://catalog.example/catalog.json")

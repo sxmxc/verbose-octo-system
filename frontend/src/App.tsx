@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 
 import AppShell from './AppShell'
 import { AuthProvider, useAuth } from './AuthContext'
+import { Skeleton } from './components/Skeleton'
 import { ThemeProvider } from './ThemeContext'
 import { ToolkitProvider } from './ToolkitContext'
 import LoginPage from './pages/LoginPage'
@@ -13,8 +14,19 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: 'var(--color-text-primary)' }}>
-        <p>Authenticating…</p>
+      <div
+        style={{
+          display: 'grid',
+          placeItems: 'center',
+          minHeight: '100vh',
+          background: 'var(--color-surface)',
+        }}
+      >
+        <div style={{ display: 'grid', gap: '1rem', width: 'min(420px, 80vw)' }}>
+          <Skeleton height="2rem" />
+          <Skeleton height="1rem" width="80%" />
+          <Skeleton height="1rem" width="65%" />
+        </div>
       </div>
     )
   }

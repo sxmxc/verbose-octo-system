@@ -39,14 +39,14 @@ Use this guide to run the SRE Toolbox day to day. It covers the management scree
 
 ## Configuring authentication providers
 
-1. Go to **Administration → Auth settings** (requires `system.admin`).
+1. Go to **Administration → Toolbox settings → Auth** (requires `system.admin`).
 2. Add or edit providers (Local, OIDC, LDAP, Active Directory). Each form includes required fields and optional Vault-backed secret references.
 3. Use the "Test connection" button to validate bind credentials or discovery endpoints before saving.
 4. Provider changes are persisted in PostgreSQL and reflected in the login screen instantly.
 
 ## Validating Vault connectivity
 
-- The status badge at the top of **Administration → Auth settings** shows whether Vault is reachable.
+- The status badge at the top of **Administration → Toolbox settings → Auth** shows whether Vault is reachable.
 - If Vault becomes sealed or unavailable, toolkit secrets cannot be resolved and the API returns a `503`. Unseal Vault and refresh the page to restore connectivity.
 - When rotating Vault tokens, update `.env` (or the secret backing `VAULT_TOKEN_FILE`) and restart the API/worker.
 

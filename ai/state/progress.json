@@ -8,7 +8,7 @@
     {
       "task_id": "toolkit-discovery",
       "status": "done",
-      "summary": "Implemented community catalog fetch/install endpoints with Admin UI discovery panel and documentation updates."
+      "summary": "Implemented community catalog fetch/install endpoints, introduced toolbox settings (catalog/auth tabs), refactored admin toolkits layout, and refreshed documentation."
     },
     {
       "task_id": "enhance-error-messages",

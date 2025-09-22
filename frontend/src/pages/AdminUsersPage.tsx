@@ -3,6 +3,7 @@ import React, { FormEvent, useCallback, useEffect, useMemo, useState } from 'rea
 import { apiFetch } from '../api'
 import { useAuth } from '../AuthContext'
 import { MaterialIcon } from '../components/MaterialIcon'
+import { Skeleton, SkeletonText } from '../components/Skeleton'
 
 interface ManagedUser {
   id: string
@@ -267,7 +268,25 @@ export default function AdminUsersPage() {
           </button>
         </header>
         {loading ? (
-          <p style={{ color: 'var(--color-text-secondary)' }}>Loading users…</p>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={`user-skeleton-${index}`}
+                style={{
+                  border: '1px dashed var(--color-border)',
+                  borderRadius: 10,
+                  padding: '1rem 1.2rem',
+                  background: 'var(--color-surface-alt, rgba(0, 0, 0, 0.02))',
+                  display: 'grid',
+                  gap: '0.6rem',
+                }}
+              >
+                <Skeleton height="1.1rem" width="45%" />
+                <Skeleton height="0.9rem" width="60%" />
+                <SkeletonText lines={2} lineHeight="0.85rem" />
+              </div>
+            ))}
+          </div>
         ) : users.length === 0 ? (
           <p style={{ color: 'var(--color-text-secondary)' }}>No users found.</p>
         ) : (

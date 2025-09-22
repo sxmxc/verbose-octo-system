@@ -48,6 +48,7 @@ Keep `.env` authoritative for local development. Production orchestration should
 - Monitor the `toolbox-data` volume size to ensure toolkit bundles do not exhaust disk space.
 - Rotate Vault tokens regularly; use `VAULT_TOKEN_FILE` when running in CI/CD so credentials are not committed.
 - After uploading or uninstalling toolkits manually, reload the API or use the Admin → Toolkits UI to sync the registry.
+- Use Administration → Toolbox settings to override the community catalog manifest when pointing at another repository; the override persists via `TOOLKIT_CATALOG_URL`.
 - When debugging toolkit load issues, confirm the bundle exists on the shared volume and that the worker successfully imported the module (logs appear on the worker container/stdout).
 
 Refer to `docs/project-setup.md` for hands-on bootstrap steps and `docs/toolkit-authoring` for authoring guidelines.

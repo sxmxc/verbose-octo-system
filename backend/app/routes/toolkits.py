@@ -10,10 +10,11 @@ import zipfile
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
+from urllib.parse import urljoin
 
 import httpx
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile, Request, status
-from pydantic import AliasChoices, AnyHttpUrl, BaseModel, Field, ValidationError
+from pydantic import AliasChoices, AnyHttpUrl, BaseModel, Field, TypeAdapter, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -47,9 +48,12 @@ class CommunityToolkitEntry(BaseModel):
     name: str
     description: str | None = None
     version: str | None = None
-    bundle_url: AnyHttpUrl | None = Field(default=None, validation_alias=AliasChoices("bundle_url", "bundle"))
+    bundle_url: str | None = Field(default=None, validation_alias=AliasChoices("bundle_url", "bundle"))
+    resolved_bundle_url: AnyHttpUrl | None = None
     homepage: AnyHttpUrl | None = None
     maintainer: str | None = None
+    maintainers: list[str] | None = None
+    categories: list[str] | None = None
     tags: list[str] = Field(default_factory=list)
 
     model_config = {
@@ -59,6 +63,7 @@ class CommunityToolkitEntry(BaseModel):
 
 class CommunityCatalogResponse(BaseModel):
     catalog_url: AnyHttpUrl | None
+    configured_url: AnyHttpUrl | None = None
     toolkits: list[CommunityToolkitEntry]
 
 
@@ -143,7 +148,8 @@ def _get_toolkit_or_404(slug: str) -> ToolkitRecord:
     return toolkit
 
 
-async def _resolve_catalog_url(session: AsyncSession | None = None) -> AnyHttpUrl | None:
+async def _resolve_catalog_url(session: AsyncSession | None = None) -> tuple[AnyHttpUrl | None, AnyHttpUrl | None]:
+    override_url: AnyHttpUrl | None = None
     if session is not None:
         settings_service = SystemSettingService(session)
         override = await settings_service.get_json(CATALOG_URL_SETTING_KEY, default=None)
@@ -151,10 +157,11 @@ async def _resolve_catalog_url(session: AsyncSession | None = None) -> AnyHttpUr
             override = override.get("url")
         if override:
             try:
-                return AnyHttpUrl(override)
+                override_url = AnyHttpUrl(override)
             except ValidationError as exc:  # pragma: no cover - defensive guard
                 raise HTTPException(status_code=500, detail="Stored catalog URL is invalid") from exc
-    return settings.toolkit_catalog_url
+    effective = override_url or settings.toolkit_catalog_url
+    return effective, override_url
 
 
 async def _fetch_community_catalog(catalog_url: AnyHttpUrl) -> list[CommunityToolkitEntry]:
@@ -189,9 +196,19 @@ async def _fetch_community_catalog(catalog_url: AnyHttpUrl) -> list[CommunityToo
         if not isinstance(entry, dict):
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Catalog entry must be an object")
         try:
-            entries.append(CommunityToolkitEntry.model_validate(entry))
+            model = CommunityToolkitEntry.model_validate(entry)
         except ValidationError as exc:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Invalid catalog entry: {exc}") from exc
+        if model.bundle_url:
+            resolved = urljoin(str(catalog_url), model.bundle_url)
+            try:
+                model.resolved_bundle_url = TypeAdapter(AnyHttpUrl).validate_python(resolved)
+            except ValidationError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Invalid catalog entry: {exc}"
+                ) from exc
+        entries.append(model)
     return entries
 
 
@@ -306,39 +323,11 @@ def toolkits_list():
 async def toolkits_community_catalog(
     session: AsyncSession = Depends(get_session),
 ) -> CommunityCatalogResponse:
-    catalog_url = await _resolve_catalog_url(session)
+    catalog_url, configured_url = await _resolve_catalog_url(session)
     if not catalog_url:
-        return CommunityCatalogResponse(catalog_url=None, toolkits=[])
+        return CommunityCatalogResponse(catalog_url=None, configured_url=configured_url, toolkits=[])
     entries = await _fetch_community_catalog(catalog_url)
-    return CommunityCatalogResponse(catalog_url=catalog_url, toolkits=entries)
-
-
-class CommunityCatalogUpdateRequest(BaseModel):
-    url: AnyHttpUrl | None = Field(default=None, description="Override URL for the community catalog")
-
-
-@router.post(
-    "/community/catalog",
-    response_model=CommunityCatalogResponse,
-    summary="Override community catalog URL",
-)
-async def toolkits_update_catalog_url(
-    payload: CommunityCatalogUpdateRequest,
-    session: AsyncSession = Depends(get_session),
-    _: object = Depends(require_superuser),
-) -> CommunityCatalogResponse:
-    settings_service = SystemSettingService(session)
-    if payload.url:
-        await settings_service.set_json(CATALOG_URL_SETTING_KEY, str(payload.url))
-    else:
-        await settings_service.delete(CATALOG_URL_SETTING_KEY)
-    await session.commit()
-
-    catalog_url = await _resolve_catalog_url(session)
-    toolkits: list[CommunityToolkitEntry] = []
-    if catalog_url:
-        toolkits = await _fetch_community_catalog(catalog_url)
-    return CommunityCatalogResponse(catalog_url=catalog_url, toolkits=toolkits)
+    return CommunityCatalogResponse(catalog_url=catalog_url, configured_url=configured_url, toolkits=entries)
 
 
 @router.post(
@@ -413,7 +402,7 @@ async def toolkits_install_from_catalog(
     except InvalidToolkitSlugError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    catalog_url = await _resolve_catalog_url(session)
+    catalog_url, _ = await _resolve_catalog_url(session)
     if not catalog_url:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Community catalog is disabled")
 
@@ -422,7 +411,8 @@ async def toolkits_install_from_catalog(
     if not entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Toolkit not found in catalog")
 
-    if not entry.bundle_url:
+    bundle_url = entry.resolved_bundle_url
+    if not bundle_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Toolkit bundle is not yet available for download",
@@ -430,7 +420,7 @@ async def toolkits_install_from_catalog(
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(str(entry.bundle_url), follow_redirects=True)
+            response = await client.get(str(bundle_url), follow_redirects=True)
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Failed to download bundle: {exc}") from exc
 
