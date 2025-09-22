@@ -5,12 +5,15 @@ import ntpath
 import secrets
 import shutil
 import stat
+import tempfile
 import zipfile
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
 
+import httpx
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile, Request, status
+from pydantic import AliasChoices, AnyHttpUrl, BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -32,9 +35,35 @@ from ..security.dependencies import require_roles, require_superuser
 from ..security.roles import ROLE_TOOLKIT_CURATOR, ROLE_TOOLKIT_USER
 from ..db.session import get_session
 from ..services.users import UserService
+from ..services.system_settings import SystemSettingService
 
 
 UPLOAD_WRITE_CHUNK_SIZE = 1024 * 1024
+CATALOG_URL_SETTING_KEY = "toolkit.catalog.url"
+
+
+class CommunityToolkitEntry(BaseModel):
+    slug: str
+    name: str
+    description: str | None = None
+    version: str | None = None
+    bundle_url: AnyHttpUrl | None = Field(default=None, validation_alias=AliasChoices("bundle_url", "bundle"))
+    homepage: AnyHttpUrl | None = None
+    maintainer: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+    model_config = {
+        "populate_by_name": True,
+    }
+
+
+class CommunityCatalogResponse(BaseModel):
+    catalog_url: AnyHttpUrl | None
+    toolkits: list[CommunityToolkitEntry]
+
+
+class CommunityInstallRequest(BaseModel):
+    slug: str = Field(..., description="Slug of the community toolkit to install")
 
 
 def _format_limit_mb(value: int) -> int:
@@ -114,6 +143,141 @@ def _get_toolkit_or_404(slug: str) -> ToolkitRecord:
     return toolkit
 
 
+async def _resolve_catalog_url(session: AsyncSession | None = None) -> AnyHttpUrl | None:
+    if session is not None:
+        settings_service = SystemSettingService(session)
+        override = await settings_service.get_json(CATALOG_URL_SETTING_KEY, default=None)
+        if isinstance(override, dict):
+            override = override.get("url")
+        if override:
+            try:
+                return AnyHttpUrl(override)
+            except ValidationError as exc:  # pragma: no cover - defensive guard
+                raise HTTPException(status_code=500, detail="Stored catalog URL is invalid") from exc
+    return settings.toolkit_catalog_url
+
+
+async def _fetch_community_catalog(catalog_url: AnyHttpUrl) -> list[CommunityToolkitEntry]:
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(str(catalog_url), follow_redirects=True)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Failed to fetch catalog: {exc}") from exc
+
+    if response.status_code != status.HTTP_200_OK:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Catalog request returned HTTP {response.status_code}",
+        )
+
+    try:
+        payload = response.json()
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Catalog payload is not valid JSON") from exc
+
+    if isinstance(payload, dict):
+        raw_entries = payload.get("toolkits")
+        if raw_entries is None:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Catalog missing 'toolkits' key")
+    elif isinstance(payload, list):  # pragma: no cover - flexible compatibility path
+        raw_entries = payload
+    else:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Catalog payload format is unsupported")
+
+    entries: list[CommunityToolkitEntry] = []
+    for entry in raw_entries:
+        if not isinstance(entry, dict):
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Catalog entry must be an object")
+        try:
+            entries.append(CommunityToolkitEntry.model_validate(entry))
+        except ValidationError as exc:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Invalid catalog entry: {exc}") from exc
+    return entries
+
+
+def _write_remote_bundle(content: bytes, slug: str) -> Path:
+    storage_dir = Path(settings.toolkit_storage_dir)
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    bundle_path = storage_dir / f"{slug}.zip"
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+        tmp_file.write(content)
+        tmp_source = Path(tmp_file.name)
+    if bundle_path.exists():
+        bundle_path.unlink()
+    tmp_source.replace(bundle_path)
+    return bundle_path
+
+
+def _extract_zip_bundle(bundle_path: Path, extraction_dirname: str) -> Path:
+    storage_dir = Path(settings.toolkit_storage_dir)
+    upload_root = storage_dir / "__uploads__"
+    upload_root.mkdir(parents=True, exist_ok=True)
+    toolkit_root = upload_root / extraction_dirname
+
+    if toolkit_root.exists():
+        shutil.rmtree(toolkit_root)
+    toolkit_root.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with zipfile.ZipFile(bundle_path) as zf:
+            destination_root = toolkit_root
+            root_resolved = destination_root.resolve()
+            total_uncompressed = 0
+            max_total_bytes = settings.toolkit_bundle_max_bytes
+            max_file_bytes = settings.toolkit_bundle_max_file_bytes
+            for member in zf.infolist():
+                target_path = _resolve_safe_member_path(member, destination_root, root_resolved)
+                if target_path == root_resolved:
+                    continue
+
+                mode = member.external_attr >> 16
+                if stat.S_ISLNK(mode):
+                    raise HTTPException(status_code=400, detail="Toolkit bundle may not contain symbolic links")
+
+                if member.is_dir():
+                    target_path.mkdir(parents=True, exist_ok=True)
+                    continue
+
+                if member.file_size > max_file_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"Toolkit file '{member.filename}' exceeds the {_format_limit_mb(max_file_bytes)}MB limit",
+                    )
+
+                total_uncompressed += member.file_size
+                if total_uncompressed > max_total_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=f"Toolkit bundle expands beyond the {_format_limit_mb(max_total_bytes)}MB limit",
+                    )
+
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                bytes_written = 0
+                with zf.open(member) as source, target_path.open("wb") as destination:
+                    while True:
+                        chunk = source.read(UPLOAD_WRITE_CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        bytes_written += len(chunk)
+                        if bytes_written > max_file_bytes:
+                            raise HTTPException(
+                                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                                detail=f"Toolkit file '{member.filename}' exceeds the {_format_limit_mb(max_file_bytes)}MB limit",
+                            )
+                        destination.write(chunk)
+
+                if mode:
+                    target_path.chmod(mode & 0o777)
+    except HTTPException:
+        shutil.rmtree(toolkit_root, ignore_errors=True)
+        raise
+    except zipfile.BadZipFile as exc:
+        shutil.rmtree(toolkit_root, ignore_errors=True)
+        raise HTTPException(status_code=400, detail=f"Invalid zip bundle: {exc}") from exc
+
+    return toolkit_root
+
+
 @asynccontextmanager
 async def toolkits_lifespan(_: FastAPI) -> AsyncIterator[None]:  # pragma: no cover - simple bootstrap
     ensure_bundled_toolkits_installed()
@@ -131,6 +295,50 @@ router = APIRouter(lifespan=toolkits_lifespan)
 )
 def toolkits_list():
     return list_toolkits()
+
+
+@router.get(
+    "/community",
+    response_model=CommunityCatalogResponse,
+    summary="List community toolkits",
+    dependencies=[Depends(require_roles([ROLE_TOOLKIT_CURATOR]))],
+)
+async def toolkits_community_catalog(
+    session: AsyncSession = Depends(get_session),
+) -> CommunityCatalogResponse:
+    catalog_url = await _resolve_catalog_url(session)
+    if not catalog_url:
+        return CommunityCatalogResponse(catalog_url=None, toolkits=[])
+    entries = await _fetch_community_catalog(catalog_url)
+    return CommunityCatalogResponse(catalog_url=catalog_url, toolkits=entries)
+
+
+class CommunityCatalogUpdateRequest(BaseModel):
+    url: AnyHttpUrl | None = Field(default=None, description="Override URL for the community catalog")
+
+
+@router.post(
+    "/community/catalog",
+    response_model=CommunityCatalogResponse,
+    summary="Override community catalog URL",
+)
+async def toolkits_update_catalog_url(
+    payload: CommunityCatalogUpdateRequest,
+    session: AsyncSession = Depends(get_session),
+    _: object = Depends(require_superuser),
+) -> CommunityCatalogResponse:
+    settings_service = SystemSettingService(session)
+    if payload.url:
+        await settings_service.set_json(CATALOG_URL_SETTING_KEY, str(payload.url))
+    else:
+        await settings_service.delete(CATALOG_URL_SETTING_KEY)
+    await session.commit()
+
+    catalog_url = await _resolve_catalog_url(session)
+    toolkits: list[CommunityToolkitEntry] = []
+    if catalog_url:
+        toolkits = await _fetch_community_catalog(catalog_url)
+    return CommunityCatalogResponse(catalog_url=catalog_url, toolkits=toolkits)
 
 
 @router.post(
@@ -186,6 +394,103 @@ async def toolkits_update(
         )
         await session.commit()
     return toolkit
+
+
+@router.post(
+    "/community/install",
+    response_model=ToolkitRecord,
+    status_code=status.HTTP_201_CREATED,
+    summary="Install a toolkit from the community catalog",
+)
+async def toolkits_install_from_catalog(
+    payload: CommunityInstallRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user=Depends(require_superuser),
+) -> ToolkitRecord:
+    try:
+        slug = normalise_slug(payload.slug)
+    except InvalidToolkitSlugError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    catalog_url = await _resolve_catalog_url(session)
+    if not catalog_url:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Community catalog is disabled")
+
+    entries = await _fetch_community_catalog(catalog_url)
+    entry = next((item for item in entries if item.slug == slug), None)
+    if not entry:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Toolkit not found in catalog")
+
+    if not entry.bundle_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Toolkit bundle is not yet available for download",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(str(entry.bundle_url), follow_redirects=True)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Failed to download bundle: {exc}") from exc
+
+    if response.status_code != status.HTTP_200_OK:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Bundle download returned HTTP {response.status_code}",
+        )
+
+    content = response.content
+    if len(content) > settings.toolkit_bundle_max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Toolkit bundle exceeds the {_format_limit_mb(settings.toolkit_bundle_max_bytes)}MB limit",
+        )
+
+    bundle_path = _write_remote_bundle(content, slug)
+    extraction_dirname = slug
+    try:
+        toolkit_root = _extract_zip_bundle(bundle_path, extraction_dirname)
+    except HTTPException:
+        bundle_path.unlink(missing_ok=True)
+        raise
+
+    try:
+        record = install_toolkit_from_directory(
+            toolkit_root,
+            slug_override=slug,
+            origin="community",
+            enable_by_default=False,
+            preserve_enabled=True,
+        )
+    except ToolkitManifestError as exc:
+        bundle_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        shutil.rmtree(toolkit_root, ignore_errors=True)
+
+    user_service = UserService(session)
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    await user_service.audit(
+        user=current_user,
+        actor=current_user,
+        event="toolkit.install",
+        payload={
+            "slug": record.slug,
+            "name": record.name,
+            "origin": "community",
+            "enabled": record.enabled,
+            "bundle_filename": f"{record.slug}.zip",
+        },
+        source_ip=client_ip,
+        user_agent=user_agent,
+        target_type="toolkit",
+        target_id=record.slug,
+    )
+    await session.commit()
+
+    return record
 
 
 @router.delete(
@@ -311,76 +616,14 @@ async def toolkits_install(
     storage_dir.mkdir(parents=True, exist_ok=True)
     bundle_filename, bundle_path = _allocate_bundle_destination(storage_dir, file.filename)
 
-    upload_root = storage_dir / "__uploads__"
-    upload_root.mkdir(parents=True, exist_ok=True)
-    extraction_dirname = slug or Path(bundle_filename).stem or "bundle"
-    toolkit_root = upload_root / extraction_dirname
-
     await _stream_upload_to_path(file, bundle_path)
 
-    if toolkit_root.exists():
-        shutil.rmtree(toolkit_root)
-    toolkit_root.mkdir(parents=True, exist_ok=True)
-
+    extraction_dirname = slug or Path(bundle_filename).stem or "bundle"
     try:
-        with zipfile.ZipFile(bundle_path) as zf:
-            destination_root = toolkit_root
-            root_resolved = destination_root.resolve()
-            total_uncompressed = 0
-            max_total_bytes = settings.toolkit_bundle_max_bytes
-            max_file_bytes = settings.toolkit_bundle_max_file_bytes
-            for member in zf.infolist():
-                target_path = _resolve_safe_member_path(member, destination_root, root_resolved)
-                # Ensure metadata (like standalone directory entries) don't attempt traversal
-                if target_path == root_resolved:
-                    continue
-
-                mode = member.external_attr >> 16
-                if stat.S_ISLNK(mode):
-                    raise HTTPException(status_code=400, detail="Toolkit bundle may not contain symbolic links")
-
-                if member.is_dir():
-                    target_path.mkdir(parents=True, exist_ok=True)
-                    continue
-
-                if member.file_size > max_file_bytes:
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=f"Toolkit file '{member.filename}' exceeds the {_format_limit_mb(max_file_bytes)}MB limit",
-                    )
-
-                total_uncompressed += member.file_size
-                if total_uncompressed > max_total_bytes:
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=f"Toolkit bundle expands beyond the {_format_limit_mb(max_total_bytes)}MB limit",
-                    )
-
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                bytes_written = 0
-                with zf.open(member) as source, target_path.open("wb") as destination:
-                    while True:
-                        chunk = source.read(UPLOAD_WRITE_CHUNK_SIZE)
-                        if not chunk:
-                            break
-                        bytes_written += len(chunk)
-                        if bytes_written > max_file_bytes:
-                            raise HTTPException(
-                                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                                detail=f"Toolkit file '{member.filename}' exceeds the {_format_limit_mb(max_file_bytes)}MB limit",
-                            )
-                        destination.write(chunk)
-
-                if mode:
-                    target_path.chmod(mode & 0o777)
+        toolkit_root = _extract_zip_bundle(bundle_path, extraction_dirname)
     except HTTPException:
         bundle_path.unlink(missing_ok=True)
-        shutil.rmtree(toolkit_root, ignore_errors=True)
         raise
-    except zipfile.BadZipFile as exc:
-        bundle_path.unlink(missing_ok=True)
-        shutil.rmtree(toolkit_root, ignore_errors=True)
-        raise HTTPException(status_code=400, detail=f"Invalid zip bundle: {exc}") from exc
 
     try:
         record = install_toolkit_from_directory(
@@ -392,8 +635,9 @@ async def toolkits_install(
         )
     except ToolkitManifestError as exc:
         bundle_path.unlink(missing_ok=True)
-        shutil.rmtree(toolkit_root, ignore_errors=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        shutil.rmtree(toolkit_root, ignore_errors=True)
 
     desired_bundle_path = storage_dir / f"{record.slug}.zip"
     if bundle_path != desired_bundle_path:
@@ -401,9 +645,6 @@ async def toolkits_install(
             desired_bundle_path.unlink()
         bundle_path.rename(desired_bundle_path)
         bundle_path = desired_bundle_path
-
-    if toolkit_root.exists():
-        shutil.rmtree(toolkit_root, ignore_errors=True)
 
     user_service = UserService(session)
     client_ip = request.client.host if request.client else None

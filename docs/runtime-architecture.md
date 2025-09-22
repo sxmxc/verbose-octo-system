@@ -37,6 +37,7 @@ Inspect volumes with `docker volume inspect <name>` and clean them with `docker 
 
 - `DATABASE_URL`, `REDIS_URL`, `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_KV_MOUNT`, `FRONTEND_BASE_URL`, `VITE_API_BASE_URL` - minimal set required for a healthy stack.
 - `TOOLKIT_STORAGE_DIR`, `TOOLKIT_UPLOAD_MAX_BYTES`, `TOOLKIT_BUNDLE_MAX_BYTES`, `TOOLKIT_BUNDLE_MAX_FILE_BYTES` - govern where toolkits live and how uploads are validated.
+- `TOOLKIT_CATALOG_URL` - optional manifest URL for the community discovery catalog surfaced in Admin → Toolkits; overrides the default <https://raw.githubusercontent.com/sxmxc/ideal-octo-engine/main/catalog/toolkits.json> when set.
 - `AUTH_JWT_SECRET` / `AUTH_JWT_PRIVATE_KEY` / `AUTH_JWT_PUBLIC_KEY` - signing material for access/refresh tokens; the API refuses to start unless the secret is ≥32 characters or an asymmetric key pair is supplied.
 - `BOOTSTRAP_ADMIN_*` - optional first-run administrative account seeded during API startup.
 

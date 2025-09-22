@@ -174,7 +174,7 @@ Additional provider-specific settings (OIDC, LDAP/AD) can be injected via `AUTH_
 - **Jobs** – pollable list with inline log streaming and cancellation that propagates to Celery.
 - **Toolkits index** – view metadata, enable/disable toolkits, and open toolkit documentation.
 - **Toolkit routes** – `/toolkits/:slug/*` renders toolkit-provided React layouts or a friendly placeholder when no UI bundle ships.
-- **Administration → Toolkits** – upload `.zip` bundles, toggle visibility, uninstall toolkits, and inspect metadata derived from `toolkit.json`.
+- **Administration → Toolkits** – upload `.zip` bundles, toggle visibility, uninstall toolkits, and inspect metadata derived from `toolkit.json`. The Community Catalog panel lists toolkits published at <https://sxmxc.github.io/ideal-octo-engine>; installs stream from the manifest at <https://raw.githubusercontent.com/sxmxc/ideal-octo-engine/main/catalog/toolkits.json>. Override the manifest by setting `TOOLKIT_CATALOG_URL` in `.env` or saving a new URL from the catalog form (superuser only).
 - **Administration → Users** – invite local users, assign roles, or import external identities.
 - **Administration → Auth settings** – configure local, OIDC, LDAP, or Active Directory providers without redeploying.
 
