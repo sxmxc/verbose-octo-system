@@ -77,11 +77,15 @@ def _validate_database_url(env: Mapping[str, str], errors: list[str]) -> None:
     expected_user = env.get("POSTGRES_USER", "")
     expected_password = env.get("POSTGRES_PASSWORD", "")
     expected_db = env.get("POSTGRES_DB", "")
-    if username and expected_user and username != expected_user:
+    if expected_user and not username:
+        errors.append("DATABASE_URL must include a username when POSTGRES_USER is set")
+    elif username and expected_user and username != expected_user:
         errors.append(
             "DATABASE_URL username does not match POSTGRES_USER; update one of them"
         )
-    if password and expected_password and password != expected_password:
+    if expected_password and not password:
+        errors.append("DATABASE_URL must include a password when POSTGRES_PASSWORD is set")
+    elif password and expected_password and password != expected_password:
         errors.append(
             "DATABASE_URL password does not match POSTGRES_PASSWORD; update one of them"
         )

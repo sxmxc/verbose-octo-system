@@ -58,6 +58,15 @@ def test_validate_postgres_env_rejects_placeholder_in_database_url(valid_env: Di
     assert "placeholder credentials" in joined
 
 
+def test_validate_postgres_env_requires_database_url_credentials(valid_env: Dict[str, str]) -> None:
+    valid_env["DATABASE_URL"] = "postgresql+asyncpg://db:5432/toolbox"
+    with pytest.raises(PostgresEnvError) as exc:
+        validate_postgres_env(valid_env)
+    joined = "\n".join(exc.value.errors)
+    assert "must include a username" in joined
+    assert "must include a password" in joined
+
+
 def test_validate_postgres_env_allows_plain_postgresql_scheme(valid_env: Dict[str, str]) -> None:
     valid_env["DATABASE_URL"] = "postgresql://toolbox_admin:S0m3-Super-Secret!@db:5432/toolbox"
     validate_postgres_env(valid_env)
