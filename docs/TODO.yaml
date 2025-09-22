@@ -99,6 +99,14 @@ areas:
           - "Allow users to search, filter, and view details about each toolkit."
           - "Implement installation and update mechanisms that integrate with existing toolbox workflows."
           - "2025-09-22: Added community catalog endpoints, Admin → Toolkits discovery UI, env override, and docs for the sxmxc/ideal-octo-engine repository."
+      - id: community-bundle-resolution
+        title: Fix community bundle download URL resolution for repo-hosted bundles.
+        status: done
+        priority: high
+        notes:
+          - "2025-09-22: Catalog bundles served from toolkits/<slug>/bundle on https://sxmxc.github.io/ideal-octo-engine/ return HTTP 400 because resolution preserves the catalog/ prefix."
+          - "Ensure installs support bundles generated at repository roots without requiring catalog manifest changes."
+          - "2025-09-22: Added fallback bundle URL resolution (homepage, catalog dir, repository root) with regression coverage for GitHub Pages toolkits."
   - id: toolkit-updates
     title: Toolkit updates & versioning
     status: backlog

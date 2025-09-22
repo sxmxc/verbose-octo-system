@@ -139,6 +139,73 @@ async def test_toolkits_install_from_catalog_downloads_bundle(tmp_path, monkeypa
 
 
 @pytest.mark.anyio("asyncio")
+async def test_toolkits_install_from_catalog_falls_back_to_repo_root(tmp_path, monkeypatch):
+    session = make_session_stub()
+    monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", tmp_path)
+
+    entry = toolkits.CommunityToolkitEntry(
+        slug="demo",
+        name="Demo Toolkit",
+        bundle_url="toolkits/demo/bundle",
+    )
+    monkeypatch.setattr(
+        toolkits,
+        "_fetch_community_catalog",
+        AsyncMock(return_value=[entry]),
+    )
+    monkeypatch.setattr(
+        toolkits,
+        "_resolve_catalog_url",
+        AsyncMock(
+            return_value=(
+                AnyHttpUrl("https://sxmxc.github.io/ideal-octo-engine/catalog/toolkits.json"),
+                None,
+            ),
+        ),
+    )
+
+    bundle = io.BytesIO()
+    with toolkits.zipfile.ZipFile(bundle, "w") as zf:
+        zf.writestr("toolkit.json", "{\"slug\": \"demo\"}")
+    bundle.seek(0)
+
+    def primary_response(url):
+        return httpx.Response(
+            status_code=400,
+            request=httpx.Request("GET", url),
+        )
+
+    def fallback_response(url):
+        return httpx.Response(
+            status_code=200,
+            request=httpx.Request("GET", url),
+            content=bundle.getvalue(),
+        )
+
+    dummy_client = DummyAsyncClient([primary_response, fallback_response])
+    monkeypatch.setattr(toolkits.httpx, "AsyncClient", lambda *a, **kw: dummy_client)
+
+    record = SimpleNamespace(slug="demo", name="Demo Toolkit", origin="community", enabled=False)
+    monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
+    monkeypatch.setattr(toolkits, "UserService", lambda session: UserServiceStub(session))
+
+    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"), headers={})
+
+    result = await toolkits.toolkits_install_from_catalog(
+        payload=toolkits.CommunityInstallRequest(slug="demo"),
+        request=request,
+        session=session,
+        current_user=SimpleNamespace(),
+    )
+
+    assert result.slug == "demo"
+    assert dummy_client._calls == [
+        "https://sxmxc.github.io/ideal-octo-engine/catalog/toolkits/demo/bundle",
+        "https://sxmxc.github.io/ideal-octo-engine/toolkits/demo/bundle",
+    ]
+
+
+@pytest.mark.anyio("asyncio")
 async def test_toolkits_install_from_catalog_rejects_missing_bundle(monkeypatch):
     session = make_session_stub()
     entry = toolkits.CommunityToolkitEntry(

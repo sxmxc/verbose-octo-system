@@ -1,10 +1,15 @@
 {
   "version": 1,
-  "last_updated": "2025-09-22T05:30:00Z",
-  "session_counter": 11,
+  "last_updated": "2025-09-22T19:20:00Z",
+  "session_counter": 12,
   "active_task": null,
-  "last_task_id": "toolkit-discovery",
+  "last_task_id": "community-bundle-resolution",
   "recent_updates": [
+    {
+      "task_id": "community-bundle-resolution",
+      "status": "done",
+      "summary": "Added bundle URL fallbacks (homepage, catalog directory, repository root) so community installs succeed for GitHub Pages endpoints and captured regression tests."
+    },
     {
       "task_id": "toolkit-discovery",
       "status": "done",

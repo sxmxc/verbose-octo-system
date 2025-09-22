@@ -10,7 +10,7 @@ import zipfile
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import httpx
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile, Request, status
@@ -41,6 +41,53 @@ from ..services.system_settings import SystemSettingService
 
 UPLOAD_WRITE_CHUNK_SIZE = 1024 * 1024
 CATALOG_URL_SETTING_KEY = "toolkit.catalog.url"
+
+
+def _catalog_site_root_url(catalog_url: AnyHttpUrl) -> str:
+    parsed = urlparse(str(catalog_url))
+    parts = [segment for segment in parsed.path.split("/") if segment]
+    if parts:
+        root_path = f"/{parts[0]}/"
+    else:
+        root_path = "/"
+    return urlunparse(parsed._replace(path=root_path, params="", query="", fragment=""))
+
+
+def _build_bundle_url_candidates(
+    catalog_url: AnyHttpUrl,
+    entry: CommunityToolkitEntry,
+) -> list[str]:
+    raw_candidates: list[str] = []
+
+    if entry.resolved_bundle_url:
+        raw_candidates.append(str(entry.resolved_bundle_url))
+
+    bundle_url = (entry.bundle_url or "").strip()
+    if bundle_url:
+        if bundle_url.startswith(("http://", "https://")):
+            raw_candidates.append(bundle_url)
+        else:
+            if entry.homepage:
+                raw_candidates.append(urljoin(str(entry.homepage), bundle_url))
+            raw_candidates.append(urljoin(str(catalog_url), bundle_url))
+            root_base = _catalog_site_root_url(catalog_url)
+            raw_candidates.append(urljoin(root_base, bundle_url))
+
+    candidates: list[str] = []
+    for candidate in raw_candidates:
+        if not candidate:
+            continue
+        try:
+            validated = ANY_HTTP_URL_ADAPTER.validate_python(candidate)
+        except ValidationError:
+            continue
+        candidate_str = str(validated)
+        if candidate_str not in candidates:
+            candidates.append(candidate_str)
+    return candidates
+
+
+ANY_HTTP_URL_ADAPTER = TypeAdapter(AnyHttpUrl)
 
 
 class CommunityToolkitEntry(BaseModel):
@@ -200,14 +247,15 @@ async def _fetch_community_catalog(catalog_url: AnyHttpUrl) -> list[CommunityToo
         except ValidationError as exc:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Invalid catalog entry: {exc}") from exc
         if model.bundle_url:
-            resolved = urljoin(str(catalog_url), model.bundle_url)
-            try:
-                model.resolved_bundle_url = TypeAdapter(AnyHttpUrl).validate_python(resolved)
-            except ValidationError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=f"Invalid catalog entry: {exc}"
-                ) from exc
+            candidates = _build_bundle_url_candidates(catalog_url, model)
+            if candidates:
+                try:
+                    model.resolved_bundle_url = ANY_HTTP_URL_ADAPTER.validate_python(candidates[0])
+                except ValidationError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail=f"Invalid catalog entry: {exc}"
+                    ) from exc
         entries.append(model)
     return entries
 
@@ -411,8 +459,8 @@ async def toolkits_install_from_catalog(
     if not entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Toolkit not found in catalog")
 
-    bundle_url = entry.resolved_bundle_url
-    if not bundle_url:
+    candidate_urls = _build_bundle_url_candidates(catalog_url, entry)
+    if not candidate_urls:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Toolkit bundle is not yet available for download",
@@ -420,17 +468,31 @@ async def toolkits_install_from_catalog(
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(str(bundle_url), follow_redirects=True)
+            download_content: bytes | None = None
+            last_error: str | None = None
+            for candidate in candidate_urls:
+                try:
+                    response = await client.get(candidate, follow_redirects=True)
+                except httpx.HTTPError as exc:
+                    last_error = f"Failed to download bundle from {candidate}: {exc}"
+                    continue
+
+                if response.status_code == status.HTTP_200_OK:
+                    download_content = response.content
+                    break
+
+                last_error = (
+                    f"Bundle download from {candidate} returned HTTP {response.status_code}"
+                )
+
+            if download_content is None:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=last_error or "Failed to download toolkit bundle",
+                )
+            content = download_content
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Failed to download bundle: {exc}") from exc
-
-    if response.status_code != status.HTTP_200_OK:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Bundle download returned HTTP {response.status_code}",
-        )
-
-    content = response.content
     if len(content) > settings.toolkit_bundle_max_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
