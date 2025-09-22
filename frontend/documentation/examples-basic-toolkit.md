@@ -68,8 +68,8 @@ export default function StatusToolkit() {
 ## Deploying
 
 1. Build the frontend bundle so `frontend/dist/index.js` exists (for example, run your bundler or `npm run build`).
-2. Zip the directory.
-3. Upload via **Administration → Toolkits**.
+2. Commit the generated assets and merge into `main`. The Release workflow publishes a `toolkit-status` artifact that contains `status_toolkit.zip`.
+3. Download the artifact from the workflow run (or via `gh run download --repo <org>/<repo> --name toolkit-status`) and upload the archive via **Administration → Toolkits**.
 4. Enable the toolkit and browse to `/toolkits/status` to view the UI panel.
 
 Extend the example by adding worker jobs that poll upstream systems or by styling the UI using the guidance in [Toolkit UI Guide](toolkit-ui).

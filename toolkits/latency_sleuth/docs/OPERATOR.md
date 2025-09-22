@@ -50,8 +50,8 @@ after restarts. Monitor upcoming executions in the **Scheduling** panel within t
    pytest toolkits/latency_sleuth/tests
    npm --prefix frontend test -- --run toolkits/latency_sleuth/frontend
    ```
-2. Package the bundle using `toolkits/scripts/package_toolkit.py`.
-3. Attach `latency-sleuth_toolkit.zip` and updated release notes to your distribution channel.
+2. Merge the changes into `main` and confirm the Release workflow produced the `toolkit-latency-sleuth` artifact.
+3. Attach the downloaded `latency-sleuth_toolkit.zip` and updated release notes to your distribution channel.
 4. After installation, confirm the dashboard card links to `/toolkits/latency-sleuth`.
 
 For troubleshooting, inspect Celery worker logs for `latency-sleuth.run_probe` entries and check Redis keys prefixed with

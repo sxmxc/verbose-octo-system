@@ -15,12 +15,13 @@ Follow this sequence before publishing a toolkit bundle so operators receive a r
 - Validate documentation links in your toolkit dashboard cards open the intended guides in `/documentation/*`.
 
 ## Packaging & Distribution
-- Run `python toolkits/scripts/package_toolkit.py <path>` to build `<slug>_toolkit.zip`.
-- Verify the slug in `toolkit.json` uses only lowercase letters, numbers, hyphen (`-`), or underscore (`_`); packaging fails fast when the allowlist is violated.
-- Include the generated archive and release notes in your artifact store (GitHub Releases, internal registry, etc.).
+- Build the frontend bundle (when applicable) so artifacts such as `frontend/dist/index.js` or custom `frontend.entry` targets exist before you commit.
+- Verify the slug in `toolkit.json` uses only lowercase letters, numbers, hyphen (`-`), or underscore (`_`); the release workflow fails quickly when the allowlist is violated.
 - Bump the toolkit version in `toolkit.json` and include a changelog entry summarising major changes and migration steps.
-- Ensure the archive does not contain absolute paths, drive letters, parent-directory segments, or symlinks—uploads are rejected when these appear to prevent directory traversal during install.
-- Keep the archive within the enforced limits (`TOOLKIT_UPLOAD_MAX_BYTES` compressed, `TOOLKIT_BUNDLE_MAX_BYTES` total extracted, `TOOLKIT_BUNDLE_MAX_FILE_BYTES` per file) so installs cannot inflate into zip bombs.
+- Merge your branch (with built assets committed) into `main`. The **Release** GitHub Actions workflow runs on every push to `main`, invokes `toolkits/scripts/package_all_toolkits.py`, and uploads a `toolkit-<slug>` artifact containing `<slug>_toolkit.zip`.
+- Monitor the workflow under **Actions → Release**. You can download artifacts directly from the run summary or via `gh run download --repo <org>/<repo> --name toolkit-<slug>` once the `Package Toolkit` job succeeds.
+- Share the downloaded archive alongside release notes in your preferred artifact store, or hand it to the operations team for installation.
+- Ensure the archive remains within the enforced limits (`TOOLKIT_UPLOAD_MAX_BYTES` compressed, `TOOLKIT_BUNDLE_MAX_BYTES` total extracted, `TOOLKIT_BUNDLE_MAX_FILE_BYTES` per file). The packaging job fails if these limits are exceeded or if prohibited paths (absolute, parent-directory segments, symlinks) appear.
 
 ## Rollback Strategy
 - Keep the previous release bundle available so operators can reinstall quickly if issues arise.

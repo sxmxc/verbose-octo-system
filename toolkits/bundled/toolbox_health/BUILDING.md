@@ -16,11 +16,7 @@
      --loader:.tsx=tsx
    ```
 
-2. Package the toolkit using the helper script:
-
-   ```bash
-   python ../../scripts/package_toolkit.py .
-   ```
-
-3. Upload the generated `toolbox-health_toolkit.zip` through **Administration → Toolkits** or via the `/toolkits/install` API.
+2. Commit the refreshed assets, merge into `main`, and let the Release workflow handle packaging.
+3. Download the `toolkit-toolbox-health` artifact (containing `toolbox-health_toolkit.zip`) from the workflow run or via `gh run download --repo <org>/<repo> --name toolkit-toolbox-health`.
+4. Upload the downloaded archive through **Administration → Toolkits** or via the `/toolkits/install` API.
 

@@ -35,7 +35,7 @@ All three share a common domain model (PostgreSQL or SQLite), a Redis-backed eve
 
 ## Toolkit runtime contract
 
-1. **Packaging** – Toolkits ship as zip archives containing `toolkit.json` plus optional backend, worker, and frontend modules. Scripts under `toolkits/scripts/` help validate and package bundles.
+1. **Packaging** – Toolkits ship as zip archives containing `toolkit.json` plus optional backend, worker, and frontend modules. The Release workflow invokes the helpers under `toolkits/scripts/` to validate manifests and build bundles automatically whenever `main` is updated.
 2. **Installation** – Operators upload archives through Admin → Toolkits or `POST /toolkits/install`. The installer unpacks bundles into `TOOLKIT_STORAGE_DIR/<slug>/`.
 3. **Activation** – On startup (or after an install event) the loader imports backend routers and worker registration hooks, then advertises dashboard cards and frontends to the App Shell.
 4. **Execution** – API endpoints enqueue jobs to Celery, which pulls runtime dependencies (database, Redis, external APIs) defined by the toolkit.

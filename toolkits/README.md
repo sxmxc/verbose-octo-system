@@ -4,20 +4,13 @@ This directory contains bundled toolkits and utility scripts for packaging your 
 
 ## Packaging a toolkit
 
-Use the helper script to validate a toolkit directory and generate a distributable `.zip`:
+The repository's **Release** workflow packages toolkits automatically on every push to `main`:
 
-```bash
-python toolkits/scripts/package_toolkit.py toolkits/bundled/zabbix
-```
+1. Build any frontend bundles so files such as `frontend/dist/index.js` exist.
+2. Commit the assets, open a pull request, and merge into `main`.
+3. Download the `toolkit-<slug>` artifact produced by the Release workflow (either from the run summary or via `gh run download`).
 
-The script checks that:
-
-- `toolkit.json` exists and declares a slug.
-- The slug only contains lowercase letters, numbers, hyphen (`-`), or underscore (`_`).
-- Files referenced by `frontend.entry` / `frontend.source_entry` are present.
-- Default `frontend/dist/index.js` is included when no entry is specified.
-
-By default the archive is written next to the toolkit as `<slug>_toolkit.zip`. Supply `--output` to place it elsewhere and `--force` to overwrite existing files.
+The workflow runs `toolkits/scripts/package_all_toolkits.py` internally, enforcing manifest validation, slug allowlists, and filesystem safety rules. The standalone helper remains available for local smoke tests, but day-to-day releases should rely on CI.
 
 ## Bundled examples
 

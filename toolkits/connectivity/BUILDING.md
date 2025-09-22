@@ -17,11 +17,7 @@
      --loader:.tsx=tsx
    ```
 
-2. Package the toolkit:
+2. Trigger packaging in CI:
 
-   ```bash
-   cd ../toolkits/scripts
-   python package_toolkit.py ../connectivity
-   ```
-
-   This produces `connectivity_toolkit.zip` alongside the toolkit directory.
+   - Commit the refreshed bundle to a branch, submit a pull request, and merge into `main`.
+   - The Release workflow emits a `toolkit-connectivity` artifact that contains `connectivity_toolkit.zip`. Download it from the workflow run or via `gh run download --repo <org>/<repo> --name toolkit-connectivity`.
