@@ -41,3 +41,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Closed TODO `improve-designer-tab` by reshaping the Probe Designer view into a responsive two-column layout with inline catalog actions (`toolkits/latency_sleuth/frontend/components/ProbeDesigner.tsx`; Context7 #1, #7).
 - Added a reusable filtering helper with Vitest coverage to guarantee deterministic search/tag behaviour (`toolkits/latency_sleuth/frontend/components/filterProbeTemplates.ts`, `toolkits/latency_sleuth/frontend/components/__tests__/filterProbeTemplates.test.tsx`; Context7 #6).
 - Ran the Latency Sleuth frontend Vitest config directly via the repository toolchain to confirm the suite stays green (`toolkits/latency_sleuth/frontend/vitest.config.mts`; Context7 #6).
+
+## 2025-09-21 Postgres credential hardening
+- Moved TODO `remove-default-postgres-creds` to in_progress and stripped docker-compose defaults so Postgres credentials must be supplied explicitly (`docs/TODO.yaml`, `docker-compose.yml`).
+- Refreshed `.env.example`, the manual dev workflow, and the Docker Compose checklist so operators generate their own secrets before booting the stack (`.env.example`, `README.md`, `docs/project-setup.md`).
+- Rendered the compose config with the updated `.env` to confirm required variables behave as expected (`docker compose config`; `docker-compose.yml`).

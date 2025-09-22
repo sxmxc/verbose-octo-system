@@ -100,10 +100,10 @@ Run shared infrastructure in containers and execute the application processes lo
    ./bootstrap-stack.sh
    ```
 
-2. Override connection strings in `.env` for localhost access (example values):
+2. Override connection strings in `.env` for localhost access (use the same credentials you provisioned for Postgres):
 
    ```dotenv
-   DATABASE_URL=postgresql+asyncpg://sretoolbox:sretoolbox@127.0.0.1:5432/sretoolbox
+   DATABASE_URL=postgresql+asyncpg://<postgres_user>:<postgres_password>@127.0.0.1:5432/<postgres_db>
    REDIS_URL=redis://127.0.0.1:6379/0
    VAULT_ADDR=http://127.0.0.1:8200
    FRONTEND_BASE_URL=http://localhost:5173

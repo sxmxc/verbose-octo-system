@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "last_updated": "2025-09-21T18:38:45Z",
-  "session_counter": 7,
-  "active_task": null,
-  "last_task_id": "improve-designer-tab",
+  "last_updated": "2025-09-21T19:05:00Z",
+  "session_counter": 8,
+  "active_task": "remove-default-postgres-creds",
+  "last_task_id": "remove-default-postgres-creds",
   "recent_updates": [
     {
       "task_id": "improve-designer-tab",
@@ -41,12 +41,6 @@
       "summary": "Enforced non-default JWT secrets with startup validation and refreshed operator docs."
     }
   ],
-  "candidate_next_tasks": [
-    {
-      "task_id": "remove-default-postgres-creds",
-      "status": "backlog",
-      "reason": "Default credentials linger in docker-compose and should be eliminated."
-    }
-  ],
+  "candidate_next_tasks": [],
   "notes": "Initialised by Codex; update this file whenever focus or status changes. Architecture/schema references refreshed in session 2."
 }
