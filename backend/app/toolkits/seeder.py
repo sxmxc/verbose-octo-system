@@ -6,20 +6,20 @@ from .install_utils import install_toolkit_from_directory
 from .registry import get_toolkit, is_toolkit_removed, set_toolkit_origin
 
 
-def _resolve_bundled_path(slug: str) -> Path | None:
+def _discover_bundled_toolkits() -> dict[str, Path]:
     current = Path(__file__).resolve()
     for parent in current.parents:
-        candidate = parent / "toolkits" / "bundled" / slug
-        if candidate.exists():
-            return candidate
-    return None
+        bundled_root = parent / "toolkits" / "bundled"
+        if bundled_root.exists():
+            return {
+                candidate.name: candidate
+                for candidate in bundled_root.iterdir()
+                if candidate.is_dir()
+            }
+    return {}
 
 
-_BUNDLED_TOOLKITS = {
-    slug: path
-    for slug in ("zabbix", "regex")
-    if (path := _resolve_bundled_path(slug)) is not None
-}
+_BUNDLED_TOOLKITS = _discover_bundled_toolkits()
 
 
 def ensure_bundled_toolkits_installed() -> None:

@@ -15,6 +15,7 @@ The workflow runs `toolkits/scripts/package_all_toolkits.py` internally, enforci
 ## Bundled examples
 
 - `toolkits/bundled/regex`
+- `toolkits/bundled/toolbox_health`
 - `toolkits/bundled/zabbix`
 
 Each bundled toolkit includes a `BUILDING.md` file with notes on how we assemble its distribution bundle.

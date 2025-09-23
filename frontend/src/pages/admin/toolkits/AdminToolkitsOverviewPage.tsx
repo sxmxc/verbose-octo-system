@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 import { apiFetch } from '../../../api'
 import { useAuth } from '../../../AuthContext'
@@ -20,7 +20,9 @@ export default function AdminToolkitsOverviewPage() {
   const [docs, setDocs] = useState<ToolkitDocs | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busySlug, setBusySlug] = useState<string | null>(null)
+  const [errorSlug, setErrorSlug] = useState<string | null>(null)
   const canToggle = hasRole('toolkit.curator')
+  const errorRef = useRef<HTMLParagraphElement | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -36,6 +38,7 @@ export default function AdminToolkitsOverviewPage() {
   const toggleToolkit = async (toolkit: ToolkitRecord) => {
     if (!canToggle) return
     setError(null)
+    setErrorSlug(null)
     setBusySlug(toolkit.slug)
     try {
       const response = await apiFetch<ToolkitRecord>(`/toolkits/${toolkit.slug}`, {
@@ -45,10 +48,26 @@ export default function AdminToolkitsOverviewPage() {
       updateLocal(toolkit.slug, () => response)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+      setErrorSlug(toolkit.slug)
     } finally {
       setBusySlug(null)
     }
   }
+
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      if (typeof errorRef.current.focus === 'function') {
+        errorRef.current.focus({ preventScroll: true })
+      }
+    }
+  }, [error])
+
+  useEffect(() => {
+    if (!errorSlug) return
+    const timeout = window.setTimeout(() => setErrorSlug(null), 700)
+    return () => window.clearTimeout(timeout)
+  }, [errorSlug])
 
   return (
     <div className="admin-toolkits__stack">
@@ -76,7 +95,17 @@ export default function AdminToolkitsOverviewPage() {
         </section>
       )}
 
-      {error && <p className="admin-toolkits__error" role="alert">{error}</p>}
+      {error && (
+        <p
+          ref={errorRef}
+          tabIndex={-1}
+          className="admin-toolkits__error"
+          role="alert"
+          aria-live="assertive"
+        >
+          {error}
+        </p>
+      )}
 
       <section className="admin-toolkits__section">
         <h4 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -119,6 +148,7 @@ export default function AdminToolkitsOverviewPage() {
                     className={[
                       'admin-toolkits__icon-button',
                       toolkit.enabled ? 'is-active' : '',
+                      errorSlug === toolkit.slug ? 'is-error' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
@@ -135,17 +165,31 @@ export default function AdminToolkitsOverviewPage() {
                       type="button"
                       onClick={async () => {
                         setError(null)
+                        setErrorSlug(null)
                         setBusySlug(toolkit.slug)
                         try {
+                          const confirmed = window.confirm(
+                            `Uninstall ${toolkit.name}? This removes its files from the Toolbox.`
+                          )
+                          if (!confirmed) {
+                            return
+                          }
                           await apiFetch(`/toolkits/${toolkit.slug}`, { method: 'DELETE', skipJson: true })
                           await refresh()
                         } catch (err) {
                           setError(err instanceof Error ? err.message : String(err))
+                          setErrorSlug(toolkit.slug)
                         } finally {
                           setBusySlug(null)
                         }
                       }}
-                      className="admin-toolkits__icon-button admin-toolkits__icon-button--danger"
+                      className={[
+                        'admin-toolkits__icon-button',
+                        'admin-toolkits__icon-button--danger',
+                        errorSlug === toolkit.slug ? 'is-error' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
                       title="Uninstall toolkit"
                     >
                       <MaterialIcon name="delete" style={{ fontSize: '1.5rem', color: 'inherit' }} />

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { apiFetch } from '../../../api'
 import { useAuth } from '../../../AuthContext'
@@ -32,7 +32,7 @@ type CatalogMessage = {
   message: string
 }
 
-const PAGE_SIZE = 6
+const PAGE_SIZE = 8
 const OFFICIAL_MAINTAINERS = ['toolbox-maintainers@example.com']
 
 export default function AdminToolkitsCatalogPage() {
@@ -44,9 +44,12 @@ export default function AdminToolkitsCatalogPage() {
   const [catalogLoading, setCatalogLoading] = useState<boolean>(true)
   const [message, setMessage] = useState<CatalogMessage | null>(null)
   const [installingSlug, setInstallingSlug] = useState<string | null>(null)
+  const [activatingSlug, setActivatingSlug] = useState<string | null>(null)
+  const [failedAction, setFailedAction] = useState<{ slug: string; action: 'install' | 'enable' } | null>(null)
   const [page, setPage] = useState(1)
   const canToggle = hasRole('toolkit.curator')
   const canInstall = user?.is_superuser ?? false
+  const messageRef = useRef<HTMLParagraphElement | null>(null)
 
   const effectiveCatalogUrl = useMemo(() => catalogUrl || DEFAULT_CATALOG_URL, [catalogUrl])
   const totalPages = Math.max(1, Math.ceil(catalogEntries.length / PAGE_SIZE))
@@ -93,22 +96,64 @@ export default function AdminToolkitsCatalogPage() {
     loadCatalog()
   }, [loadCatalog])
 
+  useEffect(() => {
+    if (message && messageRef.current) {
+      messageRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      if (typeof messageRef.current.focus === 'function') {
+        messageRef.current.focus({ preventScroll: true })
+      }
+    }
+  }, [message])
+
+  useEffect(() => {
+    if (!failedAction) return
+    const timeout = window.setTimeout(() => setFailedAction(null), 700)
+    return () => window.clearTimeout(timeout)
+  }, [failedAction])
+
   const installFromCatalog = async (entry: CommunityToolkitEntry) => {
     const resolvedBundle = entry.resolved_bundle_url || entry.bundle_url
     if (!canInstall || !resolvedBundle) return
     setMessage(null)
+    setFailedAction(null)
     setInstallingSlug(entry.slug)
     try {
       const record = await apiFetch<ToolkitRecord>(`/toolkits/community/install`, {
         method: 'POST',
         body: { slug: entry.slug },
       })
-      setMessage({ type: 'notice', message: `${record.name} imported. Enable it from Installed toolkits.` })
+      setMessage({
+        type: 'notice',
+        message: record.enabled
+          ? `${record.name} imported and enabled.`
+          : `${record.name} imported. Enable it here when you're ready.`,
+      })
       await refresh()
     } catch (err) {
       setMessage({ type: 'error', message: err instanceof Error ? err.message : String(err) })
+      setFailedAction({ slug: entry.slug, action: 'install' })
     } finally {
       setInstallingSlug(null)
+    }
+  }
+
+  const enableToolkit = async (toolkit: ToolkitRecord) => {
+    if (!canToggle) return
+    setMessage(null)
+    setFailedAction(null)
+    setActivatingSlug(toolkit.slug)
+    try {
+      const response = await apiFetch<ToolkitRecord>(`/toolkits/${toolkit.slug}`, {
+        method: 'PUT',
+        body: { enabled: true },
+      })
+      setMessage({ type: 'notice', message: `${response.name} enabled.` })
+      await refresh()
+    } catch (err) {
+      setMessage({ type: 'error', message: err instanceof Error ? err.message : String(err) })
+      setFailedAction({ slug: toolkit.slug, action: 'enable' })
+    } finally {
+      setActivatingSlug(null)
     }
   }
 
@@ -184,7 +229,13 @@ export default function AdminToolkitsCatalogPage() {
           <p className="admin-toolkits__helper">Configured override: {configuredUrl}</p>
         )}
         {message && (
-          <p className={message.type === 'error' ? 'admin-toolkits__error' : 'admin-toolkits__notice'} role="status">
+          <p
+            ref={messageRef}
+            tabIndex={-1}
+            className={message.type === 'error' ? 'admin-toolkits__error' : 'admin-toolkits__notice'}
+            role={message.type === 'error' ? 'alert' : 'status'}
+            aria-live="assertive"
+          >
             {message.message}
           </p>
         )}
@@ -209,8 +260,14 @@ export default function AdminToolkitsCatalogPage() {
                 const installed = installedMap.get(entry.slug)
                 const resolvedBundle = entry.resolved_bundle_url || entry.bundle_url
                 const maintainers = entry.maintainers ?? (entry.maintainer ? [entry.maintainer] : [])
+                const isInstalling = installingSlug === entry.slug
+                const isActivating = activatingSlug === entry.slug
+                const isBusy = isInstalling || isActivating
                 return (
-                  <div key={entry.slug} className="admin-toolkits__catalog-card">
+                  <div
+                    key={entry.slug}
+                    className={["admin-toolkits__catalog-card", isBusy ? "is-busy" : ""].filter(Boolean).join(" ")}
+                  >
                     <div className="admin-toolkits__catalog-header">
                       <div>
                         <strong>{entry.name}</strong>
@@ -222,9 +279,18 @@ export default function AdminToolkitsCatalogPage() {
                       {canInstall && (
                         <button
                           type="button"
-                          className="tk-button tk-button--primary"
+                          className={[
+                            'tk-button',
+                            'tk-button--primary',
+                            'admin-toolkits__action-button',
+                            failedAction?.slug === entry.slug && failedAction.action === 'install'
+                              ? 'is-error'
+                              : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
                           onClick={() => installFromCatalog(entry)}
-                          disabled={installingSlug === entry.slug || Boolean(installed) || !resolvedBundle}
+                          disabled={isBusy || Boolean(installed) || !resolvedBundle}
                           title={
                             installed
                               ? 'Toolkit already installed'
@@ -234,10 +300,10 @@ export default function AdminToolkitsCatalogPage() {
                           }
                         >
                           <MaterialIcon
-                            name={installingSlug === entry.slug ? 'hourglass_top' : installed ? 'check' : 'download'}
+                            name={isInstalling ? 'hourglass_top' : installed ? 'check' : 'download'}
                             style={{ fontSize: '1.1rem', color: 'inherit' }}
                           />
-                          {installingSlug === entry.slug
+                          {isInstalling
                             ? 'Installing…'
                             : installed
                             ? 'Installed'
@@ -275,6 +341,35 @@ export default function AdminToolkitsCatalogPage() {
                         </span>
                       )}
                     </div>
+                    {installed && !installed.enabled && canToggle && (
+                      <button
+                        type="button"
+                        className={[
+                          'tk-button',
+                          'tk-button--primary',
+                          'admin-toolkits__action-button',
+                          'admin-toolkits__action-button--inline',
+                          failedAction?.slug === installed.slug && failedAction.action === 'enable'
+                            ? 'is-error'
+                            : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        onClick={() => enableToolkit(installed)}
+                        disabled={isBusy}
+                      >
+                        <MaterialIcon
+                          name={isActivating ? 'hourglass_top' : 'toggle_on'}
+                          style={{ fontSize: '1.1rem', color: 'inherit' }}
+                        />
+                        {isActivating ? 'Enabling…' : 'Enable toolkit'}
+                      </button>
+                    )}
+                    {isBusy && (
+                      <div className="admin-toolkits__card-overlay" aria-hidden>
+                        <div className="admin-toolkits__spinner" />
+                      </div>
+                    )}
                   </div>
                 )
               })}
