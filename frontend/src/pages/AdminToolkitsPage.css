@@ -191,6 +191,11 @@
   opacity: 0.6;
 }
 
+.admin-toolkits__icon-button.is-error {
+  background: var(--color-danger-bg);
+  border-radius: 10px;
+}
+
 .admin-toolkits__form {
   display: grid;
   gap: 0.75rem;
@@ -241,10 +246,46 @@
   gap: 0.75rem;
   min-height: 240px;
   position: relative;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-toolkits__catalog-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 24px rgba(15, 23, 42, 0.12);
+}
+
+.admin-toolkits__catalog-card.is-busy {
+  opacity: 0.92;
 }
 
 .admin-toolkits__catalog-card.is-loading {
   gap: 0.9rem;
+}
+
+.admin-toolkits__card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  border-radius: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.admin-toolkits__catalog-card.is-busy .admin-toolkits__card-overlay {
+  opacity: 1;
+}
+
+.admin-toolkits__spinner {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  border-top-color: var(--color-link);
+  animation: admin-toolkits-spin 0.8s linear infinite;
 }
 
 .admin-toolkits__catalog-header {
@@ -276,6 +317,30 @@
   align-items: center;
   gap: 0.6rem;
   margin-top: auto;
+}
+
+.admin-toolkits__action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-toolkits__action-button--inline {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.admin-toolkits__action-button.is-error,
+.admin-toolkits__icon-button.is-error {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-border);
+  border-color: var(--color-danger-border);
+  animation: admin-toolkits-shake 0.5s ease;
+}
+
+.admin-toolkits__action-button:disabled {
+  cursor: wait;
 }
 
 .admin-toolkits__badge-row {
@@ -362,4 +427,44 @@
   margin: 0;
   color: var(--color-danger-border);
   font-size: 0.85rem;
+}
+
+@keyframes admin-toolkits-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes admin-toolkits-shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-toolkits__catalog-card,
+  .admin-toolkits__action-button,
+  .admin-toolkits__icon-button {
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+
+  .admin-toolkits__card-overlay,
+  .admin-toolkits__spinner {
+    animation: none !important;
+  }
 }
