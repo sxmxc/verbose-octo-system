@@ -14,6 +14,7 @@ Use this guide as the starting point for building SRE Toolbox toolkits. It conne
 - Toolkits render under `/toolkits/:slug/*`; unauthenticated users hit `/login` and role checks (`RequireRole`, `RequireSuperuser`) gate admin routes.
 - `ToolkitRenderer` caches module imports per `toolkit.slug` and entry fields. Update `toolkit.updated_at` in `toolkit.json` when you want the shell to invalidate stale bundles.
 - Failed imports log warnings (`Toolkit <slug> import failed ...`) and fall back to `GenericToolkitPlaceholder`. Design your toolkit UI to degrade gracefully and surface actionable error states.
+- Shared Python helpers (Redis, jobs, Celery) live in `toolkit_runtime/`; review `docs/toolkit-runtime.md` before wiring backend routes or worker handlers so your telemetry matches the host.
 
 ## Slug Requirements
 - Declare a slug in `toolkit.json`; values must be lowercase and can only include letters, numbers, hyphen (`-`), or underscore (`_`).
