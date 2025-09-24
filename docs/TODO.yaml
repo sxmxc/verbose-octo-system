@@ -235,6 +235,14 @@ areas:
     title: Codex automation support
     summary: Keep Codex prompts, playbooks, and reference docs accurate.
     tasks:
+      - id: toolkit-runtime-docs
+        title: Document toolkit runtime helpers and integration points.
+        status: done
+        priority: high
+        notes:
+          - "Explain toolkit_runtime modules (redis, jobs, worker) and how toolkits consume them."
+          - "Cover environment configuration, job lifecycle, and registration hooks."
+          - "2025-09-24: Authored docs/toolkit-runtime.md and linked it from runtime, architecture, authoring, and README references."
       - id: codex-architecture-docs
         title: Document Toolbox architecture and schema for Codex agents.
         status: done

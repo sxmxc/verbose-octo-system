@@ -43,6 +43,10 @@ Inspect volumes with `docker volume inspect <name>` and clean them with `docker 
 
 Keep `.env` authoritative for local development. Production orchestration should inject secrets through Vault, AppRole tokens, or environment-specific secret stores.
 
+## Toolkit runtime helpers
+
+Toolkit bundles rely on the shared `toolkit_runtime` package for Redis access, job persistence, and Celery queueing. Review `docs/toolkit-runtime.md` when wiring backend routes or worker handlers so job telemetry and cancellation semantics match the host. The module uses the same Redis and Celery settings described above, so ensure overrides stay aligned across API, worker, and toolkits.
+
 ## Operational guidance
 
 - Monitor the `toolbox-data` volume size to ensure toolkit bundles do not exhaust disk space.

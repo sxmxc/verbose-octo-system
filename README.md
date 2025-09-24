@@ -34,7 +34,7 @@ SRE Toolbox is a modular operations cockpit for site reliability teams. The ligh
 
 - `backend/` – FastAPI API, Celery worker entrypoints, Alembic migrations, and the toolkit loader.
 - `frontend/` – React + Vite shell and operator docs under `frontend/documentation/`.
-- `toolkit_runtime/` – Shared runtime helpers injected into toolkit bundles (Redis, Celery, API client primitives).
+- `toolkit_runtime/` – Shared runtime helpers injected into toolkit bundles (Redis, Celery, API client primitives). See `docs/toolkit-runtime.md` for the full reference.
 - `toolkits/` – Bundled reference toolkits plus the packaging utilities CI uses (`scripts/package_toolkit.py`, `package_all_toolkits.py`).
 - `config/` – Vault configuration (`config/vault/local.hcl`) and sample auth provider manifests.
 - `docker/` – Container entrypoints, including the Vault init/unseal helper.

@@ -58,7 +58,7 @@ Community distribution: the Admin → Toolkits → Community Catalog view querie
 
 - `backend/` – FastAPI API, Celery worker, Alembic migrations.
 - `frontend/` – React App Shell, shared documentation, toolkit UI scaffolding.
-- `toolkit_runtime/` – Shared helpers injected at runtime (Redis channels, Celery config, API client).
+- `toolkit_runtime/` – Shared helpers injected at runtime (Redis channels, Celery config, API client). See `docs/toolkit-runtime.md` for usage details.
 - `toolkits/` – Reference toolkits and packaging utilities.
 - `docs/` – Engineering documentation (runtime architecture, project setup, toolkit authoring, this architecture guide).
 - `ai/` – Automation playbooks and Codex state (`ai/ops/codex.md`, `ai/state/*`).

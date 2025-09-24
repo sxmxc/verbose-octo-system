@@ -84,3 +84,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Verified the bootstrap helper remains compatible by rerunning the targeted pytest suite (`pytest backend/tests/test_dotenv_loader.py`).
 - Updated repository automation notes to capture the interpolation enhancement and logged progress for the session (`docs/TODO.yaml`, `ai/state/progress.json`).
 - Refactored `bootstrap-stack.sh` Vault helpers to parse JSON via `python3 -c` here-strings so command substitutions no longer feed empty input when combining pipes and heredocs, eliminating the `JSONDecodeError` seen during `vault status` and `operator init` probes.
+
+## 2025-09-24 Toolkit runtime documentation
+- Added TODO item `toolkit-runtime-docs`, documented the shared runtime in `docs/toolkit-runtime.md`, and linked the guide from runtime architecture, authoring, and repository overviews.
+- Updated progress tracking (`ai/state/progress.json`) and cleared the active task after completion.
+- No tests were required; documentation-only change.

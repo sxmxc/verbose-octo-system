@@ -1,10 +1,15 @@
 {
   "version": 1,
-  "last_updated": "2025-09-24T03:43:49Z",
-  "session_counter": 14,
+  "last_updated": "2025-09-24T05:04:20.406972+00:00",
+  "session_counter": 15,
   "active_task": null,
-  "last_task_id": "bootstrap-dotenv-parser",
+  "last_task_id": "toolkit-runtime-docs",
   "recent_updates": [
+    {
+      "task_id": "toolkit-runtime-docs",
+      "status": "done",
+      "summary": "Documented toolkit runtime helpers in docs/toolkit-runtime.md and refreshed architecture/authoring references."
+    },
     {
       "task_id": "bootstrap-dotenv-parser",
       "status": "done",
