@@ -70,3 +70,17 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Updated bundle resolution to treat GitHub raw manifests as catalog descriptors, prefer `github.io` bundle URLs, and degrade to the manifest directory when needed (`backend/app/routes/toolkits.py`) with regression coverage for both success and fallback flows (`backend/tests/test_toolkits_catalog.py`).
 - Hardened bundle writes to tolerate cross-device rename errors encountered in Docker deployments by copying temp files when needed, taught the resolver to try `.zip` variants for extensionless bundle paths, and added coverage (including zip signature detection) to ensure HTML responses from WSGI apps fall through to zip bundles (`backend/app/routes/toolkits.py`, `backend/tests/test_toolkits_catalog.py`).
 - Documented the published-site preference for curators (`docs/toolbox-architecture.md`) and attempted the targeted pytest run, which still fails locally because `httpx` is missing from the harness environment.
+
+## 2025-09-22 Bootstrap dotenv parser
+- Captured bootstrap regression caused by unquoted `.env` values by adding pytest coverage for a new parser (`backend/tests/test_dotenv_loader.py`).
+- Built `app.core.dotenv_loader` to accept unquoted strings, inline comments, and `export` prefixes, emitting JSON-escaped exports for shell consumption (`backend/app/core/dotenv_loader.py`).
+- Updated `bootstrap-stack.sh` to rely on the parser instead of `source` so `.env` entries like `APP_NAME=SRE Toolbox` no longer break bootstrap, keeping Vault detection and overrides intact.
+- Logged completion under TODO `bootstrap-dotenv-parser` and recorded progress with a session counter increment.
+- Ran `pytest backend/tests/test_dotenv_loader.py` to validate the parser end-to-end.
+
+## 2025-09-24 Dotenv interpolation
+- Added regression tests covering ${VAR} interpolation, late definitions, cycles, and escaped literals for the bootstrap parser (`backend/tests/test_dotenv_loader.py`).
+- Extended `app.core.dotenv_loader` with ordered dependency resolution so variables can reference previously or subsequently defined values while rejecting undefined keys and cycles (`backend/app/core/dotenv_loader.py`).
+- Verified the bootstrap helper remains compatible by rerunning the targeted pytest suite (`pytest backend/tests/test_dotenv_loader.py`).
+- Updated repository automation notes to capture the interpolation enhancement and logged progress for the session (`docs/TODO.yaml`, `ai/state/progress.json`).
+- Refactored `bootstrap-stack.sh` Vault helpers to parse JSON via `python3 -c` here-strings so command substitutions no longer feed empty input when combining pipes and heredocs, eliminating the `JSONDecodeError` seen during `vault status` and `operator init` probes.
