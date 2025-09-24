@@ -31,6 +31,15 @@ def test_parse_preserves_hash_inside_quotes(tmp_path):
     assert data["APP_NAME"] == "SRE Toolbox #1"
 
 
+def test_parse_ignores_comment_after_quoted_value(tmp_path):
+    env_path = write_env(
+        tmp_path,
+        'DATABASE_URL="postgresql://localhost" # local override\n',
+    )
+    data = dotenv_loader.parse_env_file(env_path)
+    assert data["DATABASE_URL"] == "postgresql://localhost"
+
+
 def test_parse_supports_export_prefix(tmp_path):
     env_path = write_env(tmp_path, "export REDIS_URL=redis://redis:6379/0\n")
     data = dotenv_loader.parse_env_file(env_path)

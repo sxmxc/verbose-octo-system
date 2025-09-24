@@ -55,10 +55,12 @@ def _parse_line(raw_line: str, line_no: int) -> Tuple[str, str] | None:
             tokens = shlex.split(value, posix=True)
         except ValueError as exc:
             raise DotenvError(f"Line {line_no}: {exc}") from exc
-        if len(tokens) != 1:
-            raise DotenvError(
-                f"Line {line_no}: unexpected tokens after quoted value"
-            )
+        if len(tokens) > 1:
+            comment = tokens[1]
+            if comment != "#" and not comment.startswith("#"):
+                raise DotenvError(
+                    f"Line {line_no}: unexpected tokens after quoted value"
+                )
         return key, tokens[0]
 
     cleaned = _strip_comment(value)
