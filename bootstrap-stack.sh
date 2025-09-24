@@ -35,10 +35,19 @@ load_env_file() {
   local env_file="$ROOT_DIR/.env"
   if [ -f "$env_file" ]; then
     info "Loading environment overrides from .env"
-    set -a
-    # shellcheck source=/dev/null
-    source "$env_file"
-    set +a
+    local exports
+    local parse_status=0
+    exports="$(
+      PYTHONPATH="$ROOT_DIR/backend${PYTHONPATH:+:$PYTHONPATH}" \
+      python3 -m app.core.dotenv_loader "$env_file"
+    )" || parse_status=$?
+    if [ "$parse_status" -ne 0 ]; then
+      fatal "Failed to parse .env overrides"
+    fi
+    if [ -n "$exports" ]; then
+      # Values are JSON-encoded by the parser, so eval is safe here.
+      eval "$exports"
+    fi
     VAULT_LISTEN_PORT="${VAULT_LISTEN_PORT:-8200}"
     VAULT_KV_MOUNT="${VAULT_KV_MOUNT:-sre}"
     VAULT_EXEC_ADDR="http://127.0.0.1:${VAULT_LISTEN_PORT}"
@@ -98,7 +107,7 @@ wait_for_vault() {
   local status_json
   while (( attempts < 30 )); do
     if status_json="$(get_vault_status_json 2>/dev/null)"; then
-      if [ -n "$status_json" ]; then
+      if [ -n "$status_json" ] && [[ ${status_json:0:1} == '{' ]]; then
         return 0
       fi
     fi
@@ -115,18 +124,23 @@ get_vault_status_json() {
 parse_status_field() {
   local status_json="$1"
   local field="$2"
-  printf '%s' "$status_json" | python3 - "$field" <<'PY'
-import json
-import sys
-
-data = json.load(sys.stdin)
+  if [ -z "$status_json" ] || [[ ${status_json:0:1} != '{' ]]; then
+    fatal "Unexpected Vault status output: ${status_json:-<empty>}"
+  fi
+  python3 -c 'import json, sys
 field = sys.argv[1]
+try:
+    data = json.loads(sys.stdin.read())
+except json.JSONDecodeError as exc:
+    raise SystemExit(str(exc))
 value = data.get(field)
 if isinstance(value, bool):
-    print('true' if value else 'false')
+    print("true" if value else "false")
+elif value is None:
+    print("")
 else:
     print(value)
-PY
+' "$field" <<<"$status_json"
 }
 
 initialise_vault() {
@@ -134,19 +148,19 @@ initialise_vault() {
   local init_json
   init_json="$(${DOCKER_COMPOSE[@]} exec -T vault env VAULT_ADDR="$VAULT_EXEC_ADDR" vault operator init -key-shares=1 -key-threshold=1 -format=json)"
   local unseal_key
-  unseal_key="$(printf '%s' "$init_json" | python3 - <<'PY'
-import json, sys
-init_data = json.load(sys.stdin)
-print(init_data['unseal_keys_b64'][0])
-PY
-)"
+  unseal_key="$(
+    python3 -c 'import json, sys
+data = json.loads(sys.stdin.read())
+print(data["unseal_keys_b64"][0])
+' <<<"$init_json"
+  )"
   local root_token
-  root_token="$(printf '%s' "$init_json" | python3 - <<'PY'
-import json, sys
-init_data = json.load(sys.stdin)
-print(init_data['root_token'])
-PY
-)"
+  root_token="$(
+    python3 -c 'import json, sys
+data = json.loads(sys.stdin.read())
+print(data["root_token"])
+' <<<"$init_json"
+  )"
   info "Vault initialised"
   persist_unseal_key "$unseal_key"
   persist_vault_token "$root_token"
@@ -248,13 +262,13 @@ ensure_kv_mount() {
   local secrets_json
   secrets_json="$(${DOCKER_COMPOSE[@]} exec -T vault env VAULT_ADDR="$VAULT_EXEC_ADDR" VAULT_TOKEN="$VAULT_TOKEN_VALUE" vault secrets list -format=json)"
   local exists
-  exists="$(printf '%s' "$secrets_json" | python3 - "$mount" <<'PY'
-import json, sys
+  exists="$(
+    python3 -c 'import json, sys
 mount = sys.argv[1]
-data = json.load(sys.stdin)
-print('true' if f"{mount}/" in data else 'false')
-PY
-)"
+data = json.loads(sys.stdin.read())
+print("true" if f"{mount}/" in data else "false")
+' "$mount" <<<"$secrets_json"
+  )"
   if [ "$exists" = "true" ]; then
     info "KV engine already present"
   else

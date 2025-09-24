@@ -211,6 +211,14 @@ areas:
           - "Consider interactive prompts or environment validation in tooling scripts."
           - "2025-09-21: Removing docker-compose defaults and updating docs to require operator-supplied credentials."
           - "2025-09-21: Added bootstrap preflight that rejects placeholder Postgres credentials and refreshed onboarding docs."
+      - id: bootstrap-dotenv-parser
+        title: Allow bootstrap helper to parse .env values with spaces.
+        status: done
+        priority: medium
+        notes:
+          - "2025-09-22: Replaced shell sourcing with a Python parser so unquoted values and inline comments load correctly; pytest coverage guards the parser."
+          - "2025-09-24: Added ${VAR} interpolation support so shared secrets only need to be defined once per .env file."
+
   - id: governance
     title: Governance & planning
     summary: Operational guardrails for community contributions and secret management.
