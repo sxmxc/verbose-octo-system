@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: toolbox-api
+  namespace: sre-toolbox
+spec:
+  selector:
+    app: toolbox-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: toolbox-api
+  namespace: sre-toolbox
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: toolbox-api
+  template:
+    metadata:
+      labels:
+        app: toolbox-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/your-org/sre-toolbox-api:latest
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8080"]
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: toolbox-app-config
+            - secretRef:
+                name: toolbox-app-secrets
+            - secretRef:
+                name: toolbox-postgres-credentials
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app/data
+            - name: backend-config
+              mountPath: /app/config
+              readOnly: true
+            - name: vault-token
+              mountPath: /app/.vault-token
+              subPath: .vault-token
+              readOnly: true
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: toolbox-shared-data
+        - name: backend-config
+          configMap:
+            name: toolbox-backend-config
+        - name: vault-token
+          secret:
+            secretName: toolbox-vault-token

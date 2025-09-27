@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: toolbox-vault
+  namespace: sre-toolbox
+spec:
+  ports:
+    - name: http
+      port: 8200
+      targetPort: 8200
+  selector:
+    app: toolbox-vault
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: toolbox-vault
+  namespace: sre-toolbox
+spec:
+  serviceName: toolbox-vault
+  replicas: 1
+  selector:
+    matchLabels:
+      app: toolbox-vault
+  template:
+    metadata:
+      labels:
+        app: toolbox-vault
+    spec:
+      containers:
+        - name: vault
+          image: hashicorp/vault:1.14
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "/vault/init-unseal.sh"]
+          env:
+            - name: VAULT_SERVER_CONFIG_PATH
+              value: /vault/config/local.hcl
+            - name: VAULT_LISTEN_PORT
+              value: "8200"
+            - name: VAULT_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: toolbox-app-config
+                  key: VAULT_ADDR
+            - name: VAULT_TLS_SKIP_VERIFY
+              valueFrom:
+                configMapKeyRef:
+                  name: toolbox-app-config
+                  key: VAULT_TLS_SKIP_VERIFY
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: toolbox-app-secrets
+                  key: VAULT_TOKEN
+            - name: VAULT_UNSEAL_KEY_FILE
+              value: /vault/secrets/unseal-key
+          ports:
+            - containerPort: 8200
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /vault/config
+            - name: entrypoint
+              mountPath: /vault/init-unseal.sh
+              subPath: entrypoint.sh
+              readOnly: true
+            - name: unseal
+              mountPath: /vault/secrets
+              readOnly: true
+            - name: data
+              mountPath: /vault/data
+      volumes:
+        - name: config
+          configMap:
+            name: toolbox-vault-config
+            items:
+              - key: local.hcl
+                path: local.hcl
+        - name: entrypoint
+          configMap:
+            name: toolbox-vault-config
+            defaultMode: 0755
+            items:
+              - key: entrypoint.sh
+                path: entrypoint.sh
+        - name: unseal
+          secret:
+            secretName: toolbox-vault-unseal
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
