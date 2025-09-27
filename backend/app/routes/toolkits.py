@@ -17,6 +17,7 @@ import httpx
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, UploadFile, Request, status
 from pydantic import AliasChoices, AnyHttpUrl, BaseModel, Field, TypeAdapter, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
+from packaging.version import InvalidVersion, Version, parse as parse_version
 
 from ..config import settings
 from ..toolkits.install_utils import ToolkitManifestError, install_toolkit_from_directory
@@ -118,6 +119,37 @@ def _build_bundle_url_candidates(
 ANY_HTTP_URL_ADAPTER = TypeAdapter(AnyHttpUrl)
 
 
+def _parse_version(value: str | None) -> Version | None:
+    if not value:
+        return None
+    try:
+        parsed = parse_version(value)
+    except InvalidVersion:
+        return None
+    return parsed if isinstance(parsed, Version) else None
+
+
+def _evaluate_version_update(
+    current_version: str | None, available_version: str | None
+) -> tuple[bool, str | None]:
+    if not available_version:
+        return False, None
+
+    available_parsed = _parse_version(available_version)
+    if available_parsed is None:
+        return False, f"Catalog version '{available_version}' is not a valid semantic version"
+
+    current_parsed = _parse_version(current_version)
+    if current_parsed is None:
+        if current_version:
+            return True, (
+                f"Installed version '{current_version}' is not a valid semantic version; treating catalog version as newer"
+            )
+        return True, None
+
+    return available_parsed > current_parsed, None
+
+
 class CommunityToolkitEntry(BaseModel):
     slug: str
     name: str
@@ -144,6 +176,16 @@ class CommunityCatalogResponse(BaseModel):
 
 class CommunityInstallRequest(BaseModel):
     slug: str = Field(..., description="Slug of the community toolkit to install")
+
+
+class ToolkitUpdateStatus(BaseModel):
+    slug: str
+    origin: str
+    current_version: str | None = None
+    available_version: str | None = None
+    update_available: bool = False
+    source: str | None = None
+    message: str | None = None
 
 
 def _format_limit_mb(value: int) -> int:
@@ -405,6 +447,67 @@ def toolkits_list():
 
 
 @router.get(
+    "/updates",
+    response_model=list[ToolkitUpdateStatus],
+    summary="Check toolkit update availability",
+    dependencies=[Depends(require_roles([ROLE_TOOLKIT_CURATOR]))],
+)
+async def toolkits_updates(
+    session: AsyncSession = Depends(get_session),
+) -> list[ToolkitUpdateStatus]:
+    toolkits = list_toolkits()
+
+    catalog_url, _ = await _resolve_catalog_url(session)
+    catalog_entries: dict[str, CommunityToolkitEntry] = {}
+    catalog_error: str | None = None
+    if catalog_url:
+        try:
+            entries = await _fetch_community_catalog(catalog_url)
+        except HTTPException as exc:
+            detail = exc.detail
+            catalog_error = detail if isinstance(detail, str) else str(detail)
+        else:
+            catalog_entries = {entry.slug: entry for entry in entries}
+
+    statuses: list[ToolkitUpdateStatus] = []
+    catalog_url_str = str(catalog_url) if catalog_url else None
+
+    for record in toolkits:
+        status = ToolkitUpdateStatus(
+            slug=record.slug,
+            origin=record.origin,
+            current_version=record.version,
+        )
+
+        if record.origin == "community":
+            status.source = catalog_url_str
+            if not catalog_url:
+                status.message = "Community catalog is disabled; cannot determine updates"
+            elif catalog_error:
+                status.message = f"Failed to load community catalog: {catalog_error}"
+            else:
+                entry = catalog_entries.get(record.slug)
+                if entry is None:
+                    status.message = "Toolkit not found in active catalog"
+                else:
+                    status.available_version = entry.version
+                    update_available, reason = _evaluate_version_update(record.version, entry.version)
+                    status.update_available = update_available
+                    if reason:
+                        status.message = reason
+                    elif entry.version is None:
+                        status.message = "Catalog entry does not report a version"
+                    elif update_available and not record.version:
+                        status.message = "Toolkit version missing locally; treating catalog version as newer"
+        elif record.origin == "uploaded" and not record.version:
+            status.message = "Updates require setting a version field in toolkit.json"
+
+        statuses.append(status)
+
+    return statuses
+
+
+@router.get(
     "/community",
     response_model=CommunityCatalogResponse,
     summary="List community toolkits",
@@ -473,6 +576,35 @@ async def toolkits_update(
         )
         await session.commit()
     return toolkit
+
+
+@router.post(
+    "/{slug}/update",
+    response_model=ToolkitRecord,
+    summary="Update an installed toolkit from the community catalog",
+)
+async def toolkits_update_bundle(
+    slug: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user=Depends(require_superuser),
+):
+    _ensure_valid_slug(slug)
+    record = _get_toolkit_or_404(slug)
+    if record.origin != "community":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Toolkit updates are only supported for community toolkits",
+        )
+
+    payload = CommunityInstallRequest(slug=slug)
+    updated = await toolkits_install_from_catalog(
+        payload,
+        request=request,
+        session=session,
+        current_user=current_user,
+    )
+    return updated
 
 
 @router.post(

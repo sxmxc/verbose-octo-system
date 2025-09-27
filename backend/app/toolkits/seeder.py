@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .install_utils import install_toolkit_from_directory
+from .install_utils import ToolkitManifestError, install_toolkit_from_directory, load_manifest
 from .registry import get_toolkit, is_toolkit_removed, set_toolkit_origin
+from .slugs import InvalidToolkitSlugError, normalise_slug
 
 
 def _discover_bundled_toolkits() -> dict[str, Path]:
@@ -11,11 +12,26 @@ def _discover_bundled_toolkits() -> dict[str, Path]:
     for parent in current.parents:
         bundled_root = parent / "toolkits" / "bundled"
         if bundled_root.exists():
-            return {
-                candidate.name: candidate
-                for candidate in bundled_root.iterdir()
-                if candidate.is_dir()
-            }
+            mapping: dict[str, Path] = {}
+            for candidate in bundled_root.iterdir():
+                if not candidate.is_dir():
+                    continue
+                manifest_path = candidate / "toolkit.json"
+                if not manifest_path.exists():
+                    continue
+                try:
+                    manifest = load_manifest(manifest_path)
+                except ToolkitManifestError:
+                    continue
+                slug_raw = manifest.get("slug")
+                if not slug_raw:
+                    continue
+                try:
+                    slug = normalise_slug(slug_raw)
+                except InvalidToolkitSlugError:
+                    continue
+                mapping[slug] = candidate
+            return mapping
     return {}
 
 

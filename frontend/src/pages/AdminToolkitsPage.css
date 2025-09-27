@@ -155,6 +155,12 @@
   color: var(--color-text-muted);
 }
 
+.admin-toolkits__item-hint {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-warning-text);
+}
+
 .admin-toolkits__item-actions {
   display: inline-flex;
   align-items: center;
@@ -194,6 +200,20 @@
 .admin-toolkits__icon-button.is-error {
   background: var(--color-danger-bg);
   border-radius: 10px;
+}
+
+.admin-toolkits__update-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: var(--color-warning-bg, rgba(255, 193, 7, 0.15));
+  color: var(--color-warning-text);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .admin-toolkits__form {
@@ -421,6 +441,12 @@
   margin: 0;
   color: var(--color-success-text);
   font-size: 0.85rem;
+}
+
+.admin-toolkits__updates-loading {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 
 .admin-toolkits__error {

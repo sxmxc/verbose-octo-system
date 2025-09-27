@@ -10,6 +10,7 @@ export type ToolkitRecord = ToolkitSummary & {
   category: string
   tags: string[]
   origin: string
+  version?: string | null
   created_at: string
   updated_at: string
   backend_module?: string | null

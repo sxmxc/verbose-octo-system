@@ -19,6 +19,7 @@ class Toolkit(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     category: Mapped[str] = mapped_column(String(64), default="toolkit", nullable=False)
     tags: Mapped[List[str]] = mapped_column(JSON, default=list)
+    version: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     origin: Mapped[str] = mapped_column(String(32), default="custom", nullable=False)
     backend_module: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     backend_router_attr: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)

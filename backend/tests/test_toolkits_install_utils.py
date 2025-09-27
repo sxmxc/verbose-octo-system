@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,6 +17,8 @@ def _write_manifest(path: Path, **overrides: str) -> None:
         "description": overrides.get("description", ""),
         "base_path": overrides.get("base_path", "/toolkits/demo"),
     }
+    if "version" in overrides:
+        manifest["version"] = overrides["version"]
     path.write_text(json.dumps(manifest))
 
 
@@ -114,6 +117,7 @@ def test_install_toolkit_normalises_manifest_slug(tmp_path: Path, monkeypatch: p
             category=payload.category,
             tags=list(payload.tags or []),
             origin=origin,
+            version=payload.version,
             backend_module=payload.backend_module,
             backend_router_attr=payload.backend_router_attr,
             worker_module=payload.worker_module,
@@ -133,3 +137,118 @@ def test_install_toolkit_normalises_manifest_slug(tmp_path: Path, monkeypatch: p
     assert captured_payload["slug"] == "demo-toolkit"
     assert record.slug == "demo-toolkit"
     assert (storage_dir / "demo-toolkit").exists()
+
+
+def test_install_toolkit_captures_version(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    storage_dir = tmp_path / "storage"
+    monkeypatch.setattr(install_utils.settings, "toolkit_storage_dir", storage_dir)
+
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    _write_manifest(bundle / "toolkit.json", slug="demo", version="1.2.3")
+
+    created: dict[str, Any] = {}
+
+    def _create_toolkit(payload, origin="custom"):
+        created["version"] = payload.version
+        return install_utils.ToolkitRecord(
+            slug=payload.slug,
+            name=payload.name,
+            description=payload.description or "",
+            base_path=payload.base_path,
+            enabled=payload.enabled,
+            category=payload.category,
+            tags=list(payload.tags or []),
+            origin=origin,
+            version=payload.version,
+            backend_module=payload.backend_module,
+            backend_router_attr=payload.backend_router_attr,
+            worker_module=payload.worker_module,
+            worker_register_attr=payload.worker_register_attr,
+            dashboard_cards=[],
+            dashboard_context_module=payload.dashboard_context_module,
+            dashboard_context_attr=payload.dashboard_context_attr,
+            frontend_entry=payload.frontend_entry,
+            frontend_source_entry=payload.frontend_source_entry,
+        )
+
+    monkeypatch.setattr(install_utils, "get_toolkit", lambda slug: None)
+    monkeypatch.setattr(install_utils, "create_toolkit", _create_toolkit)
+    monkeypatch.setattr(install_utils, "update_toolkit", lambda slug, payload: None)
+    monkeypatch.setattr(install_utils, "clear_toolkit_removal", lambda slug: None)
+    monkeypatch.setattr(install_utils, "activate_toolkit", lambda slug: None)
+    monkeypatch.setattr(install_utils, "mark_toolkit_removed", lambda slug: None)
+
+    record = install_toolkit_from_directory(bundle)
+
+    assert created["version"] == "1.2.3"
+    assert record.version == "1.2.3"
+
+
+def test_install_toolkit_updates_version_for_existing_toolkit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    storage_dir = tmp_path / "storage"
+    monkeypatch.setattr(install_utils.settings, "toolkit_storage_dir", storage_dir)
+
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    _write_manifest(bundle / "toolkit.json", slug="demo", version="2.0.0")
+
+    existing_record = install_utils.ToolkitRecord(
+        slug="demo",
+        name="Demo Toolkit",
+        description="",
+        base_path="/toolkits/demo",
+        enabled=True,
+        category="toolkit",
+        tags=[],
+        origin="uploaded",
+        version="1.5.0",
+        backend_module=None,
+        backend_router_attr=None,
+        worker_module=None,
+        worker_register_attr=None,
+        dashboard_cards=[],
+        dashboard_context_module=None,
+        dashboard_context_attr=None,
+        frontend_entry=None,
+        frontend_source_entry=None,
+    )
+
+    captured_payload: dict[str, Any] = {}
+
+    def _update_toolkit(slug, payload):
+        captured_payload["version"] = payload.version
+        return install_utils.ToolkitRecord(
+            slug=slug,
+            name=payload.name or existing_record.name,
+            description=payload.description or existing_record.description,
+            base_path=payload.base_path or existing_record.base_path,
+            enabled=existing_record.enabled,
+            category=existing_record.category,
+            tags=list(existing_record.tags),
+            origin=existing_record.origin,
+            version=payload.version,
+            backend_module=payload.backend_module,
+            backend_router_attr=payload.backend_router_attr,
+            worker_module=payload.worker_module,
+            worker_register_attr=payload.worker_register_attr,
+            dashboard_cards=[],
+            dashboard_context_module=payload.dashboard_context_module,
+            dashboard_context_attr=payload.dashboard_context_attr,
+            frontend_entry=payload.frontend_entry,
+            frontend_source_entry=payload.frontend_source_entry,
+        )
+
+    monkeypatch.setattr(install_utils, "get_toolkit", lambda slug: existing_record)
+    monkeypatch.setattr(install_utils, "update_toolkit", _update_toolkit)
+    monkeypatch.setattr(install_utils, "create_toolkit", lambda payload, origin="custom": None)
+    monkeypatch.setattr(install_utils, "clear_toolkit_removal", lambda slug: None)
+    monkeypatch.setattr(install_utils, "activate_toolkit", lambda slug: None)
+    monkeypatch.setattr(install_utils, "mark_toolkit_removed", lambda slug: None)
+
+    record = install_toolkit_from_directory(bundle)
+
+    assert captured_payload["version"] == "2.0.0"
+    assert record.version == "2.0.0"

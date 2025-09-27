@@ -33,6 +33,7 @@ class ToolkitRecord(BaseModel):
     category: str = Field(default="toolkit", description="Grouping hint for UI")
     tags: List[str] = Field(default_factory=list)
     origin: str = Field(default="builtin", description="Source of toolkit definition")
+    version: str | None = Field(default=None, description="Toolkit version reported by toolkit.json")
     backend_module: str | None = Field(default=None, description="Import path for plugin FastAPI module")
     backend_router_attr: str | None = Field(default=None, description="Attribute on backend module exposing an APIRouter")
     worker_module: str | None = Field(default=None, description="Import path for plugin Celery tasks")
@@ -59,6 +60,7 @@ class ToolkitCreate(BaseModel):
     enabled: bool = True
     category: str = "toolkit"
     tags: List[str] = Field(default_factory=list)
+    version: Optional[str] = None
     backend_module: Optional[str] = None
     backend_router_attr: Optional[str] = None
     worker_module: Optional[str] = None
@@ -82,6 +84,7 @@ class ToolkitUpdate(BaseModel):
     enabled: Optional[bool] = None
     category: Optional[str] = None
     tags: Optional[List[str]] = None
+    version: Optional[str] = None
     backend_module: Optional[str] = None
     backend_router_attr: Optional[str] = None
     worker_module: Optional[str] = None
@@ -127,6 +130,7 @@ def _record_from_model(model: Toolkit) -> ToolkitRecord:
         category=model.category,
         tags=list(model.tags or []),
         origin=model.origin,
+        version=model.version,
         backend_module=model.backend_module,
         backend_router_attr=model.backend_router_attr,
         worker_module=model.worker_module,
@@ -183,6 +187,7 @@ def _apply_record(model: Toolkit, record: ToolkitRecord) -> bool:
         "category": record.category,
         "tags": list(record.tags or []),
         "origin": record.origin,
+        "version": record.version,
         "backend_module": record.backend_module,
         "backend_router_attr": record.backend_router_attr,
         "worker_module": record.worker_module,
@@ -278,6 +283,7 @@ def create_toolkit(payload: ToolkitCreate, origin: str = "custom") -> ToolkitRec
             category=payload.category,
             tags=list(payload.tags or []),
             origin=origin,
+            version=payload.version,
             backend_module=payload.backend_module,
             backend_router_attr=payload.backend_router_attr,
             worker_module=payload.worker_module,

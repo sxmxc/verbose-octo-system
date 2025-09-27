@@ -1,10 +1,25 @@
 {
   "version": 1,
-  "last_updated": "2025-09-24T05:04:20.406972+00:00",
-  "session_counter": 15,
+  "last_updated": "2025-09-25T00:00:00+00:00",
+  "session_counter": 16,
   "active_task": null,
-  "last_task_id": "toolkit-runtime-docs",
+  "last_task_id": "update-mechanism",
   "recent_updates": [
+    {
+      "task_id": "update-mechanism",
+      "status": "done",
+      "summary": "Added community toolkit update endpoint with manifest version validation, download reuse, and UI integration for one-click upgrades."
+    },
+    {
+      "task_id": "update-notifications",
+      "status": "done",
+      "summary": "Surfaced toolkit version badges and update availability on the admin overview with catalog polling and error handling."
+    },
+    {
+      "task_id": "versioning-scheme",
+      "status": "in_progress",
+      "summary": "Persisted manifest versions across installs to unblock update flows; formal documentation of the scheme remains outstanding."
+    },
     {
       "task_id": "toolkit-runtime-docs",
       "status": "done",
