@@ -11,5 +11,6 @@ data:
   VAULT_TLS_SKIP_VERIFY: "true"
   VAULT_CA_CERT: ""
   VAULT_AUTH_METHOD: token
-  VAULT_TOKEN_FILE: /vault/.vault-token
+  VAULT_TOKEN_FILE: /app/.vault-token
+  REDIS_URL: redis://toolbox-redis:6379/0
   CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP: "true"
