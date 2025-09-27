@@ -89,3 +89,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Added TODO item `toolkit-runtime-docs`, documented the shared runtime in `docs/toolkit-runtime.md`, and linked the guide from runtime architecture, authoring, and repository overviews.
 - Updated progress tracking (`ai/state/progress.json`) and cleared the active task after completion.
 - No tests were required; documentation-only change.
+
+## 2025-09-25 Toolkit update pipeline
+- Persisted manifest versions on install/update so registry + UI can surface semantic versions without touching bundled manifests.
+- Added `/toolkits/updates` API with packaging-based comparison, community catalog polling, and frontend badges for curators.
+- Introduced `/toolkits/{slug}/update` to reuse community installs for upgrades, wired admin UI actions, and refreshed TODO priorities.

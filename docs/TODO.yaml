@@ -120,27 +120,27 @@ areas:
     tasks:
       - id: versioning-scheme
         title: Define a versioning scheme for toolkits (e.g., semantic versioning).
-        status: backlog
-        priority: medium
+        status: in_progress
+        priority: high
         notes:
           - "Establish guidelines for version increments based on changes (major, minor, patch)."
           - "Document the versioning scheme in the toolkit repository."
+          - "2024-10-25: Toolkits now persist manifest-provided versions and surface them in the UI; formal documentation of the scheme remains outstanding."
         blockers:
           - "Requires toolkit repository setup."
       - id: update-notifications
         title: Implement a notification system within the Toolbox UI to alert users of available toolkit updates.
-        status: backlog
-        priority: medium
+        status: done
+        priority: high
         notes:
           - "Consider in-app notifications or a dedicated updates section."
           - "Provide details about the update, including changelog and impact."
           - "Allow users to easily initiate updates from the notification."
-        blockers:
-          - "Requires completion of the versioning scheme task."
+          - "2024-10-25: Admin → Toolkits overview now displays version badges, update availability, and catalog hints with automated polling."
       - id: update-mechanism
         title: Develop a mechanism to safely update installed toolkits.
-        status: backlog
-        priority: medium
+        status: done
+        priority: high
         notes:
           - "Ensure updates can be rolled back in case of issues."
           - "Consider version compatibility checks before applying updates."
@@ -148,12 +148,11 @@ areas:
           - "Allow upload of updated toolkit zips via the UI or API."
           - "Should validate the zip contents and version before applying."
           - "Should also support updates from the community repository."
-        blockers:
-          - "Requires completion of the versioning scheme and update notifications tasks."
+          - "2024-10-25: Added /toolkits/{slug}/update endpoint reusing catalog installs with manifest version validation and audit logging; UI exposes one-click updates for community toolkits."
       - id: backport-toolkit-update-mechanism
         title: Backport the update mechanism to existing installations.
         status: backlog
-        priority: low
+        priority: medium
         notes:
           - "Assess the feasibility of integrating the update mechanism into current versions of the toolkits."
           - "Plan for a phased rollout to minimize disruption for existing users."

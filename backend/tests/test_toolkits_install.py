@@ -64,7 +64,7 @@ async def test_toolkits_install_strips_directory_segments(tmp_path, monkeypatch)
     storage_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(toolkits.settings, "toolkit_storage_dir", storage_dir)
 
-    record = SimpleNamespace(slug="clean", name="Clean Toolkit", origin="uploaded", enabled=False)
+    record = SimpleNamespace(slug="clean", name="Clean Toolkit", origin="uploaded", enabled=False, version=None)
     monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
 
     bundle = io.BytesIO()
@@ -105,7 +105,9 @@ async def test_toolkits_install_randomises_collisions(tmp_path, monkeypatch):
     existing = storage_dir / "duplicate.zip"
     existing.write_bytes(b"existing")
 
-    record = SimpleNamespace(slug="frombundle", name="Bundled Toolkit", origin="uploaded", enabled=False)
+    record = SimpleNamespace(
+        slug="frombundle", name="Bundled Toolkit", origin="uploaded", enabled=False, version=None
+    )
     monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
 
     bundle = io.BytesIO()

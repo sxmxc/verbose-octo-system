@@ -124,6 +124,11 @@ def install_toolkit_from_directory(
     if not base_path.startswith("/"):
         base_path = "/" + base_path.lstrip("/")
 
+    raw_version = manifest.get("version")
+    version = str(raw_version).strip() if raw_version is not None else None
+    if version == "":
+        version = None
+
     backend_manifest = manifest.get("backend", {})
     backend_module = backend_manifest.get("module")
     backend_router_attr = backend_manifest.get("router_attr")
@@ -206,6 +211,7 @@ def install_toolkit_from_directory(
         dashboard_context_attr=dashboard_context_attr,
         frontend_entry=frontend_entry,
         frontend_source_entry=frontend_source_entry,
+        version=version,
     )
 
     existing = get_toolkit(slug)
@@ -224,6 +230,7 @@ def install_toolkit_from_directory(
         update_payload.dashboard_context_attr = dashboard_context_attr
         update_payload.frontend_entry = frontend_entry
         update_payload.frontend_source_entry = frontend_source_entry
+        update_payload.version = version
         if not preserve_enabled:
             update_payload.enabled = payload.enabled
 

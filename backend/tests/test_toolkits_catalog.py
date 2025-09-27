@@ -123,7 +123,7 @@ async def test_toolkits_install_from_catalog_downloads_bundle(tmp_path, monkeypa
     dummy_client = DummyAsyncClient([download_response])
     monkeypatch.setattr(toolkits.httpx, "AsyncClient", lambda *a, **kw: dummy_client)
 
-    record = SimpleNamespace(slug="demo", name="Demo Toolkit", origin="community", enabled=False)
+    record = SimpleNamespace(slug="demo", name="Demo Toolkit", origin="community", enabled=False, version=None)
     monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
     monkeypatch.setattr(toolkits, "UserService", lambda session: UserServiceStub(session))
 
@@ -181,7 +181,7 @@ async def test_toolkits_install_from_catalog_uses_catalog_base_for_relative_bund
     dummy_client = DummyAsyncClient([success_response])
     monkeypatch.setattr(toolkits.httpx, "AsyncClient", lambda *a, **kw: dummy_client)
 
-    record = SimpleNamespace(slug="demo", name="Demo Toolkit", origin="community", enabled=False)
+    record = SimpleNamespace(slug="demo", name="Demo Toolkit", origin="community", enabled=False, version=None)
     monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
     monkeypatch.setattr(toolkits, "UserService", lambda session: UserServiceStub(session))
 
@@ -254,7 +254,7 @@ async def test_toolkits_install_from_catalog_falls_back_to_manifest_when_catalog
     dummy_client = DummyAsyncClient([first_response, second_response, final_response])
     monkeypatch.setattr(toolkits.httpx, "AsyncClient", lambda *a, **kw: dummy_client)
 
-    record = SimpleNamespace(slug="demo", name="Demo Toolkit", origin="community", enabled=False)
+    record = SimpleNamespace(slug="demo", name="Demo Toolkit", origin="community", enabled=False, version=None)
     monkeypatch.setattr(toolkits, "install_toolkit_from_directory", MagicMock(return_value=record))
     monkeypatch.setattr(toolkits, "UserService", lambda session: UserServiceStub(session))
 

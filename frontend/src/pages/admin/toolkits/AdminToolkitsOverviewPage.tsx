@@ -1,10 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 import { apiFetch } from '../../../api'
 import { useAuth } from '../../../AuthContext'
 import { MaterialIcon } from '../../../components/MaterialIcon'
 import { Skeleton } from '../../../components/Skeleton'
 import { ToolkitRecord, useToolkits } from '../../../ToolkitContext'
+
+type ToolkitUpdateStatus = {
+  slug: string
+  origin: string
+  current_version?: string | null
+  available_version?: string | null
+  update_available: boolean
+  source?: string | null
+  message?: string | null
+}
 
 export type ToolkitDocs = {
   overview?: string
@@ -21,6 +31,8 @@ export default function AdminToolkitsOverviewPage() {
   const [error, setError] = useState<string | null>(null)
   const [busySlug, setBusySlug] = useState<string | null>(null)
   const [errorSlug, setErrorSlug] = useState<string | null>(null)
+  const [updateStatuses, setUpdateStatuses] = useState<Map<string, ToolkitUpdateStatus>>(new Map())
+  const [updatesLoading, setUpdatesLoading] = useState<boolean>(false)
   const canToggle = hasRole('toolkit.curator')
   const errorRef = useRef<HTMLParagraphElement | null>(null)
 
@@ -35,6 +47,24 @@ export default function AdminToolkitsOverviewPage() {
     })()
   }, [])
 
+  const loadUpdates = useCallback(async () => {
+    if (!canToggle) {
+      setUpdateStatuses(new Map())
+      setUpdatesLoading(false)
+      return
+    }
+    setUpdatesLoading(true)
+    try {
+      const response = await apiFetch<ToolkitUpdateStatus[]>('/toolkits/updates')
+      setUpdateStatuses(new Map(response.map((status) => [status.slug, status])))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setErrorSlug(null)
+    } finally {
+      setUpdatesLoading(false)
+    }
+  }, [canToggle])
+
   const toggleToolkit = async (toolkit: ToolkitRecord) => {
     if (!canToggle) return
     setError(null)
@@ -46,6 +76,25 @@ export default function AdminToolkitsOverviewPage() {
         body: { enabled: !toolkit.enabled },
       })
       updateLocal(toolkit.slug, () => response)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setErrorSlug(toolkit.slug)
+    } finally {
+      setBusySlug(null)
+    }
+  }
+
+  const updateToolkitBundle = async (toolkit: ToolkitRecord) => {
+    if (!canToggle || toolkit.origin !== 'community') return
+    setError(null)
+    setErrorSlug(null)
+    setBusySlug(toolkit.slug)
+    try {
+      const response = await apiFetch<ToolkitRecord>(`/toolkits/${toolkit.slug}/update`, {
+        method: 'POST',
+      })
+      updateLocal(toolkit.slug, () => response)
+      await loadUpdates()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setErrorSlug(toolkit.slug)
@@ -68,6 +117,10 @@ export default function AdminToolkitsOverviewPage() {
     const timeout = window.setTimeout(() => setErrorSlug(null), 700)
     return () => window.clearTimeout(timeout)
   }, [errorSlug])
+
+  useEffect(() => {
+    loadUpdates()
+  }, [loadUpdates, toolkits])
 
   return (
     <div className="admin-toolkits__stack">
@@ -111,6 +164,7 @@ export default function AdminToolkitsOverviewPage() {
         <h4 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <MaterialIcon name="extension" style={{ color: 'var(--color-link)' }} />
           Installed toolkits
+          {updatesLoading && <span className="admin-toolkits__updates-loading">Checking for updates…</span>}
         </h4>
         <div className="admin-toolkits__list">
           {loading && (
@@ -132,72 +186,111 @@ export default function AdminToolkitsOverviewPage() {
           )}
           {!loading && toolkits.length === 0 && <p className="admin-toolkits__empty">No toolkits registered yet.</p>}
           {!loading &&
-            toolkits.map((toolkit) => (
-              <div key={toolkit.slug} className="admin-toolkits__item">
-                <div className="admin-toolkits__item-details">
-                  <strong>{toolkit.name}</strong>
-                  <div className="admin-toolkits__item-description">{toolkit.description}</div>
-                  <div className="admin-toolkits__item-meta">Slug: {toolkit.slug} · Path: {toolkit.base_path}
-                    {toolkit.origin !== 'builtin' ? ' · Custom upload' : ' · Built-in'}</div>
-                </div>
-                <div className="admin-toolkits__item-actions">
-                  <button
-                    type="button"
-                    onClick={() => toggleToolkit(toolkit)}
-                    disabled={busySlug === toolkit.slug || loading}
-                    className={[
-                      'admin-toolkits__icon-button',
-                      toolkit.enabled ? 'is-active' : '',
-                      errorSlug === toolkit.slug ? 'is-error' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    aria-pressed={toolkit.enabled}
-                    title={toolkit.enabled ? 'Disable toolkit' : 'Enable toolkit'}
-                  >
-                    <MaterialIcon
-                      name={toolkit.enabled ? 'toggle_on' : 'toggle_off'}
-                      style={{ fontSize: '1.8rem', color: 'inherit' }}
-                    />
-                  </button>
-                  {toolkit.origin !== 'builtin' && (
+            toolkits.map((toolkit) => {
+              const status = updateStatuses.get(toolkit.slug)
+              const versionLabel = toolkit.version ?? status?.current_version ?? null
+              const latestVersion = status?.available_version ?? null
+              const showUpdateButton = Boolean(status?.update_available && toolkit.origin === 'community')
+
+              return (
+                <div key={toolkit.slug} className="admin-toolkits__item">
+                  <div className="admin-toolkits__item-details">
+                    <strong>{toolkit.name}</strong>
+                    <div className="admin-toolkits__item-description">{toolkit.description}</div>
+                    <div className="admin-toolkits__item-meta">
+                      Slug: {toolkit.slug} · Path: {toolkit.base_path}
+                      {toolkit.origin !== 'builtin' ? ' · Custom upload' : ' · Built-in'} ·
+                      {versionLabel ? ` Version: ${versionLabel}` : ' Version: not reported'}
+                      {showUpdateButton && latestVersion ? (
+                        <>
+                          {' · '}
+                          <span className="admin-toolkits__update-chip">Update {latestVersion}</span>
+                        </>
+                      ) :
+                      latestVersion && versionLabel && latestVersion !== versionLabel ? (
+                        <> · Latest: {latestVersion}</>
+                      ) : null}
+                    </div>
+                    {status?.message && (
+                      <div className="admin-toolkits__item-hint">{status.message}</div>
+                    )}
+                  </div>
+                  <div className="admin-toolkits__item-actions">
+                    {showUpdateButton && (
+                      <button
+                        type="button"
+                        onClick={() => updateToolkitBundle(toolkit)}
+                        disabled={busySlug === toolkit.slug || loading || updatesLoading}
+                        className={[
+                          'admin-toolkits__icon-button',
+                          errorSlug === toolkit.slug ? 'is-error' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        title={latestVersion ? `Update to ${latestVersion}` : 'Update toolkit'}
+                      >
+                        <MaterialIcon name="system_update_alt" style={{ fontSize: '1.5rem', color: 'inherit' }} />
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={async () => {
-                        setError(null)
-                        setErrorSlug(null)
-                        setBusySlug(toolkit.slug)
-                        try {
-                          const confirmed = window.confirm(
-                            `Uninstall ${toolkit.name}? This removes its files from the Toolbox.`
-                          )
-                          if (!confirmed) {
-                            return
-                          }
-                          await apiFetch(`/toolkits/${toolkit.slug}`, { method: 'DELETE', skipJson: true })
-                          await refresh()
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : String(err))
-                          setErrorSlug(toolkit.slug)
-                        } finally {
-                          setBusySlug(null)
-                        }
-                      }}
+                      onClick={() => toggleToolkit(toolkit)}
+                      disabled={busySlug === toolkit.slug || loading}
                       className={[
                         'admin-toolkits__icon-button',
-                        'admin-toolkits__icon-button--danger',
+                        toolkit.enabled ? 'is-active' : '',
                         errorSlug === toolkit.slug ? 'is-error' : '',
                       ]
                         .filter(Boolean)
                         .join(' ')}
-                      title="Uninstall toolkit"
+                      aria-pressed={toolkit.enabled}
+                      title={toolkit.enabled ? 'Disable toolkit' : 'Enable toolkit'}
                     >
-                      <MaterialIcon name="delete" style={{ fontSize: '1.5rem', color: 'inherit' }} />
+                      <MaterialIcon
+                        name={toolkit.enabled ? 'toggle_on' : 'toggle_off'}
+                        style={{ fontSize: '1.8rem', color: 'inherit' }}
+                      />
                     </button>
-                  )}
+                    {toolkit.origin !== 'builtin' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setError(null)
+                          setErrorSlug(null)
+                          setBusySlug(toolkit.slug)
+                          try {
+                            const confirmed = window.confirm(
+                              `Uninstall ${toolkit.name}? This removes its files from the Toolbox.`
+                            )
+                            if (!confirmed) {
+                              return
+                            }
+                            await apiFetch(`/toolkits/${toolkit.slug}`, { method: 'DELETE', skipJson: true })
+                            await refresh()
+                            await loadUpdates()
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : String(err))
+                            setErrorSlug(toolkit.slug)
+                          } finally {
+                            setBusySlug(null)
+                          }
+                        }}
+                        className={[
+                          'admin-toolkits__icon-button',
+                          'admin-toolkits__icon-button--danger',
+                          errorSlug === toolkit.slug ? 'is-error' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                        title="Uninstall toolkit"
+                      >
+                        <MaterialIcon name="delete" style={{ fontSize: '1.5rem', color: 'inherit' }} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
         </div>
       </section>
     </div>

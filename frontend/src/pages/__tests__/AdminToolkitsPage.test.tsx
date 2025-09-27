@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const apiFetch = vi.hoisted(() => vi.fn())
 const refreshMock = vi.hoisted(() => vi.fn())
+const useToolkitsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../../api', () => ({
   apiFetch,
@@ -18,12 +19,7 @@ vi.mock('../../AuthContext', () => ({
 }))
 
 vi.mock('../../ToolkitContext', () => ({
-  useToolkits: () => ({
-    toolkits: [],
-    updateLocal: vi.fn(),
-    refresh: refreshMock,
-    loading: false,
-  }),
+  useToolkits: useToolkitsMock,
 }))
 
 import AdminToolkitsPage from '../AdminToolkitsPage'
@@ -57,6 +53,13 @@ describe('AdminToolkitsPage community catalog', () => {
     apiFetch.mockReset()
     refreshMock.mockReset()
     refreshMock.mockResolvedValue(undefined)
+    useToolkitsMock.mockReset()
+    useToolkitsMock.mockReturnValue({
+      toolkits: [],
+      updateLocal: vi.fn(),
+      refresh: refreshMock,
+      loading: false,
+    })
   })
 
   test('renders catalog entries and installs toolkit bundles', async () => {
@@ -139,5 +142,77 @@ describe('AdminToolkitsPage community catalog', () => {
     }))
 
     await screen.findByText(/Catalog URL saved/i)
+  })
+})
+
+describe('AdminToolkitsOverviewPage', () => {
+  test('surfaces update badges and triggers update action', async () => {
+    const updateLocalMock = vi.fn()
+    useToolkitsMock.mockReturnValue({
+      toolkits: [
+        {
+          slug: 'demo',
+          name: 'Demo Toolkit',
+          description: 'Example toolkit',
+          base_path: '/toolkits/demo',
+          highlights: [],
+          enabled: true,
+          category: 'toolkit',
+          tags: [],
+          origin: 'community',
+          version: '1.0.0',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ],
+      updateLocal: updateLocalMock,
+      refresh: refreshMock,
+      loading: false,
+    })
+
+    apiFetch
+      .mockResolvedValueOnce({ overview: 'Docs' })
+      .mockResolvedValueOnce([
+        {
+          slug: 'demo',
+          origin: 'community',
+          current_version: '1.0.0',
+          available_version: '1.1.0',
+          update_available: true,
+        },
+      ])
+      .mockResolvedValueOnce({
+        slug: 'demo',
+        name: 'Demo Toolkit',
+        description: 'Example toolkit',
+        base_path: '/toolkits/demo',
+        enabled: true,
+        category: 'toolkit',
+        tags: [],
+        origin: 'community',
+        version: '1.1.0',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-02T00:00:00Z',
+      })
+      .mockResolvedValueOnce([
+        {
+          slug: 'demo',
+          origin: 'community',
+          current_version: '1.1.0',
+          available_version: '1.1.0',
+          update_available: false,
+        },
+      ])
+
+    renderAdminToolkits('/admin/toolkits')
+
+    await screen.findByText('Update 1.1.0')
+
+    const updateButton = screen.getByRole('button', { name: /update to 1.1.0/i })
+    await userEvent.click(updateButton)
+
+    expect(apiFetch).toHaveBeenCalledWith('/toolkits/demo/update', expect.objectContaining({ method: 'POST' }))
+
+    await waitFor(() => expect(updateLocalMock).toHaveBeenCalledWith('demo', expect.any(Function)))
   })
 })
