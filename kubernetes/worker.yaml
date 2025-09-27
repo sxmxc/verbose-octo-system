@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: toolbox-worker
+  namespace: sre-toolbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: toolbox-worker
+  template:
+    metadata:
+      labels:
+        app: toolbox-worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/your-org/sre-toolbox-api:latest
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "celery -A worker.worker:celery_app worker --loglevel=INFO"]
+          envFrom:
+            - configMapRef:
+                name: toolbox-app-config
+            - secretRef:
+                name: toolbox-app-secrets
+            - secretRef:
+                name: toolbox-postgres-credentials
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app/data
+            - name: backend-config
+              mountPath: /app/config
+              readOnly: true
+            - name: vault-token
+              mountPath: /app/.vault-token
+              subPath: .vault-token
+              readOnly: true
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: toolbox-shared-data
+        - name: backend-config
+          configMap:
+            name: toolbox-backend-config
+        - name: vault-token
+          secret:
+            secretName: toolbox-vault-token

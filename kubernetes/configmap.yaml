@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: toolbox-app-config
+  namespace: sre-toolbox
+data:
+  PYTHONPATH: /app
+  VAULT_ADDR: http://toolbox-vault:8200
+  VAULT_NAMESPACE: ""
+  VAULT_KV_MOUNT: secret
+  VAULT_TLS_SKIP_VERIFY: "true"
+  VAULT_CA_CERT: ""
+  VAULT_AUTH_METHOD: token
+  VAULT_TOKEN_FILE: /vault/.vault-token
+  CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP: "true"

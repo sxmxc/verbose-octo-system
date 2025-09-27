@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: toolbox-postgres
+  namespace: sre-toolbox
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: toolbox-postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: toolbox-postgres
+  namespace: sre-toolbox
+spec:
+  serviceName: toolbox-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: toolbox-postgres
+  template:
+    metadata:
+      labels:
+        app: toolbox-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgres
+          envFrom:
+            - secretRef:
+                name: toolbox-postgres-credentials
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
