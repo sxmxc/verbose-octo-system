@@ -25,6 +25,12 @@ AUDIT_EVENT_DEFINITIONS: Dict[str, AuditEventDefinition] = {
         description="Failed authentication attempt was rejected.",
         severity="warning",
     ),
+    "auth.login.lockout": AuditEventDefinition(
+        name="auth.login.lockout",
+        category="authentication",
+        description="Account temporarily locked after repeated failed authentication attempts.",
+        severity="warning",
+    ),
     "auth.logout": AuditEventDefinition(
         name="auth.logout",
         category="authentication",

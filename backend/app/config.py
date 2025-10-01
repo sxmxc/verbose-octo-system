@@ -30,6 +30,21 @@ class AuthProviderBase(BaseModel):
 class LocalAuthProvider(AuthProviderBase):
     type: Literal["local"] = "local"
     allow_registration: bool = False
+    max_attempts: int = Field(
+        default=5,
+        ge=0,
+        description="Maximum failed login attempts before the account is locked. Set to 0 to disable throttling.",
+    )
+    window_seconds: int = Field(
+        default=300,
+        ge=0,
+        description="Sliding window in seconds for counting failed attempts. Set to 0 to disable throttling.",
+    )
+    lockout_seconds: int = Field(
+        default=900,
+        ge=0,
+        description="Lockout duration in seconds once the failed attempt threshold is reached. Set to 0 to disable throttling.",
+    )
 
 
 class OidcAuthProvider(AuthProviderBase):

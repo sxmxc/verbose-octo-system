@@ -114,6 +114,16 @@ The UI exposes a **Load metadata** button in the OIDC form—paste the discovery
 4. **TLS considerations** – prefer LDAPS. If the directory uses a private CA, add the certificate bundle to the container and reference it via `REQUESTS_CA_BUNDLE` or system trust store. Vault itself can use `VAULT_CA_CERT` for custom roots.
 5. **Test connectivity** from **Administration → Toolbox settings → Auth → Test connection** after saving changes.
 
+## Local Provider Throttling
+
+The built-in local authentication provider now enforces rate limiting to slow brute-force attempts. Each provider definition accepts three optional fields:
+
+- `max_attempts` – failed-login budget inside the sliding window (default `5`).
+- `window_seconds` – how long, in seconds, to keep counting those failures (default `300`).
+- `lockout_seconds` – lockout duration once the budget is exceeded (default `900`).
+
+Set these values from **Administration → Toolbox settings → Auth** or via the JSON configuration hooks (`AUTH_PROVIDERS_JSON`, `AUTH_PROVIDERS_FILE`). Setting any field to `0` disables throttling for that provider. When the limit is reached the API returns HTTP `429` and records an `auth.login.lockout` audit event alongside the existing `auth.login.failure` entries so operators can trace repeated abuse. Successful logins clear the failure counter.
+
 ## Operational Checklist
 
 - [ ] Vault initialised, unsealed, and reachable at `VAULT_ADDR`.
