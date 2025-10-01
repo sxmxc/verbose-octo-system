@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "last_updated": "2025-09-25T00:00:00+00:00",
-  "session_counter": 16,
+  "last_updated": "2025-09-25T00:15:00+00:00",
+  "session_counter": 17,
   "active_task": null,
-  "last_task_id": "update-mechanism",
+  "last_task_id": "versioning-scheme",
   "recent_updates": [
     {
       "task_id": "update-mechanism",
@@ -17,8 +17,8 @@
     },
     {
       "task_id": "versioning-scheme",
-      "status": "in_progress",
-      "summary": "Persisted manifest versions across installs to unblock update flows; formal documentation of the scheme remains outstanding."
+      "status": "done",
+      "summary": "Documented semantic versioning guidance, release checklist integration, and changelog expectations for toolkit authors."
     },
     {
       "task_id": "toolkit-runtime-docs",

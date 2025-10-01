@@ -34,4 +34,4 @@ Use this guide as the starting point for building SRE Toolbox toolkits. It conne
 
 The community repository ingests each toolkit's `docs/README.md` to generate catalog cards and quickstart links, so keeping that summary current ensures operators see accurate guidance wherever the toolkit is surfaced.
 
-Continue with the more detailed backend, frontend, and distribution guides in this folder.
+Continue with the more detailed backend, frontend, versioning, and distribution guides in this folder. Consult [`versioning.md`](./versioning.md) when planning releases so manifest versions, changelog entries, and `toolkit.updated_at` timestamps stay aligned.
