@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models.user import AuthSession, User
 from ..security.providers.base import AuthProvider, AuthResult
 from ..security.roles import ROLE_SYSTEM_ADMIN
-from ..security.tokens import TokenBundle, create_token_bundle, hash_token, is_token_expired
+from ..security.tokens import TokenBundle, create_token_bundle, decode_token, hash_token, is_token_expired
 from .sessions import SessionService
 from .users import UserService
 
@@ -148,9 +148,11 @@ class AuthService:
         source_ip: str | None = None,
         user_agent: str | None = None,
     ) -> TokenBundle:
-        from ..security.tokens import decode_token
-
         payload = decode_token(refresh_token)
+        if payload.get("token_use") != "refresh":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token invalid")
+        if payload.get("typ") != "refresh":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token invalid")
         token_hash = hash_token(refresh_token)
         record = await self.session_service.get_by_token_hash(token_hash)
         if not record or record.revoked_at:

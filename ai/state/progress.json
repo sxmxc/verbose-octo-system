@@ -1,10 +1,15 @@
 {
   "version": 1,
-  "last_updated": "2025-09-25T00:15:00+00:00",
-  "session_counter": 17,
+  "last_updated": "2025-10-01T05:35:02+00:00",
+  "session_counter": 19,
   "active_task": null,
-  "last_task_id": "versioning-scheme",
+  "last_task_id": "token-assertions",
   "recent_updates": [
+    {
+      "task_id": "token-assertions",
+      "status": "done",
+      "summary": "Promoted decode_token import for AuthService refresh guard and added async coverage; targeted pytest requires fastapi dependency."
+    },
     {
       "task_id": "update-mechanism",
       "status": "done",
