@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "last_updated": "2025-10-01T05:35:02+00:00",
-  "session_counter": 19,
-  "active_task": null,
-  "last_task_id": "token-assertions",
+  "last_updated": "2025-10-01T06:20:00+00:00",
+  "session_counter": 20,
+  "active_task": "login-throttling",
+  "last_task_id": "login-throttling",
   "recent_updates": [
     {
       "task_id": "token-assertions",
@@ -97,5 +97,5 @@
     }
   ],
   "candidate_next_tasks": [],
-  "notes": "Initialised by Codex; update this file whenever focus or status changes. Architecture/schema references refreshed in session 2."
+  "notes": "Initialised by Codex; update this file whenever focus or status changes. Architecture/schema references refreshed in session 2. Local provider throttling and audit coverage underway; backend tests staged for lockout behaviour."
 }

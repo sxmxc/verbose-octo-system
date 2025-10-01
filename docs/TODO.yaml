@@ -188,8 +188,11 @@ areas:
           - "2025-10-01: Promoted decode_token to module scope, refreshed AuthService guard, and added async tests verifying failure and success paths."
       - id: login-throttling
         title: Implement login throttling / lockout for the local provider and emit audit logs.
-        status: backlog
+        status: in_progress
         priority: medium
+        notes:
+          - "Emit audit metadata whenever throttle or lockout conditions trigger so operators can review attempts."
+          - "2025-10-01: Adding Redis-backed throttle defaults, audit coverage, and local documentation for lockout behaviour."
       - id: browser-storage-hardening
         title: Keep access tokens out of localStorage; rely on httpOnly refresh cookies or in-memory storage.
         status: backlog

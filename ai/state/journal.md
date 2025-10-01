@@ -47,6 +47,11 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Refreshed `.env.example`, the manual dev workflow, and the Docker Compose checklist so operators generate their own secrets before booting the stack (`.env.example`, `README.md`, `docs/project-setup.md`).
 - Rendered the compose config with the updated `.env` to confirm required variables behave as expected (`docker compose config`; `docker-compose.yml`).
 
+## 2025-10-01 Local login throttling kickoff
+- Promoted TODO `login-throttling` to in_progress and captured the Redis-backed lockout approach in the task notes (`docs/TODO.yaml:189`).
+- Introduced throttle helpers, provider wiring, and regression coverage for lockout, failure, and reset paths to guard the new behaviour (`backend/app/security/throttling.py`, `backend/app/security/providers/local.py`, `backend/tests/test_local_auth_provider.py`).
+- Documented the new configuration knobs and audit signals for operators managing the local provider (`docs/authentication/providers.md`).
+
 ## 2025-09-21 Postgres bootstrap validation
 - Closed TODO `remove-default-postgres-creds` by wiring a new env preflight into `bootstrap-stack.sh` that rejects placeholder Postgres credentials before Docker services launch (`backend/app/core/postgres_env.py`, `bootstrap-stack.sh`; Context: docs/TODO.yaml).
 - Added pytest coverage to lock the validator’s behaviour around placeholders, mismatched `DATABASE_URL` values, and minimum password length (`backend/tests/test_postgres_env.py`; Context: backend tests).
@@ -104,4 +109,3 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Added guards in `backend/app/services/auth.py` so refresh attempts missing `token_use` or `typ` are rejected with 401 responses prior to session lookups (Context: backend/app/services/auth.py:149).
 - Authored `backend/tests/test_auth_service.py` covering missing-claim failures and the updated happy path; `python -m pytest backend/tests/test_auth_service.py` currently fails in this environment because `fastapi` is unavailable, so follow-up runs need dependencies installed (Context: backend/tests/test_auth_service.py:1).
 - Promoted `decode_token` to a top-level import so the refresh guard stays patchable and reran `pytest backend/tests/test_auth_service.py`; run still needs FastAPI installed in this environment to complete.
-
