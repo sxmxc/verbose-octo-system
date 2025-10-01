@@ -20,15 +20,20 @@ class LoginThrottleConfig:
         return all(value > 0 for value in (self.max_attempts, self.window_seconds, self.lockout_seconds))
 
     @classmethod
-    def from_provider(cls, provider_config: "LocalAuthProvider") -> "LoginThrottleConfig":
-        from ..config import LocalAuthProvider  # Local import to avoid circular dependency
+    def from_provider(cls, provider_config: object) -> "LoginThrottleConfig":
+        """Build config from a local auth provider definition.
 
-        if not isinstance(provider_config, LocalAuthProvider):
-            raise TypeError("provider_config must be an instance of LocalAuthProvider")
+        Accepts duck-typed objects (Pydantic models or dict-backed instances) so tests can
+        construct providers without importing the settings class directly.
+        """
+
+        max_attempts = getattr(provider_config, "max_attempts", 0)
+        window_seconds = getattr(provider_config, "window_seconds", 0)
+        lockout_seconds = getattr(provider_config, "lockout_seconds", 0)
         return cls(
-            max_attempts=provider_config.max_attempts,
-            window_seconds=provider_config.window_seconds,
-            lockout_seconds=provider_config.lockout_seconds,
+            max_attempts=int(max_attempts),
+            window_seconds=int(window_seconds),
+            lockout_seconds=int(lockout_seconds),
         )
 
 
