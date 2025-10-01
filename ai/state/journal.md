@@ -94,3 +94,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Persisted manifest versions on install/update so registry + UI can surface semantic versions without touching bundled manifests.
 - Added `/toolkits/updates` API with packaging-based comparison, community catalog polling, and frontend badges for curators.
 - Introduced `/toolkits/{slug}/update` to reuse community installs for upgrades, wired admin UI actions, and refreshed TODO priorities.
+
+## 2025-09-25 Toolkit versioning documentation
+- Closed TODO `versioning-scheme` by writing `docs/toolkit-authoring/versioning.md`, defining semantic versioning expectations and release triggers for toolkit authors (Context: docs/TODO.yaml, toolkit authoring docs).
+- Linked the new guide from the authoring overview and testing & release checklist so curators see version bump rules during planning and packaging (Context: docs/toolkit-authoring/overview.md, docs/toolkit-authoring/testing-and-release.md).
+- Updated state tracking to mark the task complete and capture the documentation improvement (Context: ai/state/progress.json).

@@ -17,7 +17,7 @@ Follow this sequence before publishing a toolkit bundle so operators receive a r
 ## Packaging & Distribution
 - Build the frontend bundle (when applicable) so artifacts such as `frontend/dist/index.js` or custom `frontend.entry` targets exist before you commit.
 - Verify the slug in `toolkit.json` uses only lowercase letters, numbers, hyphen (`-`), or underscore (`_`); the release workflow fails quickly when the allowlist is violated.
-- Bump the toolkit version in `toolkit.json` and include a changelog entry summarising major changes and migration steps.
+- Bump the toolkit version in `toolkit.json` according to the [Toolkit Versioning Guide](./versioning.md) and include a changelog entry summarising major changes and migration steps.
 - Merge your branch (with built assets committed) into `main`. The **Release** GitHub Actions workflow runs on every push to `main`, invokes `toolkits/scripts/package_all_toolkits.py`, and uploads a `toolkit-<slug>` artifact containing `<slug>_toolkit.zip`.
 - Monitor the workflow under **Actions → Release**. You can download artifacts directly from the run summary or via `gh run download --repo <org>/<repo> --name toolkit-<slug>` once the `Package Toolkit` job succeeds.
 - Share the downloaded archive alongside release notes in your preferred artifact store, or hand it to the operations team for installation.

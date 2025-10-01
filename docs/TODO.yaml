@@ -120,14 +120,13 @@ areas:
     tasks:
       - id: versioning-scheme
         title: Define a versioning scheme for toolkits (e.g., semantic versioning).
-        status: in_progress
+        status: done
         priority: high
         notes:
           - "Establish guidelines for version increments based on changes (major, minor, patch)."
           - "Document the versioning scheme in the toolkit repository."
           - "2024-10-25: Toolkits now persist manifest-provided versions and surface them in the UI; formal documentation of the scheme remains outstanding."
-        blockers:
-          - "Requires toolkit repository setup."
+          - "2025-09-25: Authored toolkit versioning guide and linked it through authoring docs and release checklist."
       - id: update-notifications
         title: Implement a notification system within the Toolbox UI to alert users of available toolkit updates.
         status: done
