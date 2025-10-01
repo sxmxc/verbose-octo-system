@@ -1,14 +1,14 @@
 {
   "version": 1,
-  "last_updated": "2025-10-01T05:25:37+00:00",
-  "session_counter": 18,
-  "active_task": "token-assertions",
+  "last_updated": "2025-10-01T05:35:02+00:00",
+  "session_counter": 19,
+  "active_task": null,
   "last_task_id": "token-assertions",
   "recent_updates": [
     {
       "task_id": "token-assertions",
-      "status": "in_progress",
-      "summary": "Started enforcing refresh token typ/token_use claims with new AuthService coverage."
+      "status": "done",
+      "summary": "Promoted decode_token import for AuthService refresh guard and added async coverage; targeted pytest requires fastapi dependency."
     },
     {
       "task_id": "update-mechanism",

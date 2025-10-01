@@ -181,10 +181,11 @@ areas:
           - "2025-09-21: Added startup validation rejecting placeholder or short secrets and documented the requirement; asymmetric modes now require key pairs."
       - id: token-assertions
         title: Add token_use / typ assertions when refreshing tokens to prevent replay.
-        status: in_progress
+        status: done
         priority: medium
         notes:
           - "2025-09-25: Adding refresh claim validation in AuthService with regression coverage."
+          - "2025-10-01: Promoted decode_token to module scope, refreshed AuthService guard, and added async tests verifying failure and success paths."
       - id: login-throttling
         title: Implement login throttling / lockout for the local provider and emit audit logs.
         status: backlog

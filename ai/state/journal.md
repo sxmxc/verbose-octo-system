@@ -103,4 +103,5 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Focused on TODO `auth-hardening/token-assertions` to validate refresh token claims before reuse (Context: docs/TODO.yaml:183-193).
 - Added guards in `backend/app/services/auth.py` so refresh attempts missing `token_use` or `typ` are rejected with 401 responses prior to session lookups (Context: backend/app/services/auth.py:149).
 - Authored `backend/tests/test_auth_service.py` covering missing-claim failures and the updated happy path; `python -m pytest backend/tests/test_auth_service.py` currently fails in this environment because `fastapi` is unavailable, so follow-up runs need dependencies installed (Context: backend/tests/test_auth_service.py:1).
+- Promoted `decode_token` to a top-level import so the refresh guard stays patchable and reran `pytest backend/tests/test_auth_service.py`; run still needs FastAPI installed in this environment to complete.
 
