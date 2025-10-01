@@ -99,3 +99,8 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Closed TODO `versioning-scheme` by writing `docs/toolkit-authoring/versioning.md`, defining semantic versioning expectations and release triggers for toolkit authors (Context: docs/TODO.yaml, toolkit authoring docs).
 - Linked the new guide from the authoring overview and testing & release checklist so curators see version bump rules during planning and packaging (Context: docs/toolkit-authoring/overview.md, docs/toolkit-authoring/testing-and-release.md).
 - Updated state tracking to mark the task complete and capture the documentation improvement (Context: ai/state/progress.json).
+## 2025-10-01 Refresh token assertions
+- Focused on TODO `auth-hardening/token-assertions` to validate refresh token claims before reuse (Context: docs/TODO.yaml:183-193).
+- Added guards in `backend/app/services/auth.py` so refresh attempts missing `token_use` or `typ` are rejected with 401 responses prior to session lookups (Context: backend/app/services/auth.py:149).
+- Authored `backend/tests/test_auth_service.py` covering missing-claim failures and the updated happy path; `python -m pytest backend/tests/test_auth_service.py` currently fails in this environment because `fastapi` is unavailable, so follow-up runs need dependencies installed (Context: backend/tests/test_auth_service.py:1).
+

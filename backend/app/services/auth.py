@@ -151,6 +151,10 @@ class AuthService:
         from ..security.tokens import decode_token
 
         payload = decode_token(refresh_token)
+        if payload.get("token_use") != "refresh":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token invalid")
+        if payload.get("typ") != "refresh":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token invalid")
         token_hash = hash_token(refresh_token)
         record = await self.session_service.get_by_token_hash(token_hash)
         if not record or record.revoked_at:

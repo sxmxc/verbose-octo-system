@@ -75,7 +75,7 @@ areas:
         priority: low
   - id: toolkit-repository
     title: Community toolkit repository
-    status: backlog
+    status: done
     priority: high
     summary: Establish a public repository for sharing and discovering toolkits.
     tasks:
@@ -181,8 +181,10 @@ areas:
           - "2025-09-21: Added startup validation rejecting placeholder or short secrets and documented the requirement; asymmetric modes now require key pairs."
       - id: token-assertions
         title: Add token_use / typ assertions when refreshing tokens to prevent replay.
-        status: backlog
+        status: in_progress
         priority: medium
+        notes:
+          - "2025-09-25: Adding refresh claim validation in AuthService with regression coverage."
       - id: login-throttling
         title: Implement login throttling / lockout for the local provider and emit audit logs.
         status: backlog
@@ -217,18 +219,6 @@ areas:
           - "2025-09-22: Replaced shell sourcing with a Python parser so unquoted values and inline comments load correctly; pytest coverage guards the parser."
           - "2025-09-24: Added ${VAR} interpolation support so shared secrets only need to be defined once per .env file."
 
-  - id: governance
-    title: Governance & planning
-    summary: Operational guardrails for community contributions and secret management.
-    tasks:
-      - id: toolkit-review-process
-        title: Define the review/approval process for community-submitted toolkits.
-        status: backlog
-        priority: medium
-      - id: vault-deployment-eval
-        title: Evaluate containerized Vault deployment options and integrate into orchestration docs.
-        status: backlog
-        priority: medium
   - id: codex-automation
     title: Codex automation support
     summary: Keep Codex prompts, playbooks, and reference docs accurate.
