@@ -35,44 +35,6 @@ areas:
         title: Add user guides and tooltips for new users.
         status: backlog
         priority: low
-  - id: latency-sleuth-toolkit-ui-improvements
-    title: Latency Sleuth Toolkit UI Improvements
-    summary: Improvements to the Latency Sleuth Toolkit UI for better user experience.
-    tasks:
-      - id: recent-runs-pagination
-        title: Add pagination or infinite scroll to Recent Runs panel in the Job Logs tab when a template is selected.
-        status: done
-        priority: high
-        notes:
-          - "Implement pagination controls or infinite scroll to manage long lists of runs."
-          - "Ensure performance remains optimal with large datasets."
-          - "2025-09-21: Added client-side pagination with load-more control and hook-level tests for Job Logs."
-      - id: improve-heatmap
-        title: Improve heatmap visualization for better clarity.
-        status: backlog
-        priority: medium
-        notes:
-          - "Consider color schemes that enhance readability and data interpretation."
-          - "Add tooltips or legends to explain heatmap data points."
-          - "Use existing javascript libraries for heatmap rendering if applicable."
-      - id: improve-designer-tab
-        title: Improve the Designer tab for better usability.
-        status: done
-        priority: high
-        notes:
-          - "Enhance the layout and organization of elements within the Designer tab."
-          - "Consider 2-column layout with probe designer on the left and template catalog on the right."
-          - "Allow templates in the catalog to be filtered by tags and searched by name."
-          - "Allow templates in the catalog to be edited or cloned directly from the catalog."
-          - "2025-09-21: Refactored Probe Designer into a responsive two-column layout with catalog filters, inline edit, and clone actions."
-      - id: improve-navigation
-        title: Improve navigation within the toolkit UI.
-        status: backlog
-        priority: low
-      - id: add-user-guides
-        title: Add user guides and tooltips for new users.
-        status: backlog
-        priority: low
   - id: toolkit-repository
     title: Community toolkit repository
     status: done
@@ -188,8 +150,10 @@ areas:
           - "2025-10-01: Promoted decode_token to module scope, refreshed AuthService guard, and added async tests verifying failure and success paths."
       - id: login-throttling
         title: Implement login throttling / lockout for the local provider and emit audit logs.
-        status: backlog
+        status: done
         priority: medium
+        notes:
+          - "2025-10-03: Added Redis-backed throttling with configurable thresholds, audit entries, HTTP 429 lockouts, and regression tests."
       - id: browser-storage-hardening
         title: Keep access tokens out of localStorage; rely on httpOnly refresh cookies or in-memory storage.
         status: backlog

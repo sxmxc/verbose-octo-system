@@ -1,10 +1,15 @@
 {
   "version": 1,
-  "last_updated": "2025-10-01T05:35:02+00:00",
-  "session_counter": 19,
+  "last_updated": "2025-10-03T05:18:24+00:00",
+  "session_counter": 20,
   "active_task": null,
-  "last_task_id": "token-assertions",
+  "last_task_id": "login-throttling",
   "recent_updates": [
+    {
+      "task_id": "login-throttling",
+      "status": "done",
+      "summary": "Redis-backed throttle protects the local provider with configurable limits, audit coverage, and HTTP 429 Retry-After responses; pytest backend/tests/test_local_auth_provider.py needs FastAPI installed in this environment."
+    },
     {
       "task_id": "token-assertions",
       "status": "done",
