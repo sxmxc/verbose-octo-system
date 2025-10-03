@@ -1,6 +1,6 @@
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, call
 
 from fastapi import HTTPException, status
 
@@ -104,19 +104,27 @@ class LocalAuthProviderThrottlingTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_throttle_engages_after_max_failures(self) -> None:
         with patch("app.security.providers.local.verify_password", return_value=False):
-            for _ in range(3):
+            for _ in range(self.provider.config.max_failed_attempts - 1):
                 request = self._make_request("alice", "wrong")
                 with self.assertRaises(HTTPException) as exc:
                     await self.provider.complete(request, self.session)
                 self.assertEqual(exc.exception.status_code, status.HTTP_401_UNAUTHORIZED)
 
-            throttled_request = self._make_request("alice", "wrong")
+            triggering_request = self._make_request("alice", "wrong")
             with self.assertRaises(HTTPException) as exc:
+                await self.provider.complete(triggering_request, self.session)
+
+            self.assertEqual(exc.exception.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+            self.assertEqual(exc.exception.detail, "Too many login attempts. Try again later.")
+            self.assertIn("Retry-After", exc.exception.headers)
+
+            throttled_request = self._make_request("alice", "wrong")
+            with self.assertRaises(HTTPException) as throttled_exc:
                 await self.provider.complete(throttled_request, self.session)
 
-        self.assertEqual(exc.exception.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-        self.assertEqual(exc.exception.detail, "Too many login attempts. Try again later.")
-        self.assertIn("Retry-After", exc.exception.headers)
+        self.assertEqual(throttled_exc.exception.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(throttled_exc.exception.detail, "Too many login attempts. Try again later.")
+        self.assertIn("Retry-After", throttled_exc.exception.headers)
 
         throttle_events = [
             call
