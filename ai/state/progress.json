@@ -6,6 +6,11 @@
   "last_task_id": "login-throttling",
   "recent_updates": [
     {
+      "task_id": "login-throttling",
+      "status": "done",
+      "summary": "Redis-backed throttle protects the local provider with configurable limits, audit coverage, and HTTP 429 Retry-After responses; pytest backend/tests/test_local_auth_provider.py needs FastAPI installed in this environment."
+    },
+    {
       "task_id": "token-assertions",
       "status": "done",
       "summary": "Promoted decode_token import for AuthService refresh guard and added async coverage; targeted pytest requires fastapi dependency."

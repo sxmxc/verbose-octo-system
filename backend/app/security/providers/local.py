@@ -33,6 +33,7 @@ class LocalAuthProvider(AuthProvider):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing credentials")
         user_service = UserService(session)
         audit_service = AuditService(session)
+        redis_client = get_redis()
         client_ip = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent")
 
@@ -61,12 +62,14 @@ class LocalAuthProvider(AuthProvider):
 
         user: User | None = await user_service.get_by_username(username)
         if not user or not verify_password(password, user.password_hash):
-            await audit_service.log(
+            remaining = await self._register_failure(
+                redis_client=redis_client,
+                identifier=identifier,
+                audit_service=audit_service,
                 actor=user,
-                event="auth.login.failure",
-                severity="warning",
-                payload={"provider": self.name, "username": username, "reason": "invalid_credentials"},
-                source_ip=client_ip,
+                username=username,
+                reason="invalid_credentials",
+                client_ip=client_ip,
                 user_agent=user_agent,
             )
             if throttle_config.enabled and redis_client is not None:
@@ -90,38 +93,26 @@ class LocalAuthProvider(AuthProvider):
                     )
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
         if not user.is_active:
-            await audit_service.log(
+            remaining = await self._register_failure(
+                redis_client=redis_client,
+                identifier=identifier,
+                audit_service=audit_service,
                 actor=user,
-                event="auth.login.failure",
-                severity="warning",
-                payload={"provider": self.name, "username": username, "reason": "disabled_account"},
-                source_ip=client_ip,
+                username=username,
+                reason="disabled_account",
+                client_ip=client_ip,
                 user_agent=user_agent,
             )
-            if throttle_config.enabled and redis_client is not None:
-                locked, metric = record_failure(redis_client, username, throttle_config)
-                if locked:
-                    await audit_service.log(
-                        actor=user,
-                        event="auth.login.lockout",
-                        payload={
-                            "provider": self.name,
-                            "username": username,
-                            "reason": "lockout_threshold",
-                            "lockout_seconds": metric,
-                        },
-                        source_ip=client_ip,
-                        user_agent=user_agent,
-                    )
-                    raise HTTPException(
-                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                        detail="Account temporarily locked due to too many failed login attempts.",
-                    )
+            if remaining > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Too many login attempts. Try again later.",
+                    headers={"Retry-After": str(remaining)},
+                )
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User disabled")
 
         await user_service.mark_login(user)
-        if throttle_config.enabled and redis_client is not None:
-            reset_attempts(redis_client, username)
+        self._clear_failures(redis_client, identifier)
         roles = [role.slug for role in user.roles] or self.default_roles
         return AuthResult(
             user_external_id=user.id,
