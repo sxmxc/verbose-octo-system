@@ -105,3 +105,9 @@ Track Codex sessions chronologically. Each entry should capture what was attempt
 - Authored `backend/tests/test_auth_service.py` covering missing-claim failures and the updated happy path; `python -m pytest backend/tests/test_auth_service.py` currently fails in this environment because `fastapi` is unavailable, so follow-up runs need dependencies installed (Context: backend/tests/test_auth_service.py:1).
 - Promoted `decode_token` to a top-level import so the refresh guard stays patchable and reran `pytest backend/tests/test_auth_service.py`; run still needs FastAPI installed in this environment to complete.
 
+## 2025-10-03 Local auth throttling
+- Selected TODO `auth-hardening/login-throttling` as the next unblocked item to protect the local provider from brute force attempts (Context: docs/TODO.yaml:189-195).
+- Added regression coverage in `backend/tests/test_local_auth_provider.py` for failure counting, lockout enforcement, and reset-on-success behaviour using a fake Redis client (Context: backend/tests/test_local_auth_provider.py:1).
+- Extended the local auth provider configuration with throttle knobs and wired Redis-backed tracking, audit logging, and HTTP 429 lockouts (`Retry-After` header) in `backend/app/security/providers/local.py` (Context: backend/app/security/providers/local.py:1).
+- Documented the new safeguards for operators in `docs/toolbox-architecture.md` and `docs/runtime-architecture.md` so throttle settings stay visible (Context: docs/toolbox-architecture.md:1; docs/runtime-architecture.md:1).
+- `python -m pytest backend/tests/test_local_auth_provider.py` currently fails in this environment because `fastapi` is unavailable; rerun after installing backend dependencies.

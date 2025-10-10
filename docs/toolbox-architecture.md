@@ -18,6 +18,7 @@ All three share a common domain model (PostgreSQL or SQLite), a Redis-backed eve
 - Configuration: `backend/app/config.py` reads environment variables and Vault secrets; `bootstrap.py` seeds initial roles and admin accounts.
 - Persistence: SQLAlchemy models under `backend/app/models` map to users, roles, toolkits, sessions, audit logs, and auth provider configs. Alembic migrations live in `backend/alembic/`.
 - Security: Authentication is implemented via JWT (FastAPI dependencies in `backend/app/security/`). Role checks use dependency overrides in `backend/app/dependencies.py`.
+- Local login hardening: the `LocalAuthProvider` counts failed attempts per username/IP in Redis and, once the configurable threshold is exceeded, issues HTTP 429 lockouts (`Retry-After` header) and audit entries (`auth.login.throttled`). Defaults live alongside other provider settings in `app.config`.
 - Toolkit loading: `backend/app/toolkit_loader.py` scans the toolkit storage directory, validates manifests, mounts routers, and registers dashboard metadata at runtime.
 
 ## Worker runtime
