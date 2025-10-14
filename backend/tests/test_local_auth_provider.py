@@ -2,7 +2,11 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch, call
 
-from fastapi import HTTPException, status
+try:
+    from fastapi import HTTPException, status
+except ModuleNotFoundError:  # pragma: no cover - testing shim
+    from starlette.exceptions import HTTPException
+    from starlette import status
 
 from app.config import LocalAuthProvider as LocalAuthConfig
 from app.security.providers.base import AuthResult

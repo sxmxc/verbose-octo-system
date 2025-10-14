@@ -4,7 +4,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from fastapi import Request
+try:  # pragma: no cover - optional FastAPI dependency
+    from fastapi import Request
+except ModuleNotFoundError:  # pragma: no cover
+    from starlette.requests import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...config import AuthProviderBase
