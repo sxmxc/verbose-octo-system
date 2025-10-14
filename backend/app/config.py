@@ -5,7 +5,17 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import AnyHttpUrl, BaseModel, Field, HttpUrl, SecretStr, ValidationError, field_validator, model_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .secrets import VaultSecretRef
@@ -28,6 +38,7 @@ class AuthProviderBase(BaseModel):
 
 
 class LocalAuthProvider(AuthProviderBase):
+    model_config = ConfigDict(extra="allow")
     type: Literal["local"] = "local"
     allow_registration: bool = False
     max_attempts: int = Field(
@@ -45,6 +56,26 @@ class LocalAuthProvider(AuthProviderBase):
         ge=0,
         description="Lockout duration in seconds once the failed attempt threshold is reached. Set to 0 to disable throttling.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_legacy_fields(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            data = dict(values)
+            if "max_failed_attempts" in data and "max_attempts" not in data:
+                data["max_attempts"] = data.pop("max_failed_attempts")
+            if "failure_window_seconds" in data and "window_seconds" not in data:
+                data["window_seconds"] = data.pop("failure_window_seconds")
+            return data
+        return values
+
+    @property
+    def max_failed_attempts(self) -> int:
+        return self.max_attempts
+
+    @property
+    def failure_window_seconds(self) -> int:
+        return self.window_seconds
 
 
 class OidcAuthProvider(AuthProviderBase):

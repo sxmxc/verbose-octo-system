@@ -77,7 +77,7 @@ def record_failure(client: Redis, subject: str, config: LoginThrottleConfig) -> 
     if attempts >= config.max_attempts:
         client.delete(attempts_key)
         lock_key = _lockout_key(normalized)
-        client.set(lock_key, "1", ex=config.lockout_seconds)
+        client.setex(lock_key, config.lockout_seconds, "1")
         ttl = client.ttl(lock_key)
         return True, ttl if ttl and ttl > 0 else config.lockout_seconds
 
